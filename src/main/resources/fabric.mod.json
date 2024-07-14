@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "ardapaths",
+  "version": "${version}",
+  "name": "ArdaPaths",
+  "description": "Visualizing different paths across the world of Arda",
+  "authors": [
+    "Ajcool"
+  ],
+  "contact": {
+    "website": "ajcool.space",
+    "repo": "https://github.com/jakep/ardapaths"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/ardapaths/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "space.ajcool.ardapaths.ArdaPathsClient"
+    ],
+    "main": [
+      "space.ajcool.ardapaths.ArdaPaths"
+    ]
+  },
+  "mixins": [
+    "ardapaths.mixins.json"
+  ],
+  "accessWidener": "arda-path.accesswidener",
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
+    "yet-another-config-lib": "*",
+    "fabric-permissions-api-v0": "*"
+  }
+}
