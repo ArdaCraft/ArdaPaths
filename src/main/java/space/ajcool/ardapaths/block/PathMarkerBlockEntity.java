@@ -1,15 +1,5 @@
 package space.ajcool.ardapaths.block;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
@@ -17,6 +7,16 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 
 import java.util.HashMap;
 import java.util.Map;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtHelper;
+import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 
 public class PathMarkerBlockEntity extends BlockEntity
 {
@@ -29,15 +29,15 @@ public class PathMarkerBlockEntity extends BlockEntity
         super(ArdaPaths.PATH_MARKER_BLOCK_ENTITY, blockPos, blockState);
     }
 
-    public void load(CompoundTag compoundTag) {
-        super.load(compoundTag);
+    public void readNbt(NbtCompound compoundTag) {
+        super.readNbt(compoundTag);
 
         targetOffsets = new HashMap<>();
 
         ArdaPaths.CONFIG.paths.forEach(pathSettings -> {
             if (compoundTag.contains("targetOffset-" + pathSettings.Id, 10))
             {
-                targetOffsets.put(pathSettings.Id, NbtUtils.readBlockPos(compoundTag.getCompound("targetOffset-" + pathSettings.Id)));
+                targetOffsets.put(pathSettings.Id, NbtHelper.toBlockPos(compoundTag.getCompound("targetOffset-" + pathSettings.Id)));
             }
         });
 
@@ -45,10 +45,10 @@ public class PathMarkerBlockEntity extends BlockEntity
         if (compoundTag.contains("activationRange", 3)) activationRange = compoundTag.getInt("activationRange");
     }
 
-    protected void saveAdditional(CompoundTag compoundTag) {
-        super.saveAdditional(compoundTag);
+    protected void writeNbt(NbtCompound compoundTag) {
+        super.writeNbt(compoundTag);
 
-        targetOffsets.forEach((key, value) -> compoundTag.put("targetOffset-" + key, NbtUtils.writeBlockPos(value)));
+        targetOffsets.forEach((key, value) -> compoundTag.put("targetOffset-" + key, NbtHelper.fromBlockPos(value)));
 
         compoundTag.putString("proximityMessage", proximityMessage);
         compoundTag.putInt("activationRange", activationRange);
@@ -58,35 +58,35 @@ public class PathMarkerBlockEntity extends BlockEntity
     {
         if (!targetOffsets.containsKey(pathId)) return;
 
-        ArdaPathsClient.addAnimationTrail(this.worldPosition, targetOffsets.get(pathId), pathId);
+        ArdaPathsClient.addAnimationTrail(this.pos, targetOffsets.get(pathId), pathId);
     }
 
-    public static void tick(Level level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity)
+    public static void tick(World level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity)
     {
         ArdaPathsClient.addToPathMarkerToTickingList(pathMarkerBlockEntity);
     }
 
     @Nullable
     @Override
-    public Packet<ClientGamePacketListener> getUpdatePacket()
+    public Packet<ClientPlayPacketListener> toUpdatePacket()
     {
-        return ClientboundBlockEntityDataPacket.create(this);
+        return BlockEntityUpdateS2CPacket.create(this);
     }
 
     @Override
-    public @NotNull CompoundTag getUpdateTag()
+    public @NotNull NbtCompound toInitialChunkDataNbt()
     {
-        return this.saveWithoutMetadata();
+        return this.createNbt();
     }
 
     public void markUpdated() {
-        this.setChanged();
-        this.level.sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
+        this.markDirty();
+        this.world.updateListeners(this.getPos(), this.getCachedState(), this.getCachedState(), 3);
     }
 
-    public Vec3 position() {
-        var position = this.getBlockPos();
+    public Vec3d position() {
+        var position = this.getPos();
 
-        return new Vec3(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
+        return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
     }
 }

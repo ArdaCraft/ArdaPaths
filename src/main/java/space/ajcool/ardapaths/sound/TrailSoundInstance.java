@@ -2,31 +2,29 @@ package space.ajcool.ardapaths.sound;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
-import net.minecraft.client.resources.sounds.SoundInstance;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.sound.MovingSoundInstance;
+import net.minecraft.client.sound.SoundInstance;
+import net.minecraft.sound.SoundCategory;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 
 @Environment(value=EnvType.CLIENT)
-public class TrailSoundInstance extends AbstractTickableSoundInstance {
+public class TrailSoundInstance extends MovingSoundInstance {
     public ArdaPathsClient.AnimatedTrail animatedTrail;
 
     public long lastTick;
     public long timeAlive;
 
     public TrailSoundInstance(ArdaPathsClient.AnimatedTrail animatedTrail) {
-        super(ArdaPaths.TRAIL_SOUND_EVENT, SoundSource.NEUTRAL, SoundInstance.createUnseededRandom());
+        super(ArdaPaths.TRAIL_SOUND_EVENT, SoundCategory.NEUTRAL, SoundInstance.createRandom());
 
         this.timeAlive = 0;
         this.lastTick = System.currentTimeMillis();
 
         this.animatedTrail = animatedTrail;
-        this.looping = true;
-        this.delay = 0;
+        this.repeat = true;
+        this.repeatDelay = 0;
         this.volume = 0.01F;
 
         this.x = (float) animatedTrail.CurrentPosition.x;
@@ -35,15 +33,15 @@ public class TrailSoundInstance extends AbstractTickableSoundInstance {
     }
 
     @Override
-    public boolean canPlaySound() {
-        if (Minecraft.getInstance().player == null) return false;
-        var mainHandItem = Minecraft.getInstance().player.getMainHandItem();
+    public boolean canPlay() {
+        if (MinecraftClient.getInstance().player == null) return false;
+        var mainHandItem = MinecraftClient.getInstance().player.getMainHandStack();
 
-        return mainHandItem.is(ArdaPaths.PATH_REVEALER_ITEM);
+        return mainHandItem.isOf(ArdaPaths.PATH_REVEALER_ITEM);
     }
 
     @Override
-    public boolean canStartSilent() {
+    public boolean shouldAlwaysPlay() {
         return true;
     }
 
@@ -56,7 +54,7 @@ public class TrailSoundInstance extends AbstractTickableSoundInstance {
 
         if (volume == 0)
         {
-            this.stop();
+            this.setDone();
             return;
         }
 

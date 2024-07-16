@@ -25,6 +25,11 @@ repositories {
     maven {
         url 'https://oss.sonatype.org/content/repositories/snapshots'
     }
+
+    maven {
+        name 'Xander Maven'
+        url 'https://maven.isxander.dev/releases'
+    }
 }
 
 loom {
@@ -40,7 +45,7 @@ dependencies {
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    modImplementation "maven.modrinth:yacl:3.5.0+1.20.1-fabric"
+    modImplementation("dev.isxander:yet-another-config-lib:3.5.0+1.20.1-fabric")
 
     include(modImplementation('me.lucko:fabric-permissions-api:0.2-SNAPSHOT'))
 }

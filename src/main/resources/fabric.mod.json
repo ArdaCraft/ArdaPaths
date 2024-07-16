@@ -30,7 +30,6 @@
     "fabricloader": ">=${loader_version}",
     "fabric": "*",
     "minecraft": "${minecraft_version}",
-    "yet-another-config-lib": "*",
     "fabric-permissions-api-v0": "*"
   }
 }

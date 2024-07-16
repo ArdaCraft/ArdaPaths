@@ -2,18 +2,17 @@ package space.ajcool.ardapaths.item;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
@@ -24,36 +23,36 @@ import java.util.List;
 
 public class PathRevealerItem extends Item
 {
-    public PathRevealerItem(Properties properties)
+    public PathRevealerItem(Settings properties)
     {
         super(properties);
     }
 
     @Environment(EnvType.CLIENT)
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand interactionHand)
+    public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand)
     {
-        if (level.isClientSide()) ArdaPathsClient.openSelectionScreen();
+        if (level.isClient()) ArdaPathsClient.openSelectionScreen();
 
         return super.use(level, player, interactionHand);
     }
 
     @Override
-    public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> list, TooltipFlag tooltipFlag)
+    public void appendTooltip(ItemStack itemStack, @Nullable World level, List<Text> list, TooltipContext tooltipFlag)
     {
-        super.appendHoverText(itemStack, level, list, tooltipFlag);
+        super.appendTooltip(itemStack, level, list, tooltipFlag);
 
         for (ArdaPathsConfig.PathSettings path : ArdaPaths.CONFIG.paths)
         {
             if (PathSelectionScreen.selectedPathId != path.Id) continue;
 
-            var text = Component.literal("You are currently on ").withStyle(ChatFormatting.GRAY).append(Component.literal(path.Name).withStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
+            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.Name).fillStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
 
             list.add(text);
         }
 
-        list.add(Component.literal(" "));
-        list.add(Component.literal("Hold ").withStyle(ChatFormatting.AQUA).append(Component.literal("this item to start pathfinding.").withStyle(ChatFormatting.GRAY)));
-        list.add(Component.literal("Right Click ").withStyle(ChatFormatting.AQUA).append(Component.literal("to change your path.").withStyle(ChatFormatting.GRAY)));
+        list.add(Text.literal(" "));
+        list.add(Text.literal("Hold ").formatted(Formatting.AQUA).append(Text.literal("this item to start pathfinding.").formatted(Formatting.GRAY)));
+        list.add(Text.literal("Right Click ").formatted(Formatting.AQUA).append(Text.literal("to change your path.").formatted(Formatting.GRAY)));
     }
 }

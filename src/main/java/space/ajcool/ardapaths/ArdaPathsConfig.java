@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths;
 
 import com.google.gson.GsonBuilder;
-import dev.isxander.yacl.config.ConfigEntry;
-import dev.isxander.yacl.config.ConfigInstance;
-import dev.isxander.yacl.config.GsonConfigInstance;
+import dev.isxander.yacl3.config.ConfigEntry;
+import dev.isxander.yacl3.config.ConfigInstance;
+import dev.isxander.yacl3.config.GsonConfigInstance;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -12,7 +12,8 @@ public class ArdaPathsConfig
 {
     public static final ConfigInstance<ArdaPathsConfig> INSTANCE = new GsonConfigInstance<>(ArdaPathsConfig.class, Path.of("./config/ardapaths.json"), new GsonBuilder().setPrettyPrinting().create());
 
-    @ConfigEntry public List<PathSettings> paths = List.of(
+    @ConfigEntry
+    public List<PathSettings> paths = List.of(
             new PathSettings(
                     0,
                     "Frodo's Path",
