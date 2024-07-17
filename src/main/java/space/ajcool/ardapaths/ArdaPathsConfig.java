@@ -36,6 +36,9 @@ public class ArdaPathsConfig
             )
     );
 
+    @ConfigEntry
+    public boolean markerText = true;
+
 
     public static class ColorRGB
     {

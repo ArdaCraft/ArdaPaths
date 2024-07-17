@@ -65,8 +65,8 @@ public class ArdaPathsClient implements ClientModInitializer
 
     public static void genericMethod()
     {
-        ArdaPaths.LOGGER.info(tickingPathMarkers + "");
-        ArdaPaths.LOGGER.info(tickingPathMarkersLastFrame + "");
+        ArdaPaths.LOGGER.info("{}", tickingPathMarkers);
+        ArdaPaths.LOGGER.info("{}", tickingPathMarkersLastFrame);
     }
 
     @Environment(EnvType.CLIENT)
@@ -159,7 +159,7 @@ public class ArdaPathsClient implements ClientModInitializer
         HudRenderCallback.EVENT.register((drawContext, tickDelta) ->
         {
             //region Render proximity message
-            if (pathMarkerInRange == null || !titleShowing) return;
+            if (pathMarkerInRange == null || !titleShowing || !ArdaPaths.CONFIG.markerText) return;
 
             titleAlive += 1;
 
@@ -372,7 +372,7 @@ public class ArdaPathsClient implements ClientModInitializer
                 }
             }
 
-            if (!titlePlayed && !titleShowing && closestPoximityMessage != null && closestProximityDistance <= closestPoximityMessage.activationRange)
+            if (ArdaPaths.CONFIG.markerText && !titlePlayed && !titleShowing && closestPoximityMessage != null && closestProximityDistance <= closestPoximityMessage.activationRange)
             {
                 pathMarkerInRange = closestPoximityMessage;
                 titlePlayed = true;
@@ -381,7 +381,7 @@ public class ArdaPathsClient implements ClientModInitializer
                 titleAlive = 0;
             }
 
-            if ((closestPoximityMessage == null || closestProximityDistance > closestPoximityMessage.activationRange) && !titleShowing) titlePlayed = false;
+            if (!ArdaPaths.CONFIG.markerText || (closestPoximityMessage == null || closestProximityDistance > closestPoximityMessage.activationRange) && !titleShowing) titlePlayed = false;
 
             if (mainHandItem.isOf(ArdaPaths.PATH_REVEALER_ITEM) && animationTrailsThisTick.isEmpty() && closestPathMarker != null && closestDistance <= 10)
             {

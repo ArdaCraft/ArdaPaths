@@ -40,7 +40,7 @@ public class PathSelectionScreen extends Screen
     protected void init() {
         ArdaPaths.CONFIG.paths.forEach(pathSettings -> {
             addDrawableChild(
-                    new ButtonWidget(width / 2 - 75, 40 + pathSettings.Id * 30, 150, 20, Text.literal(pathSettings.Name).fillStyle(Style.EMPTY.withColor(pathSettings.PrimaryColor.encodedColor())), button -> {
+                    new ButtonWidget(width / 2 - 75, 40 + pathSettings.Id * 25, 150, 20, Text.literal(pathSettings.Name).fillStyle(Style.EMPTY.withColor(pathSettings.PrimaryColor.encodedColor())), button -> {
                         selectedPathId = pathSettings.Id;
                         ArdaPathsClient.animationTrails.clear();
                         ArdaPathsClient.trailSoundInstance = null;
@@ -49,9 +49,8 @@ public class PathSelectionScreen extends Screen
             );
         });
 
-
         addDrawableChild(
-                new ButtonWidget(width / 2 - 75, 80 + ArdaPaths.CONFIG.paths.size() * 30, 150, 20, Text.literal("Return To Path"), button -> {
+                new ButtonWidget(width / 2 - 75, 70 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Return To Path"), button -> {
                     callingForTeleport = true;
                     ArdaPathsClient.animationTrails.clear();
                     ArdaPathsClient.trailSoundInstance = null;
@@ -59,11 +58,15 @@ public class PathSelectionScreen extends Screen
                 }, Supplier::get)
         );
 
-//        addRenderableWidget(
-//                new Button(width / 2 - 75, height - 40, 150, 20, Component.literal("Cancel"), button -> {
-//                    Minecraft.getInstance().setScreen(null);
-//                })
-//        );
+        addDrawableChild(
+                new ButtonWidget(width / 2 - 75, 95 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Marker Text: " + (ArdaPaths.CONFIG.markerText ? "On" : "Off")), button -> {
+                    ArdaPaths.CONFIG.markerText = !ArdaPaths.CONFIG.markerText;
+                    ArdaPathsConfig.INSTANCE.save();
+
+                    MinecraftClient.getInstance().setScreen(null);
+                    MinecraftClient.getInstance().setScreen(new PathSelectionScreen());
+                }, Supplier::get)
+        );
     }
 
     @Override
@@ -78,7 +81,7 @@ public class PathSelectionScreen extends Screen
 
             var text = Text.literal("You are currently on ").append(Text.literal(path.Name).fillStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
 
-            context.drawCenteredTextWithShadow(textRenderer, text, width / 2, 60 + ArdaPaths.CONFIG.paths.size() * 30, 0xffffff);
+            context.drawCenteredTextWithShadow(textRenderer, text, width / 2, 50 + ArdaPaths.CONFIG.paths.size() * 25, 0xffffff);
         }
 
         super.render(context, mouseX, mouseY, delta);
