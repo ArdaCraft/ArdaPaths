@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.sound;
+package space.ajcool.ardapaths.mc.sounds;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -6,8 +6,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.MovingSoundInstance;
 import net.minecraft.client.sound.SoundInstance;
 import net.minecraft.sound.SoundCategory;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.mc.items.ModItems;
 
 @Environment(value=EnvType.CLIENT)
 public class TrailSoundInstance extends MovingSoundInstance {
@@ -17,7 +17,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
     public long timeAlive;
 
     public TrailSoundInstance(ArdaPathsClient.AnimatedTrail animatedTrail) {
-        super(ArdaPaths.TRAIL_SOUND_EVENT, SoundCategory.NEUTRAL, SoundInstance.createRandom());
+        super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
 
         this.timeAlive = 0;
         this.lastTick = System.currentTimeMillis();
@@ -37,7 +37,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
         if (MinecraftClient.getInstance().player == null) return false;
         var mainHandItem = MinecraftClient.getInstance().player.getMainHandStack();
 
-        return mainHandItem.isOf(ArdaPaths.PATH_REVEALER_ITEM);
+        return mainHandItem.isOf(ModItems.PATH_REVEALER);
     }
 
     @Override

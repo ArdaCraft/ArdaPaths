@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.block;
+package space.ajcool.ardapaths.mc.blocks.entities;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,7 +26,7 @@ public class PathMarkerBlockEntity extends BlockEntity
 
     public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState)
     {
-        super(ArdaPaths.PATH_MARKER_BLOCK_ENTITY, blockPos, blockState);
+        super(ModBlockEntities.PATH_MARKER, blockPos, blockState);
     }
 
     public void readNbt(NbtCompound compoundTag) {

@@ -10,19 +10,13 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenTexts;
-import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
-import space.ajcool.ardapaths.block.PathMarkerBlockEntity;
+import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.ArdaPaths;
 
-import java.nio.charset.Charset;
 import java.util.function.Supplier;
-
-import static com.ibm.icu.text.PluralRules.Operand.i;
 
 @Environment(value = EnvType.CLIENT)
 public class PathMarkerEditScreen extends Screen

@@ -1,11 +1,8 @@
-package space.ajcool.ardapaths.block;
+package space.ajcool.ardapaths.mc.blocks;
 
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -15,7 +12,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
@@ -30,9 +26,9 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
-
-import java.util.HashMap;
-import java.util.Map;
+import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
+import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
+import space.ajcool.ardapaths.mc.items.ModItems;
 
 public class PathMarkerBlock extends BlockWithEntity
 {
@@ -47,7 +43,7 @@ public class PathMarkerBlock extends BlockWithEntity
 
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
-        if (!player.getStackInHand(interactionHand).isOf(ArdaPaths.PATH_MARKER_ITEM)
+        if (!player.getStackInHand(interactionHand).isOf(ModItems.PATH_MARKER)
                 || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
             return ActionResult.PASS;
 
@@ -130,7 +126,7 @@ public class PathMarkerBlock extends BlockWithEntity
     }
 
     public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext) {
-        return collisionContext.isHolding(ArdaPaths.PATH_MARKER_ITEM) ? VoxelShapes.fullCube() : VoxelShapes.empty();
+        return collisionContext.isHolding(ModItems.PATH_MARKER) ? VoxelShapes.fullCube() : VoxelShapes.empty();
     }
 
 
@@ -145,6 +141,6 @@ public class PathMarkerBlock extends BlockWithEntity
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType)
     {
-        return level.isClient ? checkType(blockEntityType, ArdaPaths.PATH_MARKER_BLOCK_ENTITY, PathMarkerBlockEntity::tick) : null;
+        return level.isClient ? checkType(blockEntityType, ModBlockEntities.PATH_MARKER, PathMarkerBlockEntity::tick) : null;
     }
 }

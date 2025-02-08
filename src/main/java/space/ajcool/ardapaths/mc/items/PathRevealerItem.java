@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.item;
+package space.ajcool.ardapaths.mc.items;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -6,7 +6,6 @@ import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -32,7 +31,9 @@ public class PathRevealerItem extends Item
     @Override
     public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand)
     {
-        if (level.isClient()) ArdaPathsClient.openSelectionScreen();
+        if (level.isClient()) {
+            ArdaPathsClient.openSelectionScreen();
+        }
 
         return super.use(level, player, interactionHand);
     }
@@ -44,10 +45,10 @@ public class PathRevealerItem extends Item
 
         for (ArdaPathsConfig.PathSettings path : ArdaPaths.CONFIG.paths)
         {
-            if (PathSelectionScreen.selectedPathId != path.Id) continue;
-
+            if (PathSelectionScreen.selectedPathId != path.Id) {
+                continue;
+            }
             var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.Name).fillStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
-
             list.add(text);
         }
 
