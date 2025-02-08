@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.trails;
+package space.ajcool.ardapaths.paths;
 
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 

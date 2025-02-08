@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.trails.rendering;
+package space.ajcool.ardapaths.paths.rendering;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;

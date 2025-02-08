@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.trails.rendering;
+package space.ajcool.ardapaths.paths.rendering;
 
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;

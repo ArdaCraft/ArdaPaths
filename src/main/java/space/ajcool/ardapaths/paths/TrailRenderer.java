@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.trails;
+package space.ajcool.ardapaths.paths;
 
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
@@ -7,7 +7,7 @@ import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.screen.PathSelectionScreen;
-import space.ajcool.ardapaths.trails.rendering.AnimatedTrail;
+import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
 import space.ajcool.ardapaths.utils.McUtils;
 
 import java.util.ArrayList;
@@ -52,8 +52,8 @@ public class TrailRenderer {
                     removeTrail(marker.getPos());
                 }
 
-                if (!marker.proximityMessage.isEmpty() && playerPos.isWithinDistance(markerPos, marker.activationRange)) {
-                    ProximityMessageRenderer.setMessage(marker.proximityMessage);
+                if (!marker.data().hasProximityMessage() && playerPos.isWithinDistance(markerPos, marker.data().getActivationRange())) {
+                    ProximityMessageRenderer.setMessage(marker.data().getProximityMessage());
                     foundMessage = true;
                 }
             }

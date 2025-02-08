@@ -1,7 +1,7 @@
-package space.ajcool.ardapaths.trails;
+package space.ajcool.ardapaths.paths;
 
 import net.minecraft.client.gui.DrawContext;
-import space.ajcool.ardapaths.trails.rendering.AnimatedMessage;
+import space.ajcool.ardapaths.paths.rendering.AnimatedMessage;
 
 public class ProximityMessageRenderer {
     private static AnimatedMessage message;
