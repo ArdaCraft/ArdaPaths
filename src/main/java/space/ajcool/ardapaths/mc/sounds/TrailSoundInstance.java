@@ -8,7 +8,7 @@ import net.minecraft.client.sound.SoundInstance;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.trails.rendering.AnimatedTrail;
+import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
 
 @Environment(value=EnvType.CLIENT)
 public class TrailSoundInstance extends MovingSoundInstance {

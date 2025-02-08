@@ -4,7 +4,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
-import space.ajcool.ardapaths.utils.Color;
+import space.ajcool.ardapaths.config.shared.Color;
 
 public class AnimatedTrail {
     private static final double SPEED = 0.3;

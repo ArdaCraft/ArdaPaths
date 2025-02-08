@@ -1,18 +1,12 @@
-package space.ajcool.ardapaths.networking;
+package space.ajcool.ardapaths.mc.networking;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
 
-public interface ServerPacketHandler {
-    /**
-     * @return The channel name (Identifier) this handler listens to.
-     */
-    Identifier getChannelId();
-
+public interface ServerPacketHandler extends Packet {
     /**
      * Handle an incoming packet on the server.
      * Called from the global receiver in the PacketRegistry.

@@ -1,11 +1,16 @@
-package space.ajcool.ardapaths.utils;
+package space.ajcool.ardapaths.config.shared;
+
+import com.google.gson.annotations.SerializedName;
 
 public class Color {
-    public final int r;
-    public final int g;
-    public final int b;
+    @SerializedName("red")
+    public int r;
+    @SerializedName("green")
+    public int g;
+    @SerializedName("blue")
+    public int b;
 
-    private Color(int r, int g, int b) {
+    public Color(int r, int g, int b) {
         this.r = r;
         this.g = g;
         this.b = b;

@@ -2,30 +2,24 @@ package space.ajcool.ardapaths.mc.blocks.entities;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import space.ajcool.ardapaths.ArdaPaths;
 
-import java.util.HashMap;
-import java.util.Map;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtHelper;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import space.ajcool.ardapaths.ArdaPathsConfig;
-import space.ajcool.ardapaths.trails.Paths;
-import space.ajcool.ardapaths.trails.TrailRenderer;
-import space.ajcool.ardapaths.trails.rendering.AnimatedTrail;
-import space.ajcool.ardapaths.utils.Color;
+import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.paths.TrailRenderer;
+import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
+import space.ajcool.ardapaths.config.shared.Color;
 
 public class PathMarkerBlockEntity extends BlockEntity {
-    public String proximityMessage = "";
-    public int activationRange = 0;
-    public Map<Integer, BlockPos> targetOffsets = new HashMap<>();
+    private PathMarkerNbt data = PathMarkerNbt.asEmpty();
 
     public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState) {
         super(ModBlockEntities.PATH_MARKER, blockPos, blockState);
@@ -33,33 +27,20 @@ public class PathMarkerBlockEntity extends BlockEntity {
 
     public void readNbt(NbtCompound compoundTag) {
         super.readNbt(compoundTag);
-
-        targetOffsets = new HashMap<>();
-
-        ArdaPaths.CONFIG.paths.forEach(pathSettings -> {
-            if (compoundTag.contains("targetOffset-" + pathSettings.Id, 10)) {
-                targetOffsets.put(pathSettings.Id, NbtHelper.toBlockPos(compoundTag.getCompound("targetOffset-" + pathSettings.Id)));
-            }
-        });
-
-        if (compoundTag.contains("proximityMessage", 8)) proximityMessage = compoundTag.getString("proximityMessage");
-        if (compoundTag.contains("activationRange", 3)) activationRange = compoundTag.getInt("activationRange");
+        this.data = PathMarkerNbt.fromNbt(compoundTag);
     }
 
     protected void writeNbt(NbtCompound compoundTag) {
         super.writeNbt(compoundTag);
-
-        targetOffsets.forEach((key, value) -> compoundTag.put("targetOffset-" + key, NbtHelper.fromBlockPos(value)));
-
-        compoundTag.putString("proximityMessage", proximityMessage);
-        compoundTag.putInt("activationRange", activationRange);
+        this.data.writeNbt(compoundTag);
     }
 
     public void createTrail(int pathId) {
-        if (!targetOffsets.containsKey(pathId)) return;
-        ArdaPathsConfig.ColorRGB colorOld = ArdaPaths.CONFIG.paths.get(pathId).PrimaryColor;
-        Color color = Color.fromRgb(colorOld.Red, colorOld.Green, colorOld.Blue);
-        AnimatedTrail trail = AnimatedTrail.from(this.pos, targetOffsets.get(pathId), color);
+        if (!this.data.hasTargetOffset(pathId)) return;
+
+        BlockPos targetOffset = this.data.getTargetOffset(pathId);
+        Color color = ArdaPathsClient.CONFIG.paths.get(pathId).primaryColor;
+        AnimatedTrail trail = AnimatedTrail.from(this.pos, targetOffset, color);
         TrailRenderer.registerTrail(trail);
     }
 
@@ -87,5 +68,9 @@ public class PathMarkerBlockEntity extends BlockEntity {
     public Vec3d position() {
         BlockPos position = this.getPos();
         return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
+    }
+
+    public PathMarkerNbt data() {
+        return data;
     }
 }

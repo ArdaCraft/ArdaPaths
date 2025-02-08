@@ -2,6 +2,7 @@ package space.ajcool.ardapaths;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
@@ -11,47 +12,43 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.*;
+import space.ajcool.ardapaths.config.ClientConfigManager;
+import space.ajcool.ardapaths.config.client.ClientConfig;
+import space.ajcool.ardapaths.config.shared.Color;
+import space.ajcool.ardapaths.config.shared.PathSettings;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
-import space.ajcool.ardapaths.networking.PacketRegistry;
-import space.ajcool.ardapaths.trails.ProximityMessageRenderer;
-import space.ajcool.ardapaths.trails.Paths;
-import space.ajcool.ardapaths.trails.TrailRenderer;
+import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.paths.ProximityMessageRenderer;
+import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.paths.TrailRenderer;
 import space.ajcool.ardapaths.screen.PathMarkerEditScreen;
 import space.ajcool.ardapaths.screen.PathSelectionScreen;
-import space.ajcool.ardapaths.mc.sounds.TrailSoundInstance;
 
 import java.util.*;
 
 public class ArdaPathsClient implements ClientModInitializer {
-    public static TrailSoundInstance trailSoundInstance = null;
+    public static ClientConfigManager CONFIG_MANAGER;
+    public static ClientConfig CONFIG;
 
     @Override
-    public void onInitializeClient()
-    {
+    public void onInitializeClient() {
+        CONFIG_MANAGER = ClientConfigManager.getInstance();
+        CONFIG = CONFIG_MANAGER.getConfig();
+
         ModParticles.initClient();
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            PacketRegistry.PATH_DATA_REQUEST.sendToServer();
+        });
 
         var markerSet = new ArrayList<>(ClientWorld.BLOCK_MARKER_ITEMS);
         markerSet.add(ModItems.PATH_MARKER);
         ClientWorld.BLOCK_MARKER_ITEMS = Set.copyOf(markerSet);
 
-        ColorProviderRegistry.ITEM.register((itemStack, i) ->
-        {
-            for (ArdaPathsConfig.PathSettings path : ArdaPaths.CONFIG.paths)
-            {
-                if (path.Id != PathSelectionScreen.selectedPathId) continue;
-
-                return path.PrimaryColor.encodedColor();
-            }
-
-            return new ArdaPathsConfig.ColorRGB(100, 100, 100).encodedColor();
-        }, ModItems.PATH_REVEALER);
-
         // TICKS
-
-        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
 
         ClientTickEvents.START_WORLD_TICK.register(level -> {
             if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER)) {
@@ -70,8 +67,6 @@ public class ArdaPathsClient implements ClientModInitializer {
             }
         });
 
-        ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
-
         ClientTickEvents.END_CLIENT_TICK.register(client ->
         {
             if (PathSelectionScreen.callingForTeleport && MinecraftClient.getInstance().player != null)
@@ -83,7 +78,7 @@ public class ArdaPathsClient implements ClientModInitializer {
 
                 for (PathMarkerBlockEntity tickingPathMarker : Paths.getTickingMarkers())
                 {
-                    if (!tickingPathMarker.targetOffsets.containsKey(PathSelectionScreen.selectedPathId)) continue;
+                    if (!tickingPathMarker.data().hasTargetOffset(PathSelectionScreen.selectedPathId)) continue;
 
                     var dist = tickingPathMarker.position().distanceTo(playerPosition);
 
@@ -106,6 +101,23 @@ public class ArdaPathsClient implements ClientModInitializer {
         });
 
 
+    }
+
+    public static void onPathDataInitialized() {
+        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
+        ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
+
+        ColorProviderRegistry.ITEM.register((itemStack, i) ->
+        {
+            for (PathSettings path : CONFIG.paths)
+            {
+                if (path.id != PathSelectionScreen.selectedPathId) continue;
+
+                return path.primaryColor.asHex();
+            }
+
+            return Color.fromRgb(100, 100, 100).asHex();
+        }, ModItems.PATH_REVEALER);
     }
 
     public static boolean checkCtrlHeld()

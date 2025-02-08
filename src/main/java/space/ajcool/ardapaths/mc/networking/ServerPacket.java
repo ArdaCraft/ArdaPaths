@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.networking;
+package space.ajcool.ardapaths.mc.networking;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
@@ -6,10 +6,10 @@ import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.utils.McUtils;
 
-public abstract class AbstractPacket implements ServerPacketHandler {
+public abstract class ServerPacket implements ServerPacketHandler {
     private final Identifier CHANNEL_ID;
 
-    public AbstractPacket(final String channel) {
+    public ServerPacket(final String channel) {
         CHANNEL_ID = Identifier.of(ArdaPaths.MOD_ID, channel);
     }
 

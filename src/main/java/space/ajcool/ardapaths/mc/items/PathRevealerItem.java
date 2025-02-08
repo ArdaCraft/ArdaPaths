@@ -13,9 +13,8 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.ArdaPathsConfig;
+import space.ajcool.ardapaths.config.shared.PathSettings;
 import space.ajcool.ardapaths.screen.PathSelectionScreen;
 
 import java.util.List;
@@ -43,12 +42,12 @@ public class PathRevealerItem extends Item
     {
         super.appendTooltip(itemStack, level, list, tooltipFlag);
 
-        for (ArdaPathsConfig.PathSettings path : ArdaPaths.CONFIG.paths)
+        for (PathSettings path : ArdaPathsClient.CONFIG.paths)
         {
-            if (PathSelectionScreen.selectedPathId != path.Id) {
+            if (PathSelectionScreen.selectedPathId != path.id) {
                 continue;
             }
-            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.Name).fillStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
+            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.name).fillStyle(Style.EMPTY.withColor(path.primaryColor.asHex())));
             list.add(text);
         }
 

@@ -9,6 +9,8 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.ajcool.ardapaths.config.ServerConfigManager;
+import space.ajcool.ardapaths.config.server.ServerConfig;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
@@ -16,17 +18,18 @@ import space.ajcool.ardapaths.mc.items.ModItemGroups;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.mc.sounds.ModSounds;
-import space.ajcool.ardapaths.networking.PacketRegistry;
+import space.ajcool.ardapaths.mc.networking.PacketRegistry;
 
 public class ArdaPaths implements ModInitializer {
     public static final String MOD_ID = "ardapaths";
     public static final Logger LOGGER = LoggerFactory.getLogger("ardapaths");
-    public static ArdaPathsConfig CONFIG;
+    public static ServerConfigManager CONFIG_MANAGER;
+    public static ServerConfig CONFIG;
 
     @Override
     public void onInitialize() {
-        ArdaPathsConfig.INSTANCE.load();
-        CONFIG = ArdaPathsConfig.INSTANCE.getConfig();
+        CONFIG_MANAGER = ServerConfigManager.getInstance();
+        CONFIG = CONFIG_MANAGER.getConfig();
 
         ModBlocks.init();
         ModBlockEntities.init();

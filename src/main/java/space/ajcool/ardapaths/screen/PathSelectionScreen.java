@@ -9,10 +9,10 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.ArdaPaths;
-import space.ajcool.ardapaths.ArdaPathsConfig;
-import space.ajcool.ardapaths.trails.TrailRenderer;
+import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.config.shared.PathSettings;
+import space.ajcool.ardapaths.paths.TrailRenderer;
 
 import java.util.function.Supplier;
 
@@ -29,12 +29,11 @@ public class PathSelectionScreen extends Screen
 
     @Override
     protected void init() {
-        ArdaPaths.CONFIG.paths.forEach(pathSettings -> {
+        ArdaPathsClient.CONFIG.paths.forEach(pathSettings -> {
             addDrawableChild(
-                    new ButtonWidget(width / 2 - 75, 40 + pathSettings.Id * 25, 150, 20, Text.literal(pathSettings.Name).fillStyle(Style.EMPTY.withColor(pathSettings.PrimaryColor.encodedColor())), button -> {
-                        selectedPathId = pathSettings.Id;
+                    new ButtonWidget(width / 2 - 75, 40 + pathSettings.id * 25, 150, 20, Text.literal(pathSettings.name).fillStyle(Style.EMPTY.withColor(pathSettings.primaryColor.asHex())), button -> {
+                        selectedPathId = pathSettings.id;
                         TrailRenderer.clearTrails();
-                        ArdaPathsClient.trailSoundInstance = null;
                         MinecraftClient.getInstance().setScreen(null);
                     }, Supplier::get)
             );
@@ -44,15 +43,14 @@ public class PathSelectionScreen extends Screen
                 new ButtonWidget(width / 2 - 75, 70 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Return To Path"), button -> {
                     callingForTeleport = true;
                     TrailRenderer.clearTrails();
-                    ArdaPathsClient.trailSoundInstance = null;
                     MinecraftClient.getInstance().setScreen(null);
                 }, Supplier::get)
         );
 
         addDrawableChild(
-                new ButtonWidget(width / 2 - 75, 95 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Marker Text: " + (ArdaPaths.CONFIG.markerText ? "On" : "Off")), button -> {
-                    ArdaPaths.CONFIG.markerText = !ArdaPaths.CONFIG.markerText;
-                    ArdaPathsConfig.INSTANCE.save();
+                new ButtonWidget(width / 2 - 75, 95 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Marker Text: " + (ArdaPathsClient.CONFIG.proximityMessages ? "On" : "Off")), button -> {
+                    ArdaPathsClient.CONFIG.proximityMessages = !ArdaPathsClient.CONFIG.proximityMessages;
+                    ArdaPathsClient.CONFIG_MANAGER.save();
 
                     MinecraftClient.getInstance().setScreen(null);
                     MinecraftClient.getInstance().setScreen(new PathSelectionScreen());
@@ -66,11 +64,11 @@ public class PathSelectionScreen extends Screen
         context.fillGradient(0, 0, this.width, this.height, -1072689136, -804253680);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal("Select the path you wish to follow"), width / 2, 20, 0xffffff);
 
-        for (ArdaPathsConfig.PathSettings path : ArdaPaths.CONFIG.paths)
+        for (PathSettings path : ArdaPathsClient.CONFIG.paths)
         {
-            if (selectedPathId != path.Id) continue;
+            if (selectedPathId != path.id) continue;
 
-            var text = Text.literal("You are currently on ").append(Text.literal(path.Name).fillStyle(Style.EMPTY.withColor(path.PrimaryColor.encodedColor())));
+            var text = Text.literal("You are currently on ").append(Text.literal(path.name).fillStyle(Style.EMPTY.withColor(path.primaryColor.asHex())));
 
             context.drawCenteredTextWithShadow(textRenderer, text, width / 2, 50 + ArdaPaths.CONFIG.paths.size() * 25, 0xffffff);
         }

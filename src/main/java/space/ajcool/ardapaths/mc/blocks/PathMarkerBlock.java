@@ -1,8 +1,6 @@
 package space.ajcool.ardapaths.mc.blocks;
 
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -12,7 +10,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
@@ -30,7 +27,7 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.networking.PacketRegistry;
+import space.ajcool.ardapaths.mc.networking.PacketRegistry;
 
 @SuppressWarnings("deprecation")
 public class PathMarkerBlock extends BlockWithEntity {
@@ -81,14 +78,14 @@ public class PathMarkerBlock extends BlockWithEntity {
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block removed.").formatted(Formatting.RED));
 
-                    originPathMarkerBlockEntity.targetOffsets.remove(ArdaPathsClient.selectedTrailId());
+                    originPathMarkerBlockEntity.data().removeTargetOffset(ArdaPathsClient.selectedTrailId());
                 }
                 else {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
 
-                     originPathMarkerBlockEntity.targetOffsets.put(ArdaPathsClient.selectedTrailId(), blockPos.subtract(selectedBlockPosition));
+                     originPathMarkerBlockEntity.data().addTargetOffset(ArdaPathsClient.selectedTrailId(), blockPos.subtract(selectedBlockPosition));
                 }
 
                 PacketRegistry.PATH_MARKER_UPDATE.sendToServer(originPathMarkerBlockEntity.getPos(), originPathMarkerBlockEntity.createNbt());

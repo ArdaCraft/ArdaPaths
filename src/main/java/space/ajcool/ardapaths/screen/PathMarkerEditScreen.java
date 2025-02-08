@@ -2,19 +2,17 @@ package space.ajcool.ardapaths.screen;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.networking.PacketRegistry;
+import space.ajcool.ardapaths.mc.networking.PacketRegistry;
 
 import java.util.function.Supplier;
 
@@ -34,8 +32,8 @@ public class PathMarkerEditScreen extends Screen
 
         pathMarker = pathMarkerBlockEntity;
 
-        proximityMessage = pathMarker.proximityMessage;
-        activationRange = pathMarker.activationRange;
+        proximityMessage = pathMarker.data().getProximityMessage();
+        activationRange = pathMarker.data().getActivationRange();
     }
 
     @Override
@@ -84,8 +82,8 @@ public class PathMarkerEditScreen extends Screen
     public void removed() {
         if (client == null) return;
 
-        pathMarker.proximityMessage = proximityMessage;
-        pathMarker.activationRange = activationRange;
+        pathMarker.data().setProximityMessage(proximityMessage);;
+        pathMarker.data().setActivationRange(activationRange);
 
         PacketRegistry.PATH_MARKER_UPDATE.sendToServer(pathMarker.getPos(), pathMarker.createNbt());
 
