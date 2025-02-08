@@ -41,6 +41,8 @@ public class ArdaPathsClient implements ClientModInitializer {
         CONFIG = CONFIG_MANAGER.getConfig();
 
         ModParticles.initClient();
+        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
+        ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             if (client.isInSingleplayer()) {
@@ -115,9 +117,6 @@ public class ArdaPathsClient implements ClientModInitializer {
     }
 
     public static void onPathDataInitialized() {
-        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
-        ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
-
         ColorProviderRegistry.ITEM.register((itemStack, i) ->
         {
             for (PathSettings path : Paths.getPaths())
