@@ -3,18 +3,18 @@ package space.ajcool.ardapaths.screen;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.networking.PacketRegistry;
 
 import java.util.function.Supplier;
 
@@ -87,14 +87,7 @@ public class PathMarkerEditScreen extends Screen
         pathMarker.proximityMessage = proximityMessage;
         pathMarker.activationRange = activationRange;
 
-        //client.keyboard.setSendRepeatsToGui(false);
-
-        var packetBuffer = PacketByteBufs.create();
-
-        packetBuffer.writeBlockPos(pathMarker.getPos());
-        packetBuffer.writeNbt(pathMarker.createNbt());
-
-        ClientPlayNetworking.send(ArdaPaths.PATH_MARKER_UPDATE_PACKET, packetBuffer);
+        PacketRegistry.PATH_MARKER_UPDATE.sendToServer(pathMarker.getPos(), pathMarker.createNbt());
 
         pathMarker.markUpdated();
     }

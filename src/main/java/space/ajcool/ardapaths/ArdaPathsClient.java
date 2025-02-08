@@ -3,10 +3,8 @@ package space.ajcool.ardapaths;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.world.ClientWorld;
@@ -20,6 +18,7 @@ import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
+import space.ajcool.ardapaths.networking.PacketRegistry;
 import space.ajcool.ardapaths.screen.PathMarkerEditScreen;
 import space.ajcool.ardapaths.screen.PathSelectionScreen;
 import space.ajcool.ardapaths.mc.sounds.TrailSoundInstance;
@@ -344,13 +343,7 @@ public class ArdaPathsClient implements ClientModInitializer
 
                 if (closestPosition != null)
                 {
-                    var packetBuffer = PacketByteBufs.create();
-
-                    packetBuffer.writeDouble(closestPosition.x);
-                    packetBuffer.writeDouble(closestPosition.y);
-                    packetBuffer.writeDouble(closestPosition.z);
-
-                    ClientPlayNetworking.send(ArdaPaths.PATH_PLAYER_TELEPORT_PACKET, packetBuffer);
+                    PacketRegistry.PATH_PLAYER_TELEPORT.sendToServer(closestPosition.x, closestPosition.y, closestPosition.z);
                 }
 
                 PathSelectionScreen.callingForTeleport = false;

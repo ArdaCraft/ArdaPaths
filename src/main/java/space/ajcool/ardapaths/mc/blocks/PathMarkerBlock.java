@@ -12,6 +12,7 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
@@ -29,6 +30,7 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
+import space.ajcool.ardapaths.networking.PacketRegistry;
 
 public class PathMarkerBlock extends BlockWithEntity
 {
@@ -95,12 +97,7 @@ public class PathMarkerBlock extends BlockWithEntity
                      originPathMarkerBlockEntity.targetOffsets.put(ArdaPathsClient.selectedTrailId(), blockPos.subtract(selectedBlockPosition));
                 }
 
-                var packetBuffer = PacketByteBufs.create();
-
-                packetBuffer.writeBlockPos(originPathMarkerBlockEntity.getPos());
-                packetBuffer.writeNbt(originPathMarkerBlockEntity.createNbt());
-
-                ClientPlayNetworking.send(ArdaPaths.PATH_MARKER_UPDATE_PACKET, packetBuffer);
+                PacketRegistry.PATH_MARKER_UPDATE.sendToServer(originPathMarkerBlockEntity.getPos(), originPathMarkerBlockEntity.createNbt());
 
                 player.sendMessage(message);
 
