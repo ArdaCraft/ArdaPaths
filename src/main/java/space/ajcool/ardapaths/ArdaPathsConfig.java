@@ -6,11 +6,15 @@ import dev.isxander.yacl3.config.ConfigInstance;
 import dev.isxander.yacl3.config.GsonConfigInstance;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
-public class ArdaPathsConfig
-{
+@SuppressWarnings("deprecation")
+public class ArdaPathsConfig {
     public static final ConfigInstance<ArdaPathsConfig> INSTANCE = new GsonConfigInstance<>(ArdaPathsConfig.class, Path.of("./config/ardapaths.json"), new GsonBuilder().setPrettyPrinting().create());
+
+    @ConfigEntry
+    public boolean markerText = true;
 
     @ConfigEntry
     public List<PathSettings> paths = List.of(
@@ -36,12 +40,7 @@ public class ArdaPathsConfig
             )
     );
 
-    @ConfigEntry
-    public boolean markerText = true;
-
-
-    public static class ColorRGB
-    {
+    public static class ColorRGB {
         @ConfigEntry
         public int Red;
 
@@ -63,8 +62,7 @@ public class ArdaPathsConfig
         }
     }
 
-    public static class PathSettings
-    {
+    public static class PathSettings {
         @ConfigEntry
         public int Id;
 

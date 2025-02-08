@@ -3,7 +3,6 @@ package space.ajcool.ardapaths.mc.blocks.entities;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
-import space.ajcool.ardapaths.ArdaPathsClient;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,15 +16,18 @@ import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import space.ajcool.ardapaths.ArdaPathsConfig;
+import space.ajcool.ardapaths.trails.Paths;
+import space.ajcool.ardapaths.trails.TrailRenderer;
+import space.ajcool.ardapaths.trails.rendering.AnimatedTrail;
+import space.ajcool.ardapaths.utils.Color;
 
-public class PathMarkerBlockEntity extends BlockEntity
-{
+public class PathMarkerBlockEntity extends BlockEntity {
     public String proximityMessage = "";
     public int activationRange = 0;
     public Map<Integer, BlockPos> targetOffsets = new HashMap<>();
 
-    public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState)
-    {
+    public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState) {
         super(ModBlockEntities.PATH_MARKER, blockPos, blockState);
     }
 
@@ -35,8 +37,7 @@ public class PathMarkerBlockEntity extends BlockEntity
         targetOffsets = new HashMap<>();
 
         ArdaPaths.CONFIG.paths.forEach(pathSettings -> {
-            if (compoundTag.contains("targetOffset-" + pathSettings.Id, 10))
-            {
+            if (compoundTag.contains("targetOffset-" + pathSettings.Id, 10)) {
                 targetOffsets.put(pathSettings.Id, NbtHelper.toBlockPos(compoundTag.getCompound("targetOffset-" + pathSettings.Id)));
             }
         });
@@ -54,22 +55,21 @@ public class PathMarkerBlockEntity extends BlockEntity
         compoundTag.putInt("activationRange", activationRange);
     }
 
-    public void createTrail(int pathId)
-    {
+    public void createTrail(int pathId) {
         if (!targetOffsets.containsKey(pathId)) return;
-
-        ArdaPathsClient.addAnimationTrail(this.pos, targetOffsets.get(pathId), pathId);
+        ArdaPathsConfig.ColorRGB colorOld = ArdaPaths.CONFIG.paths.get(pathId).PrimaryColor;
+        Color color = Color.fromRgb(colorOld.Red, colorOld.Green, colorOld.Blue);
+        AnimatedTrail trail = AnimatedTrail.from(this.pos, targetOffsets.get(pathId), color);
+        TrailRenderer.registerTrail(trail);
     }
 
-    public static void tick(World level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity)
-    {
-        ArdaPathsClient.addToPathMarkerToTickingList(pathMarkerBlockEntity);
+    public static void tick(World level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity) {
+        Paths.addTickingMarker(pathMarkerBlockEntity);
     }
 
     @Nullable
     @Override
-    public Packet<ClientPlayPacketListener> toUpdatePacket()
-    {
+    public Packet<ClientPlayPacketListener> toUpdatePacket() {
         return BlockEntityUpdateS2CPacket.create(this);
     }
 
@@ -85,8 +85,7 @@ public class PathMarkerBlockEntity extends BlockEntity
     }
 
     public Vec3d position() {
-        var position = this.getPos();
-
+        BlockPos position = this.getPos();
         return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
     }
 }

@@ -6,17 +6,18 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.MovingSoundInstance;
 import net.minecraft.client.sound.SoundInstance;
 import net.minecraft.sound.SoundCategory;
-import space.ajcool.ardapaths.ArdaPathsClient;
+import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.items.ModItems;
+import space.ajcool.ardapaths.trails.rendering.AnimatedTrail;
 
 @Environment(value=EnvType.CLIENT)
 public class TrailSoundInstance extends MovingSoundInstance {
-    public ArdaPathsClient.AnimatedTrail animatedTrail;
+    public AnimatedTrail animatedTrail;
 
     public long lastTick;
     public long timeAlive;
 
-    public TrailSoundInstance(ArdaPathsClient.AnimatedTrail animatedTrail) {
+    public TrailSoundInstance(AnimatedTrail animatedTrail) {
         super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
 
         this.timeAlive = 0;
@@ -27,9 +28,10 @@ public class TrailSoundInstance extends MovingSoundInstance {
         this.repeatDelay = 0;
         this.volume = 0.01F;
 
-        this.x = (float) animatedTrail.CurrentPosition.x;
-        this.y = (float) animatedTrail.CurrentPosition.y;
-        this.z = (float) animatedTrail.CurrentPosition.z;
+        Vec3d currentPos = animatedTrail.getCurrentPos();
+        this.x = (float) currentPos.x;
+        this.y = (float) currentPos.y;
+        this.z = (float) currentPos.z;
     }
 
     @Override
@@ -58,9 +60,10 @@ public class TrailSoundInstance extends MovingSoundInstance {
             return;
         }
 
-        this.x = (float) animatedTrail.CurrentPosition.x;
-        this.y = (float) animatedTrail.CurrentPosition.y;
-        this.z = (float) animatedTrail.CurrentPosition.z;
+        Vec3d currentPos = animatedTrail.getCurrentPos();
+        this.x = (float) currentPos.x;
+        this.y = (float) currentPos.y;
+        this.z = (float) currentPos.z;
 
         if (timeAlive < 1500) volume = Math.max(((float) timeAlive / 1500) * 0.5F, 0.001F);
         else if (volume > 0) volume = Math.max(volume - 0.02F, 0);

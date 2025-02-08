@@ -32,8 +32,8 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.networking.PacketRegistry;
 
-public class PathMarkerBlock extends BlockWithEntity
-{
+@SuppressWarnings("deprecation")
+public class PathMarkerBlock extends BlockWithEntity {
     public static BlockPos selectedBlockPosition = null;
 
     public PathMarkerBlock(AbstractBlock.Settings properties) {
@@ -41,28 +41,26 @@ public class PathMarkerBlock extends BlockWithEntity
     }
 
     public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult) {
-        if (!Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4)) return ActionResult.CONSUME;
+        if (!Permissions.check(player, "ardapaths.edit", 4)) {
+            return ActionResult.CONSUME;
+        }
 
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
-        if (!player.getStackInHand(interactionHand).isOf(ModItems.PATH_MARKER)
-                || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
+        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity)) {
             return ActionResult.PASS;
+        }
+        if (!level.isClient()) {
+            return ActionResult.CONSUME;
+        }
 
-        if (!level.isClient()) return ActionResult.CONSUME;
-
-        // We are in a client context here.
-
-        if (ArdaPathsClient.checkCtrlHeld())
-        {
+        if (ArdaPathsClient.checkCtrlHeld()) {
             ArdaPathsClient.openEditorScreen(pathMarkerBlockEntity);
             return ActionResult.CONSUME;
         }
 
-        if (selectedBlockPosition == null)
-        {
-            if (selectedBlockEntity instanceof PathMarkerBlockEntity)
-            {
+        if (selectedBlockPosition == null) {
+            if (selectedBlockEntity instanceof PathMarkerBlockEntity) {
                 selectedBlockPosition = blockPos;
 
                 var message = Text.empty()
@@ -72,24 +70,20 @@ public class PathMarkerBlock extends BlockWithEntity
                 player.sendMessage(message);
             }
         }
-        else
-        {
+        else {
             BlockEntity originBlockEntity = level.getBlockEntity(selectedBlockPosition);
 
-            if (originBlockEntity instanceof PathMarkerBlockEntity originPathMarkerBlockEntity)
-            {
+            if (originBlockEntity instanceof PathMarkerBlockEntity originPathMarkerBlockEntity) {
                 MutableText message;
 
-                if (selectedBlockPosition.equals(blockPos))
-                {
+                if (selectedBlockPosition.equals(blockPos)) {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block removed.").formatted(Formatting.RED));
 
                     originPathMarkerBlockEntity.targetOffsets.remove(ArdaPathsClient.selectedTrailId());
                 }
-                else
-                {
+                else {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
@@ -98,9 +92,7 @@ public class PathMarkerBlock extends BlockWithEntity
                 }
 
                 PacketRegistry.PATH_MARKER_UPDATE.sendToServer(originPathMarkerBlockEntity.getPos(), originPathMarkerBlockEntity.createNbt());
-
                 player.sendMessage(message);
-
                 ArdaPaths.LOGGER.info("Sending Update Packet");
             }
 
@@ -126,18 +118,15 @@ public class PathMarkerBlock extends BlockWithEntity
         return collisionContext.isHolding(ModItems.PATH_MARKER) ? VoxelShapes.fullCube() : VoxelShapes.empty();
     }
 
-
     @Nullable
     @Override
-    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState)
-    {
+    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new PathMarkerBlockEntity(blockPos, blockState);
     }
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType)
-    {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType) {
         return level.isClient ? checkType(blockEntityType, ModBlockEntities.PATH_MARKER, PathMarkerBlockEntity::tick) : null;
     }
 }

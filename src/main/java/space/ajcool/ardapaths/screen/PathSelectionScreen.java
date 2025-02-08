@@ -12,6 +12,7 @@ import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsConfig;
+import space.ajcool.ardapaths.trails.TrailRenderer;
 
 import java.util.function.Supplier;
 
@@ -32,7 +33,7 @@ public class PathSelectionScreen extends Screen
             addDrawableChild(
                     new ButtonWidget(width / 2 - 75, 40 + pathSettings.Id * 25, 150, 20, Text.literal(pathSettings.Name).fillStyle(Style.EMPTY.withColor(pathSettings.PrimaryColor.encodedColor())), button -> {
                         selectedPathId = pathSettings.Id;
-                        ArdaPathsClient.animationTrails.clear();
+                        TrailRenderer.clearTrails();
                         ArdaPathsClient.trailSoundInstance = null;
                         MinecraftClient.getInstance().setScreen(null);
                     }, Supplier::get)
@@ -42,7 +43,7 @@ public class PathSelectionScreen extends Screen
         addDrawableChild(
                 new ButtonWidget(width / 2 - 75, 70 + ArdaPaths.CONFIG.paths.size() * 25, 150, 20, Text.literal("Return To Path"), button -> {
                     callingForTeleport = true;
-                    ArdaPathsClient.animationTrails.clear();
+                    TrailRenderer.clearTrails();
                     ArdaPathsClient.trailSoundInstance = null;
                     MinecraftClient.getInstance().setScreen(null);
                 }, Supplier::get)
