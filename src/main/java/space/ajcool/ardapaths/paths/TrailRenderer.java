@@ -49,10 +49,10 @@ public class TrailRenderer {
                         marker.createTrail(PathSelectionScreen.selectedPathId);
                     }
                 } else {
-                    removeTrail(marker.getPos());
+                    removeTrail(markerPos);
                 }
 
-                if (!marker.data().hasProximityMessage() && playerPos.isWithinDistance(markerPos, marker.data().getActivationRange())) {
+                if (marker.data().hasProximityMessage() && playerPos.isWithinDistance(markerPos, marker.data().getActivationRange())) {
                     ProximityMessageRenderer.setMessage(marker.data().getProximityMessage());
                     foundMessage = true;
                 }
