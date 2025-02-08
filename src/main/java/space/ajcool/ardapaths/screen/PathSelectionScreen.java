@@ -12,6 +12,7 @@ import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.config.shared.PathSettings;
+import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.TrailRenderer;
 
 import java.util.function.Supplier;
@@ -29,7 +30,7 @@ public class PathSelectionScreen extends Screen
 
     @Override
     protected void init() {
-        ArdaPathsClient.CONFIG.paths.forEach(pathSettings -> {
+        Paths.getPaths().forEach(pathSettings -> {
             addDrawableChild(
                     new ButtonWidget(width / 2 - 75, 40 + pathSettings.id * 25, 150, 20, Text.literal(pathSettings.name).fillStyle(Style.EMPTY.withColor(pathSettings.primaryColor.asHex())), button -> {
                         selectedPathId = pathSettings.id;
@@ -64,7 +65,7 @@ public class PathSelectionScreen extends Screen
         context.fillGradient(0, 0, this.width, this.height, -1072689136, -804253680);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal("Select the path you wish to follow"), width / 2, 20, 0xffffff);
 
-        for (PathSettings path : ArdaPathsClient.CONFIG.paths)
+        for (PathSettings path : Paths.getPaths())
         {
             if (selectedPathId != path.id) continue;
 

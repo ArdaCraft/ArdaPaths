@@ -15,6 +15,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.config.shared.PathSettings;
+import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.screen.PathSelectionScreen;
 
 import java.util.List;
@@ -42,7 +43,7 @@ public class PathRevealerItem extends Item
     {
         super.appendTooltip(itemStack, level, list, tooltipFlag);
 
-        for (PathSettings path : ArdaPathsClient.CONFIG.paths)
+        for (PathSettings path : Paths.getPaths())
         {
             if (PathSelectionScreen.selectedPathId != path.id) {
                 continue;

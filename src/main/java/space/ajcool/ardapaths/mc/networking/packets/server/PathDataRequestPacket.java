@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.config.ServerConfigManager;
 import space.ajcool.ardapaths.mc.networking.PacketRegistry;
 import space.ajcool.ardapaths.mc.networking.ServerPacket;
 
@@ -35,7 +36,7 @@ public class PathDataRequestPacket extends ServerPacket {
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender) {
         server.execute(() -> {
-            PacketByteBuf responseBuf = PacketRegistry.PATH_DATA_RESPONSE.create(ArdaPaths.CONFIG);
+            PacketByteBuf responseBuf = PacketRegistry.PATH_DATA_RESPONSE.create(ServerConfigManager.getInstance().getConfig());
             sender.sendPacket(PacketRegistry.PATH_DATA_RESPONSE.getChannelId(), responseBuf);
         });
     }

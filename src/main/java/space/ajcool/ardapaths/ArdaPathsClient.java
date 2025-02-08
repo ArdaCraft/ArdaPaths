@@ -13,7 +13,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.*;
 import space.ajcool.ardapaths.config.ClientConfigManager;
+import space.ajcool.ardapaths.config.ServerConfigManager;
 import space.ajcool.ardapaths.config.client.ClientConfig;
+import space.ajcool.ardapaths.config.server.ServerConfig;
 import space.ajcool.ardapaths.config.shared.Color;
 import space.ajcool.ardapaths.config.shared.PathSettings;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
@@ -41,7 +43,16 @@ public class ArdaPathsClient implements ClientModInitializer {
         ModParticles.initClient();
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            PacketRegistry.PATH_DATA_REQUEST.sendToServer();
+            if (client.isInSingleplayer()) {
+                Paths.clearPaths();
+                ServerConfig serverConfig = ServerConfigManager.getInstance().getConfig();
+                for (PathSettings path : serverConfig.paths) {
+                    Paths.addPath(path);
+                }
+                onPathDataInitialized();
+            } else {
+                PacketRegistry.PATH_DATA_REQUEST.sendToServer();
+            }
         });
 
         var markerSet = new ArrayList<>(ClientWorld.BLOCK_MARKER_ITEMS);
@@ -109,7 +120,7 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ColorProviderRegistry.ITEM.register((itemStack, i) ->
         {
-            for (PathSettings path : CONFIG.paths)
+            for (PathSettings path : Paths.getPaths())
             {
                 if (path.id != PathSelectionScreen.selectedPathId) continue;
 

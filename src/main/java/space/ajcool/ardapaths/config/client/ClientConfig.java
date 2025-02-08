@@ -1,9 +1,6 @@
 package space.ajcool.ardapaths.config.client;
 
 import com.google.gson.annotations.SerializedName;
-import space.ajcool.ardapaths.config.shared.PathSettings;
-
-import java.util.List;
 
 public class ClientConfig {
     @SerializedName("proximity_messages")
@@ -14,6 +11,4 @@ public class ClientConfig {
 
     @SerializedName("current_chapter")
     public String currentChapter;
-
-    public List<PathSettings> paths;
 }

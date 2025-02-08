@@ -12,7 +12,6 @@ import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
@@ -39,7 +38,7 @@ public class PathMarkerBlockEntity extends BlockEntity {
         if (!this.data.hasTargetOffset(pathId)) return;
 
         BlockPos targetOffset = this.data.getTargetOffset(pathId);
-        Color color = ArdaPathsClient.CONFIG.paths.get(pathId).primaryColor;
+        Color color = Paths.getPath(pathId).primaryColor;
         AnimatedTrail trail = AnimatedTrail.from(this.pos, targetOffset, color);
         TrailRenderer.registerTrail(trail);
     }

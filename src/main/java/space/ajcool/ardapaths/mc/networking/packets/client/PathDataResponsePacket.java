@@ -5,7 +5,9 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.PacketByteBuf;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.config.server.ServerConfig;
+import space.ajcool.ardapaths.config.shared.PathSettings;
 import space.ajcool.ardapaths.mc.networking.ClientPacket;
+import space.ajcool.ardapaths.paths.Paths;
 
 /**
  * Packet sent from the server to the client containing path data.
@@ -31,7 +33,14 @@ public class PathDataResponsePacket extends ClientPacket {
         String json = buf.readString(32767);
         try {
             ServerConfig config = new Gson().fromJson(json, ServerConfig.class);
-            ArdaPathsClient.CONFIG.paths = config.paths;
+            if (config == null) {
+                return;
+            }
+
+            Paths.clearPaths();
+            for (PathSettings path : config.paths) {
+                Paths.addPath(path);
+            }
             ArdaPathsClient.onPathDataInitialized();
         } catch (Exception e) {
             e.printStackTrace();
