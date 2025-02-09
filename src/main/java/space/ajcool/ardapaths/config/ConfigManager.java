@@ -8,6 +8,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 public abstract class ConfigManager<T> {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -28,11 +29,7 @@ public abstract class ConfigManager<T> {
             try (Reader reader = Files.newBufferedReader(file)) {
                 T defaultConfig = createDefault();
                 T loadedConfig = GSON.fromJson(reader, (Class<T>) defaultConfig.getClass());
-                if (config != null) {
-                    config = loadedConfig;
-                } else {
-                    config = defaultConfig;
-                }
+                config = Objects.requireNonNullElse(loadedConfig, defaultConfig);
             } catch (IOException e) {
                 e.printStackTrace();
             }
