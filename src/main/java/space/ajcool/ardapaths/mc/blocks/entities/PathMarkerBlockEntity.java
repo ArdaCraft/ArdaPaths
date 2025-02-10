@@ -98,6 +98,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     @Override
     public void applyNbt(NbtCompound nbt) {
         this.data = new HashMap<>();
+        if (nbt == null) return;
         for (String key : nbt.getKeys()) {
             if (ArdaPaths.CONFIG.getPath(key) == null) {
                 continue;
@@ -120,9 +121,12 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         }
         NbtCompound paths = new NbtCompound();
         for (Map.Entry<String, NbtData> entry : this.data.entrySet()) {
-            paths.put(entry.getKey(), entry.getValue().toNbt());
+            NbtCompound pathNbt = entry.getValue().toNbt();
+            if (!pathNbt.isEmpty()) {
+                paths.put(entry.getKey(), pathNbt);
+            }
         }
-        nbt.put("paths", paths);
+        if (!paths.isEmpty()) nbt.put("paths", paths);
         return nbt;
     }
 
