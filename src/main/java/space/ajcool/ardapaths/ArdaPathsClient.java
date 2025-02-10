@@ -11,17 +11,17 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.*;
-import space.ajcool.ardapaths.config.ClientConfigManager;
-import space.ajcool.ardapaths.config.client.ClientConfig;
+import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
+import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
+import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
-import space.ajcool.ardapaths.paths.ProximityMessageRenderer;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
 import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.paths.TrailRenderer;
-import space.ajcool.ardapaths.screens.PathSelectionScreen;
+import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
 import java.util.*;
 
@@ -84,9 +84,9 @@ public class ArdaPathsClient implements ClientModInitializer {
                     }
                 }
 
-                if (closestPosition != null)
-                {
-                    PacketRegistry.PATH_PLAYER_TELEPORT.sendToServer(closestPosition.x, closestPosition.y, closestPosition.z);
+                if (closestPosition != null) {
+                    PlayerTeleportPacket packet = new PlayerTeleportPacket(closestPosition.x + 0.5, closestPosition.y, closestPosition.z + 0.5);
+                    PacketRegistry.PLAYER_TELEPORT.send(packet);
                 }
 
                 callingForTeleport = false;

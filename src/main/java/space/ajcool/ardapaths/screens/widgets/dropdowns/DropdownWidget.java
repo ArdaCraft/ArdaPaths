@@ -12,7 +12,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
-import space.ajcool.ardapaths.utils.Client;
+import space.ajcool.ardapaths.core.Client;
 
 import java.util.ArrayList;
 import java.util.List;

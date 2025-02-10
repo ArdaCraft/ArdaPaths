@@ -24,12 +24,13 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.screens.Screens;
-import space.ajcool.ardapaths.utils.Client;
+import space.ajcool.ardapaths.core.Client;
 
 @SuppressWarnings("deprecation")
 public class PathMarkerBlock extends BlockWithEntity {
@@ -92,7 +93,8 @@ public class PathMarkerBlock extends BlockWithEntity {
                     data.setTarget(blockPos.subtract(selectedBlockPosition));
                 }
 
-                PacketRegistry.PATH_MARKER_UPDATE.sendToServer(pathMarker.getPos(), pathMarker.createNbt());
+                PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getPos(), pathMarker.createNbt());
+                PacketRegistry.PATH_MARKER_UPDATE.send(packet);
                 player.sendMessage(message);
                 ArdaPaths.LOGGER.info("Sending Update Packet");
             }

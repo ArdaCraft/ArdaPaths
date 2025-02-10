@@ -7,9 +7,10 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.ChapterData;
-import space.ajcool.ardapaths.config.shared.PathData;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
@@ -170,8 +171,9 @@ public class ChapterEditScreen extends Screen {
         String name = this.nameInput.getText();
         String date = this.dateInput.getText();
 
-        PacketRegistry.CHAPTER_UPDATE.sendToServer(path.getId(), id, name, date);
-        path.setChapter(id, new ChapterData(id, name, date));
+        ChapterUpdatePacket packet = new ChapterUpdatePacket(path.getId(), id, name, date);
+        PacketRegistry.CHAPTER_UPDATE.send(packet);
+        path.setChapter(new ChapterData(id, name, date));
         ArdaPathsClient.CONFIG.setPath(path);
         ArdaPathsClient.CONFIG_MANAGER.save();
     }

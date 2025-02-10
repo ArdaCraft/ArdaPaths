@@ -11,11 +11,14 @@ import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
+import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.screens.widgets.dropdowns.ChapterDropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
-import space.ajcool.ardapaths.utils.Client;
+import space.ajcool.ardapaths.core.Client;
 
 import java.util.function.Supplier;
 
@@ -217,13 +220,16 @@ public class PathMarkerEditScreen extends Screen {
 
             if (!selectedChapterId.isEmpty()) {
                 data.setChapterStart(isChapterStart);
-                PacketRegistry.CHAPTER_START_UPDATE.sendToServer(selectedPathId, selectedChapterId, MARKER.getPos());
+                ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getPos());
+                PacketRegistry.CHAPTER_START_UPDATE.send(packet);
             } else if (!previousChapterId.isEmpty()) {
                 data.setChapterStart(false);
-                PacketRegistry.CHAPTER_START_UPDATE.sendToServer(selectedPathId, previousChapterId, null);
+                ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, previousChapterId);
+                PacketRegistry.CHAPTER_START_REMOVE.send(packet);
             }
 
-            PacketRegistry.PATH_MARKER_UPDATE.sendToServer(MARKER.getPos(), MARKER.toNbt());
+            PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), data.toNbt());
+            PacketRegistry.PATH_MARKER_UPDATE.send(packet);
             MARKER.markUpdated();
         }
     }

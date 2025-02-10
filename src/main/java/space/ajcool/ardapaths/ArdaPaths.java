@@ -9,8 +9,8 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.ajcool.ardapaths.config.ServerConfigManager;
-import space.ajcool.ardapaths.config.server.ServerConfig;
+import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
+import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
@@ -18,7 +18,7 @@ import space.ajcool.ardapaths.mc.items.ModItemGroups;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.mc.sounds.ModSounds;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 
 public class ArdaPaths implements ModInitializer {
     public static final String MOD_ID = "ardapaths";
@@ -39,8 +39,7 @@ public class ArdaPaths implements ModInitializer {
         ModSounds.init();
         PacketRegistry.init();
 
-        UseBlockCallback.EVENT.register((player, world, hand, hitResult) ->
-        {
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             var blockEntity = world.getBlockEntity(hitResult.getBlockPos().offset(hitResult.getSide()));
 
             if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4)) return ActionResult.FAIL;
@@ -57,8 +56,7 @@ public class ArdaPaths implements ModInitializer {
             return TypedActionResult.pass(itemsStack);
         });
 
-        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
-        {
+        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (blockEntity instanceof PathMarkerBlockEntity && !Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4)) return false;
 
             return true;

@@ -13,10 +13,8 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.PathData;
-import space.ajcool.ardapaths.screens.PathSelectionScreen;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.screens.Screens;
 
 import java.util.List;

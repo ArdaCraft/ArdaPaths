@@ -14,13 +14,12 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import space.ajcool.ardapaths.ArdaPaths;
-import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.Color;
+import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.paths.TrailRenderer;
-import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
-import space.ajcool.ardapaths.utils.conversions.PathMarkerBlockEntityConverter;
+import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
+import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 
 import java.util.HashMap;
 import java.util.Map;

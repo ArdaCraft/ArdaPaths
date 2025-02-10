@@ -9,11 +9,12 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.ChapterData;
-import space.ajcool.ardapaths.config.shared.PathData;
-import space.ajcool.ardapaths.mc.networking.PacketRegistry;
-import space.ajcool.ardapaths.paths.ProximityMessageRenderer;
-import space.ajcool.ardapaths.paths.TrailRenderer;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
+import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
+import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.screens.widgets.dropdowns.ChapterDropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
 
@@ -79,7 +80,8 @@ public class PathSelectionScreen extends Screen {
                 Text.literal("Return to Chapter Start"),
                 button -> {
                     if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
-                        PacketRegistry.CHAPTER_PLAYER_TELEPORT.sendToServer(selectedPathId, selectedChapterId);
+                        ChapterPlayerTeleportPacket packet = new ChapterPlayerTeleportPacket(selectedPathId, selectedChapterId);
+                        PacketRegistry.CHAPTER_PLAYER_TELEPORT.send(packet);
                         TrailRenderer.clearTrails();
                     }
                     this.close();

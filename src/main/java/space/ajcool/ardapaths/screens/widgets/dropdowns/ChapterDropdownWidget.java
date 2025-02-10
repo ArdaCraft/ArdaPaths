@@ -2,8 +2,8 @@ package space.ajcool.ardapaths.screens.widgets.dropdowns;
 
 import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.ChapterData;
-import space.ajcool.ardapaths.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
 import java.util.function.Consumer;
 
