@@ -215,10 +215,10 @@ public class PathMarkerEditScreen extends Screen {
             data.setProximityMessage(proximityMessage);
             data.setActivationRange(activationRange);
 
-            if (!selectedChapterId.isEmpty() && isChapterStart) {
-                data.setChapterStart(true);
+            if (!selectedChapterId.isEmpty()) {
+                data.setChapterStart(isChapterStart);
                 PacketRegistry.CHAPTER_START_UPDATE.sendToServer(selectedPathId, selectedChapterId, MARKER.getPos());
-            } else if (selectedChapterId.isEmpty() && !previousChapterId.isEmpty()) {
+            } else if (!previousChapterId.isEmpty()) {
                 data.setChapterStart(false);
                 PacketRegistry.CHAPTER_START_UPDATE.sendToServer(selectedPathId, previousChapterId, null);
             }
