@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
 import net.minecraft.particle.ParticleTypes;
@@ -29,6 +28,7 @@ import java.util.*;
 public class ArdaPathsClient implements ClientModInitializer {
     public static ClientConfigManager CONFIG_MANAGER;
     public static ClientConfig CONFIG;
+    public static boolean callingForTeleport = false;
 
     @Override
     public void onInitializeClient() {
@@ -64,7 +64,7 @@ public class ArdaPathsClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (PathSelectionScreen.callingForTeleport && MinecraftClient.getInstance().player != null) {
+            if (callingForTeleport && MinecraftClient.getInstance().player != null) {
                 var playerPosition = MinecraftClient.getInstance().player.getPos();
 
                 Vec3d closestPosition = null;
@@ -89,7 +89,7 @@ public class ArdaPathsClient implements ClientModInitializer {
                     PacketRegistry.PATH_PLAYER_TELEPORT.sendToServer(closestPosition.x, closestPosition.y, closestPosition.z);
                 }
 
-                PathSelectionScreen.callingForTeleport = false;
+                callingForTeleport = false;
             }
 
             Paths.clearTickingMarkers();
