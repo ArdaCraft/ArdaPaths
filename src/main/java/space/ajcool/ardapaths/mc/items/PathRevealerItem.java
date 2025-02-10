@@ -13,10 +13,11 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.config.shared.PathSettings;
-import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.screen.PathSelectionScreen;
+import space.ajcool.ardapaths.config.shared.PathData;
+import space.ajcool.ardapaths.screens.PathSelectionScreen;
+import space.ajcool.ardapaths.screens.Screens;
 
 import java.util.List;
 
@@ -32,7 +33,7 @@ public class PathRevealerItem extends Item
     public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand)
     {
         if (level.isClient()) {
-            ArdaPathsClient.openSelectionScreen();
+            Screens.openSelectionScreen();
         }
 
         return super.use(level, player, interactionHand);
@@ -43,12 +44,9 @@ public class PathRevealerItem extends Item
     {
         super.appendTooltip(itemStack, level, list, tooltipFlag);
 
-        for (PathSettings path : Paths.getPaths())
-        {
-            if (PathSelectionScreen.selectedPathId != path.id) {
-                continue;
-            }
-            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.name).fillStyle(Style.EMPTY.withColor(path.primaryColor.asHex())));
+        PathData path = ArdaPathsClient.CONFIG.getSelectedPath();
+        if (path != null) {
+            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getColor().asHex())));
             list.add(text);
         }
 

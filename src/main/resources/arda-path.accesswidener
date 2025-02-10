@@ -3,3 +3,4 @@ accessible field net/minecraft/client/world/ClientWorld BLOCK_MARKER_ITEMS Ljava
 mutable field net/minecraft/client/world/ClientWorld BLOCK_MARKER_ITEMS Ljava/util/Set;
 accessible method net/minecraft/client/particle/GlowParticle <init> (Lnet/minecraft/client/world/ClientWorld;DDDDDDLnet/minecraft/client/particle/SpriteProvider;)V
 accessible method net/minecraft/client/gui/widget/ButtonWidget <init> (IIIILnet/minecraft/text/Text;Lnet/minecraft/client/gui/widget/ButtonWidget$PressAction;Lnet/minecraft/client/gui/widget/ButtonWidget$NarrationSupplier;)V
+accessible method net/minecraft/client/gui/widget/SliderWidget setValue (D)V

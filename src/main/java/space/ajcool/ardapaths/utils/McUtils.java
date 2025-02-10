@@ -4,20 +4,20 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 public class McUtils {
     /**
-     * Get the {@link MinecraftClient} instance.
+     * @return The Minecraft client instance.
      */
-    public static @Nullable MinecraftClient mc() {
+    public static @NotNull MinecraftClient mc() {
         return MinecraftClient.getInstance();
     }
 
     /**
-     * Get the {@link ClientPlayerEntity} instance.
+     * @return The player entity, or null if not available.
      */
-    public static @Nullable ClientPlayerEntity player() {
+    public static ClientPlayerEntity player() {
         return mc().player;
     }
 

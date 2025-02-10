@@ -5,8 +5,10 @@ import com.google.gson.annotations.SerializedName;
 public class Color {
     @SerializedName("red")
     public int r;
+
     @SerializedName("green")
     public int g;
+
     @SerializedName("blue")
     public int b;
 

@@ -28,6 +28,8 @@ import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.networking.PacketRegistry;
+import space.ajcool.ardapaths.screens.Screens;
+import space.ajcool.ardapaths.utils.Client;
 
 @SuppressWarnings("deprecation")
 public class PathMarkerBlock extends BlockWithEntity {
@@ -51,8 +53,8 @@ public class PathMarkerBlock extends BlockWithEntity {
             return ActionResult.CONSUME;
         }
 
-        if (ArdaPathsClient.checkCtrlHeld()) {
-            ArdaPathsClient.openEditorScreen(pathMarkerBlockEntity);
+        if (Client.isCtrlDown()) {
+            Screens.openEditorScreen(pathMarkerBlockEntity);
             return ActionResult.CONSUME;
         }
 
@@ -68,9 +70,9 @@ public class PathMarkerBlock extends BlockWithEntity {
             }
         }
         else {
-            BlockEntity originBlockEntity = level.getBlockEntity(selectedBlockPosition);
+            BlockEntity blockEntity = level.getBlockEntity(selectedBlockPosition);
 
-            if (originBlockEntity instanceof PathMarkerBlockEntity originPathMarkerBlockEntity) {
+            if (blockEntity instanceof PathMarkerBlockEntity pathMarker) {
                 MutableText message;
 
                 if (selectedBlockPosition.equals(blockPos)) {
@@ -78,17 +80,19 @@ public class PathMarkerBlock extends BlockWithEntity {
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block removed.").formatted(Formatting.RED));
 
-                    originPathMarkerBlockEntity.data().removeTargetOffset(ArdaPathsClient.selectedTrailId());
+                    PathMarkerBlockEntity.NbtData data = pathMarker.getNbt(ArdaPathsClient.CONFIG.getSelectedPathId());
+                    data.removeTarget();
                 }
                 else {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
 
-                     originPathMarkerBlockEntity.data().addTargetOffset(ArdaPathsClient.selectedTrailId(), blockPos.subtract(selectedBlockPosition));
+                    PathMarkerBlockEntity.NbtData data = pathMarker.getNbt(ArdaPathsClient.CONFIG.getSelectedPathId());
+                    data.setTarget(blockPos.subtract(selectedBlockPosition));
                 }
 
-                PacketRegistry.PATH_MARKER_UPDATE.sendToServer(originPathMarkerBlockEntity.getPos(), originPathMarkerBlockEntity.createNbt());
+                PacketRegistry.PATH_MARKER_UPDATE.sendToServer(pathMarker.getPos(), pathMarker.createNbt());
                 player.sendMessage(message);
                 ArdaPaths.LOGGER.info("Sending Update Packet");
             }

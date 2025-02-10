@@ -2,6 +2,7 @@ package space.ajcool.ardapaths.mc.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
@@ -36,7 +37,10 @@ public class PathMarkerUpdatePacket extends ServerPacket {
      * @param nbt The NBT data
      */
     public void sendToServer(BlockPos blockPos, NbtCompound nbt) {
-        super.sendToServer(create(blockPos, nbt));
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(blockPos);
+        buf.writeNbt(nbt);
+        super.sendToServer(buf);
     }
 
     @Override
@@ -45,12 +49,11 @@ public class PathMarkerUpdatePacket extends ServerPacket {
         NbtCompound nbt = buf.readNbt();
 
         server.execute(() -> {
-            var blockEntity = player.getWorld().getBlockEntity(blockPos);
+            BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
 
-            if (blockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity)
-            {
-                pathMarkerBlockEntity.readNbt(nbt);
-                pathMarkerBlockEntity.markUpdated();
+            if (blockEntity instanceof PathMarkerBlockEntity marker) {
+                marker.readNbt(nbt);
+                marker.markUpdated();
             }
         });
     }

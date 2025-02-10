@@ -43,16 +43,18 @@ public abstract class ConfigManager<T> {
      * Save the config to file.
      */
     public void save() {
-        try {
-            if (!Files.exists(file.getParent())) {
-                Files.createDirectories(file.getParent());
+        new Thread(() -> {
+            try {
+                if (!Files.exists(file.getParent())) {
+                    Files.createDirectories(file.getParent());
+                }
+                try (Writer writer = Files.newBufferedWriter(file)) {
+                    GSON.toJson(config, writer);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                GSON.toJson(config, writer);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        }).start();
     }
 
     /**

@@ -4,9 +4,10 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.config.shared.PathData;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.screen.PathSelectionScreen;
 import space.ajcool.ardapaths.paths.rendering.AnimatedTrail;
 import space.ajcool.ardapaths.utils.McUtils;
 
@@ -28,11 +29,31 @@ public class TrailRenderer {
 
         if (player.isHolding(ModItems.PATH_MARKER) || player.isHolding(ModItems.PATH_REVEALER)) {
             boolean foundMessage = false;
+            boolean onlyRenderChapter = ArdaPathsClient.CONFIG.onlyRenderChapter();
+            String selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
+            String currentChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
+
             for (PathMarkerBlockEntity marker : Paths.getTickingMarkers()) {
                 BlockPos markerPos = marker.getPos();
                 BlockPos playerPos = player.getBlockPos();
+                PathMarkerBlockEntity.NbtData data = marker.getNbt(selectedPathId);
+
+                String chapterId = data.getChapterId();
+                int activationRange = data.getActivationRange();
+                boolean withinDistance = playerPos.isWithinDistance(markerPos, activationRange);
+
+                if (withinDistance && data.isChapterStart()) {
+                    ArdaPathsClient.CONFIG.setCurrentChapter(data.getChapterId());
+                    ArdaPathsClient.CONFIG_MANAGER.save();
+                }
+
+                if (onlyRenderChapter && (!chapterId.isEmpty() && !chapterId.equalsIgnoreCase(currentChapterId))) {
+                    removeTrail(markerPos);
+                    continue;
+                }
+
                 if (playerPos.isWithinDistance(markerPos, 100)) {
-                    Vec3d markerCenter = marker.position();
+                    Vec3d markerCenter = marker.getCenterPos();
                     List<AnimatedTrail> markerTrails = trails.stream()
                             .filter(trail -> trail.getStart().equals(marker.getPos()))
                             .toList();
@@ -46,14 +67,16 @@ public class TrailRenderer {
                     }
 
                     if (markerTrails.isEmpty() || minTraveled >= DESIRED_SPACING) {
-                        marker.createTrail(PathSelectionScreen.selectedPathId);
+                        PathData pathData = ArdaPathsClient.CONFIG.getSelectedPath();
+                        if (pathData == null) continue;
+                        marker.createTrail(pathData.getId(), pathData.getColor());
                     }
                 } else {
                     removeTrail(markerPos);
                 }
 
-                if (marker.data().hasProximityMessage() && playerPos.isWithinDistance(markerPos, marker.data().getActivationRange())) {
-                    ProximityMessageRenderer.setMessage(marker.data().getProximityMessage());
+                if (withinDistance && !data.getProximityMessage().isEmpty()) {
+                    ProximityMessageRenderer.setMessage(data.getProximityMessage());
                     foundMessage = true;
                 }
             }
