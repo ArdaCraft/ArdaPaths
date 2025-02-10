@@ -28,7 +28,7 @@ public class ArdaPaths implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CONFIG_MANAGER = new ServerConfigManager("./config/arda-paths-server.json");
+        CONFIG_MANAGER = new ServerConfigManager("./config/arda-paths/server.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
         ModBlocks.init();

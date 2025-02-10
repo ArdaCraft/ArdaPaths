@@ -32,7 +32,7 @@ public class ArdaPathsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        CONFIG_MANAGER = new ClientConfigManager("./config/arda-paths.json");
+        CONFIG_MANAGER = new ClientConfigManager("./config/arda-paths/config.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
         ModParticles.initClient();
