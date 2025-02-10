@@ -10,9 +10,10 @@ public record PathMarkerUpdatePacket(BlockPos position, NbtCompound data) implem
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeBlockPos(position)
-                .writeNbt(data);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(position);
+        buf.writeNbt(data);
+        return buf;
     }
 
     public static PathMarkerUpdatePacket read(PacketByteBuf buf) {

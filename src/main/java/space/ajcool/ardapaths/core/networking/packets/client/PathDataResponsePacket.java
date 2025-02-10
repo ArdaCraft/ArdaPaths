@@ -8,8 +8,9 @@ public record PathDataResponsePacket(String json) implements IPacket {
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeString(json);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(json);
+        return buf;
     }
 
     public static PathDataResponsePacket read(PacketByteBuf buf) {

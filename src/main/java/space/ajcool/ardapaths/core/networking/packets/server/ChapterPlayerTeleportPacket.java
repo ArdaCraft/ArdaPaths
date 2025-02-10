@@ -8,9 +8,10 @@ public record ChapterPlayerTeleportPacket(String pathId, String chapterId) imple
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeString(pathId)
-                .writeString(chapterId);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(pathId);
+        buf.writeString(chapterId);
+        return buf;
     }
 
     public static ChapterPlayerTeleportPacket read(PacketByteBuf buf) {

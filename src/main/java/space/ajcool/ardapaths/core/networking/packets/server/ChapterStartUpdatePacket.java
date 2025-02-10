@@ -9,10 +9,11 @@ public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeString(pathId)
-                .writeString(chapterId)
-                .writeBlockPos(position);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(pathId);
+        buf.writeString(chapterId);
+        buf.writeBlockPos(position);
+        return buf;
     }
 
     public static ChapterStartUpdatePacket read(PacketByteBuf buf) {

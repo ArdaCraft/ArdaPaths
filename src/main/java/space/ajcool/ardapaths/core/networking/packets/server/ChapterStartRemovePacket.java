@@ -8,9 +8,10 @@ public record ChapterStartRemovePacket(String pathId, String chapterId) implemen
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeString(pathId)
-                .writeString(chapterId);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(pathId);
+        buf.writeString(chapterId);
+        return buf;
     }
 
     public static ChapterStartRemovePacket read(PacketByteBuf buf) {

@@ -13,11 +13,12 @@ public record ChapterUpdatePacket(
 
     @Override
     public PacketByteBuf build() {
-        return PacketByteBufs.create()
-                .writeString(pathId)
-                .writeString(chapterId)
-                .writeString(chapterName)
-                .writeString(chapterDate);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(pathId);
+        buf.writeString(chapterId);
+        buf.writeString(chapterName);
+        buf.writeString(chapterDate);
+        return buf;
     }
 
     public static ChapterUpdatePacket read(PacketByteBuf buf) {

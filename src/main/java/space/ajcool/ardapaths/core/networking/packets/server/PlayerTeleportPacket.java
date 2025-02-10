@@ -8,10 +8,11 @@ public record PlayerTeleportPacket(double x, double y, double z) implements IPac
 
     @Override
     public PacketByteBuf build() {
-        return (PacketByteBuf) PacketByteBufs.create()
-                .writeDouble(x)
-                .writeDouble(y)
-                .writeDouble(z);
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeDouble(x);
+        buf.writeDouble(y);
+        buf.writeDouble(z);
+        return buf;
     }
 
     public static PlayerTeleportPacket read(PacketByteBuf buf) {
