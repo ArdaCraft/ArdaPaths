@@ -7,7 +7,7 @@ import space.ajcool.ardapaths.core.Fabric;
 public class Screens {
     public static void openEditorScreen(PathMarkerBlockEntity pathMarkerBlockEntity) {
         if (Fabric.isClient()) {
-            MinecraftClient.getInstance().setScreen(new PathMarkerEditScreen(pathMarkerBlockEntity));
+            MinecraftClient.getInstance().setScreen(new MarkerEditScreen(pathMarkerBlockEntity));
         }
     }
 

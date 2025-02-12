@@ -13,10 +13,13 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
+import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
-import space.ajcool.ardapaths.screens.widgets.dropdowns.ChapterDropdownWidget;
-import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
+import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
+import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
+import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -40,28 +43,32 @@ public class PathSelectionScreen extends Screen {
     protected void init() {
         int center = width / 2;
         int y = 35;
+        PathData currentPath = ArdaPathsClient.CONFIG.getPath(selectedPathId);
 
-        PathDropdownWidget pathDropdown = this.addDrawableChild(new PathDropdownWidget(
-                center - 75,
-                y,
-                150,
-                20,
-                selectedPathId
-        ));
+        DropdownWidget<PathData> pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
+                .setPosition(center - 75, y)
+                .setSize(150, 20)
+                .setTitle(Text.literal("Select a Path to Follow:"))
+                .setOptions(ArdaPathsClient.CONFIG.getPaths())
+                .setOptionDisplay(item -> {
+                    if (item == null) return Text.literal("No Path");
+                    return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getColor().asHex()));
+                })
+                .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
+                .build()
+        );
 
-        ChapterDropdownWidget chapterDropdown = this.addDrawableChild(new ChapterDropdownWidget(
-                center - 75,
-                y += 40,
-                150,
-                20,
-                selectedPathId,
-                chapter -> selectedChapterId = chapter.getId()
-        ));
+        TextWidget pathDisplay = this.addDrawableChild(TextBuilder.create()
+                .setPosition(center - 75, y += 20)
+                .setSize(150, 20)
+                .setText(Text.literal("You are currently on ").append(Text.literal(currentPath.getName()).fillStyle(Style.EMPTY.withColor(currentPath.getColor().asHex()))))
+                .build()
+        );
 
         this.addDrawableChild(new ButtonWidget(
-                center - 153,
-                y += 50,
-                150,
+                center - 40,
+                y += 20,
+                80,
                 20,
                 Text.literal("Return to Path"),
                 button -> {
@@ -72,19 +79,31 @@ public class PathSelectionScreen extends Screen {
                 Supplier::get
         ));
 
+        DropdownWidget<ChapterData> chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+                        .setPosition(center - 75, y += 60)
+                        .setSize(150, 20)
+                        .setTitle(Text.literal("Select a Chapter to Return to:"))
+                        .setOptions(currentPath.getChapters())
+                        .setOptionDisplay(item -> {
+                            if (item == null) return Text.literal("No Chapter");
+                            return Text.literal(item.getName());
+                        })
+                        .setOnSelect(chapter -> selectedChapterId = chapter.getId())
+                        .setAllowNull(true)
+                        .build()
+        );
+
         this.addDrawableChild(new ButtonWidget(
-                center + 3,
-                y,
-                150,
+                center - 60,
+                y += 30,
+                120,
                 20,
                 Text.literal("Return to Chapter Start"),
                 button -> {
-                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
-                        ChapterPlayerTeleportPacket packet = new ChapterPlayerTeleportPacket(selectedPathId, selectedChapterId);
-                        PacketRegistry.CHAPTER_PLAYER_TELEPORT.send(packet);
-                        TrailRenderer.clearTrails();
-                    }
                     this.close();
+                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
+                        Paths.gotoChapter(selectedChapterId);
+                    }
                 },
                 Supplier::get
         ));
@@ -97,6 +116,8 @@ public class PathSelectionScreen extends Screen {
                 Text.literal("Marker Text: " + (showProximityMessages ? "On" : "Off")),
                 button -> {
                     showProximityMessages = !showProximityMessages;
+                    Paths.showProximityMessages(showProximityMessages);
+                    ProximityMessageRenderer.clearMessage();
                     button.setMessage(Text.literal("Marker Text: " + (showProximityMessages ? "On" : "Off")));
                 },
                 Supplier::get
@@ -110,67 +131,29 @@ public class PathSelectionScreen extends Screen {
                 Text.literal("Only Show Current Chapter: " + (onlyRenderChapter ? "On" : "Off")),
                 button -> {
                     onlyRenderChapter = !onlyRenderChapter;
+                    Paths.onlyRenderChapter(onlyRenderChapter);
                     button.setMessage(Text.literal("Only Show Current Chapter: " + (onlyRenderChapter ? "On" : "Off")));
                 },
                 Supplier::get
         ));
 
-        pathDropdown.setItemSelectedListener(path -> {
+        pathDropdown.setOnSelect(path -> {
             if (!path.getId().equalsIgnoreCase(selectedPathId)) {
                 TrailRenderer.clearTrails();
             }
 
+            Paths.setSelectedPath(path.getId());
             selectedPathId = path.getId();
+            pathDisplay.setText(Text.literal("You are currently on ").append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getColor().asHex()))));
             List<ChapterData> chapters = path.getChapters();
             chapterDropdown.setOptions(chapters);
+            chapterDropdown.setSelected(null);
         });
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fillGradient(0, 0, this.width, this.height, -1072689136, -804253680);
-
-        context.drawCenteredTextWithShadow(
-                textRenderer,
-                Text.literal("Select the path you wish to follow"),
-                width / 2,
-                20,
-                0xffffff
-        );
-
-        context.drawCenteredTextWithShadow(
-                textRenderer,
-                Text.literal("Teleport to chapter start"),
-                width / 2,
-                60,
-                0xffffff
-        );
-
-        for (PathData path : ArdaPathsClient.CONFIG.getPaths()) {
-            if (!selectedPathId.equalsIgnoreCase(path.getId())) continue;
-            Text text = Text.literal("You are currently on ")
-                            .append(Text.literal(path.getName())
-                            .fillStyle(Style.EMPTY.withColor(path.getColor().asHex())));
-            context.drawCenteredTextWithShadow(
-                    textRenderer,
-                    text,
-                    width / 2,
-                    105,
-                    0xffffff
-            );
-        }
-
+        this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
-    }
-
-    @Override
-    public void close() {
-        super.close();
-        ArdaPathsClient.CONFIG.setSelectedPath(selectedPathId);
-        ArdaPathsClient.CONFIG.setCurrentChapter(selectedChapterId);
-        ArdaPathsClient.CONFIG.showProximityMessages(showProximityMessages);
-        ArdaPathsClient.CONFIG.onlyRenderChapter(onlyRenderChapter);
-        ArdaPathsClient.CONFIG_MANAGER.save();
-        ProximityMessageRenderer.clearMessage();
     }
 }

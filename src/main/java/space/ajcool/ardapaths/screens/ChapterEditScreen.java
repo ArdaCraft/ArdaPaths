@@ -1,73 +1,81 @@
 package space.ajcool.ardapaths.screens;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
-import space.ajcool.ardapaths.core.networking.PacketRegistry;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
+import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
+import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
+import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
-import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.function.Supplier;
-
-@Environment(EnvType.CLIENT)
 public class ChapterEditScreen extends Screen {
     private final Screen parent;
-    private ChapterData initialData;
-    private PathDropdownWidget pathDropdown;
-    private InputBoxWidget idInput;
-    private InputBoxWidget nameInput;
-    private InputBoxWidget dateInput;
+    private boolean creatingNew;
 
-    public ChapterEditScreen(Screen parent) {
-        super(Text.literal("Edit a Chapter"));
+    protected ChapterEditScreen(Screen parent) {
+        super(Text.literal("Chapter Edit Screen"));
         this.parent = parent;
-    }
-
-    public ChapterEditScreen(Screen parent, ChapterData data) {
-        this(parent);
-        this.initialData = data;
+        this.creatingNew = false;
     }
 
     @Override
     public void init() {
-        super.init();
+        int centerX = this.width / 2;
+        int y = 20;
 
-        int y = 40;
+        this.addDrawableChild(TextBuilder.create()
+                .setPosition(centerX - 70, y)
+                .setSize(140, 20)
+                .setText(Text.literal("Edit Chapters"))
+                .build()
+        );
 
-        this.pathDropdown = this.addDrawableChild(new PathDropdownWidget(
-                this.width / 2 - 75,
-                y,
-                150,
-                20,
-                ArdaPathsClient.CONFIG.getSelectedPathId()
-        ));
+        DropdownWidget<PathData> pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
+                .setPosition(centerX - 140, y += 40)
+                .setSize(280, 20)
+                .setTitle(Text.literal("Select Path:"))
+                .setOptions(ArdaPathsClient.CONFIG.getPaths())
+                .setOptionDisplay(path -> {
+                    if (path == null) return Text.literal("No Path Selected");
+                    return Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getColor().asHex()));
+                })
+                .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
+                .build()
+        );
 
-        y += 24;
+        DropdownWidget<ChapterData> chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+                .setPosition(centerX - 140, y += 35)
+                .setSize(258, 20)
+                .setTitle(Text.literal("Select Chapter to Edit:"))
+                .setOptions(ArdaPathsClient.CONFIG.getSelectedPath().getChapters())
+                .setOptionDisplay(chapter -> {
+                    if (chapter == null) return Text.literal("No Chapter Selected");
+                    return Text.literal(chapter.getName());
+                })
+                .build()
+        );
+        int addButtonY = y;
 
-        this.idInput = this.addDrawableChild(new InputBoxWidget(
-                this.client.textRenderer,
-                this.width / 2 - 75,
-                y += 24,
-                150,
-                20,
-                Text.literal("three_is_company"),
-                text -> {
+        InputBoxWidget idInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX - 75, y += 40)
+                .setSize(150, 20)
+                .setPlaceholder(Text.literal("Id..."))
+                .setValidator(text -> {
                     if (text.length() < 3) {
                         throw new TextValidationError("Must be at least 3 characters long.");
                     } else if (text.length() > 32) {
                         throw new TextValidationError("Cannot be more than 32 characters long.");
-                    } else {
-                        PathData path = this.pathDropdown.getSelected();
+                    } else if (creatingNew) {
+                        PathData path = pathDropdown.getSelected();
                         if (path == null) {
                             throw new TextValidationError("No path selected.");
                         } else if (path.getChapters() != null && !path.getChapters().isEmpty()) {
@@ -77,104 +85,135 @@ public class ChapterEditScreen extends Screen {
                             }
                         }
                     }
-                }
-        ));
+                })
+                .build()
+        );
 
-        y += 24;
+        InputBoxWidget nameInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX - 75, y += 30)
+                .setSize(150, 20)
+                .setPlaceholder(Text.literal("Name..."))
+                .build()
+        );
 
-        this.nameInput = this.addDrawableChild(new InputBoxWidget(
-                this.client.textRenderer,
-                this.width / 2 - 75,
-                y += 24,
-                150,
-                20,
-                Text.literal("Three is Company")
-        ));
+        InputBoxWidget dateInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX - 75, y += 30)
+                .setSize(150, 20)
+                .setPlaceholder(Text.literal("Date..."))
+                .build()
+        );
 
-        y += 24;
-
-        this.dateInput = this.addDrawableChild(new InputBoxWidget(
-                this.client.textRenderer,
-                this.width / 2 - 75,
-                y += 24,
-                150,
-                20,
-                Text.literal("03/01/1892"),
-                text -> {
-                    if (text.isEmpty()) return;
-
-                    DateFormat format = new SimpleDateFormat("dd/MM/yyyy");
+        InputBoxWidget indexInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX - 75, y += 30)
+                .setSize(150, 20)
+                .setPlaceholder(Text.literal("Index..."))
+                .setValidator(text -> {
                     try {
-                        format.parse(text);
-                    } catch (Exception e) {
-                        throw new TextValidationError("Date must be in the format DD/MM/YYYY.");
+                        Integer.parseInt(text);
+                    } catch (NumberFormatException e) {
+                        throw new TextValidationError("Must be an integer.");
                     }
-                }
-        ));
+                })
+                .build()
+        );
 
-        y += 24;
+        this.addDrawableChild(ButtonWidget.builder(
+                        Text.literal("＋"),
+                        button -> {
+                            creatingNew = true;
+                            chapterDropdown.setSelected(null);
+                            idInput.enable();
+                            idInput.reset();
+                            nameInput.reset();
+                            dateInput.reset();
+                            indexInput.reset(String.valueOf(chapterDropdown.getOptions().size() + 1));
+                        })
+                .position(centerX + 120, addButtonY)
+                .size(20, 20)
+                .tooltip(Tooltip.of(Text.literal("Create a new chapter")))
+                .build()
+        );
 
-        this.addDrawableChild(new ButtonWidget(
-                this.width / 2 - 155,
-                y += 24,
-                150,
-                20,
-                Text.literal("Back"),
-                button -> this.close(),
-                Supplier::get
-        ));
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("Clear"),
+                button -> {
+                    creatingNew = false;
+                    chapterDropdown.setSelected(null);
+                    idInput.enable();
+                    idInput.reset();
+                    nameInput.reset();
+                    dateInput.reset();
+                    indexInput.reset();
+                })
+                .position(centerX - 152, y += 40)
+                .size(150, 20)
+                .build()
+        );
 
-        this.addDrawableChild(new ButtonWidget(
-                this.width / 2 + 5,
-                y,
-                150,
-                20,
+        this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("Save"),
                 button -> {
-                    if (this.pathDropdown.getSelected() == null || !this.idInput.validateText() || !this.nameInput.validateText() || !this.dateInput.validateText()) return;
-                    this.saveChapterData();
-                    this.close();
-                },
-                Supplier::get
-        ));
+                        if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText()) return;
 
-        if (this.initialData != null) {
-            this.idInput.setText(this.initialData.getId());
-            this.nameInput.setText(this.initialData.getName());
-            this.dateInput.setText(this.initialData.getDate());
-        }
+                        PathData path = pathDropdown.getSelected();
+                        if (path == null) return;
+
+                        ChapterData chapter = new ChapterData(
+                                idInput.getText(),
+                                nameInput.getText(),
+                                dateInput.getText(),
+                                Integer.parseInt(indexInput.getText())
+                        );
+                        Paths.updateChapter(path.getId(), chapter);
+
+                        creatingNew = false;
+                        chapterDropdown.setOptions(path.getChapters());
+                        chapterDropdown.setSelected(null);
+                        idInput.enable();
+                        idInput.reset();
+                        nameInput.reset();
+                        dateInput.reset();
+                        indexInput.reset();
+                })
+                .position(centerX + 2, y)
+                .size(150, 20)
+                .build()
+        );
+
+        pathDropdown.setOnSelect(path -> {
+            if (path == null) return;
+            chapterDropdown.setOptions(path.getChapters());
+            chapterDropdown.setSelected(null);
+            idInput.enable();
+            idInput.reset();
+            nameInput.reset();
+            dateInput.reset();
+            indexInput.reset();
+        });
+
+        chapterDropdown.setOnSelect(chapter -> {
+            if (chapter == null) return;
+            idInput.disable();
+            idInput.setText(chapter.getId());
+            nameInput.setText(chapter.getName());
+            dateInput.setText(chapter.getDate());
+            indexInput.setText(String.valueOf(chapter.getIndex()));
+        });
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
+    }
 
-        int y = 88;
-        context.drawTextWithShadow(this.client.textRenderer, Text.literal("Chapter ID:"), this.width / 2 - 75, y - 12, 0xFFFFFF);
-        y += 48;
-        context.drawTextWithShadow(this.client.textRenderer, Text.literal("Chapter Name:"), this.width / 2 - 75, y - 12, 0xFFFFFF);
-        y += 48;
-        context.drawTextWithShadow(this.client.textRenderer, Text.literal("Chapter Date:"), this.width / 2 - 75, y - 12, 0xFFFFFF);
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public void close() {
         this.client.setScreen(this.parent);
-    }
-
-    public void saveChapterData() {
-        PathData path = this.pathDropdown.getSelected();
-        if (path == null) return;
-
-        String id = this.idInput.getText();
-        String name = this.nameInput.getText();
-        String date = this.dateInput.getText();
-
-        ChapterUpdatePacket packet = new ChapterUpdatePacket(path.getId(), id, name, date);
-        PacketRegistry.CHAPTER_UPDATE.send(packet);
-        path.setChapter(new ChapterData(id, name, date));
-        ArdaPathsClient.CONFIG.setPath(path);
-        ArdaPathsClient.CONFIG_MANAGER.save();
     }
 }

@@ -1,42 +1,31 @@
 package space.ajcool.ardapaths.screens.widgets;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.EditBoxWidget;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
+import space.ajcool.ardapaths.core.Client;
 
 @Environment(EnvType.CLIENT)
 public class InputBoxWidget extends EditBoxWidget {
+    private boolean enabled;
     private final TextValidator validator;
     private String errorMessage;
     private boolean hasValidatedOnce;
 
-    public InputBoxWidget(TextRenderer textRenderer, int x, int y, int width, int height, Text placeholder) {
-        this(textRenderer, x, y, width, height, placeholder, text -> {});
-    }
-
-    public InputBoxWidget(TextRenderer textRenderer, int x, int y, int width, int height, Text placeholder, TextValidator validator) {
-        super(textRenderer, x, y, width, height, placeholder, Text.empty());
+    public InputBoxWidget(int x, int y, int width, int height, Text title, Text placeholder, TextValidator validator, boolean enabled) {
+        super(Client.mc().textRenderer, x, y, width, height, placeholder, title);
         this.validator = validator;
         this.errorMessage = null;
         this.hasValidatedOnce = false;
-    }
-
-    /**
-     * Validates the current text. If the text is invalid, stores the error message.
-     */
-    public boolean validateText() {
-        try {
-            validator.validate(getText());
-            errorMessage = null;
-            return true;
-        } catch (TextValidationError e) {
-            errorMessage = e.getMessage();
-            return false;
+        this.enabled = enabled;
+        if (!enabled) {
+            this.disable();
         }
     }
 
@@ -56,7 +45,11 @@ public class InputBoxWidget extends EditBoxWidget {
      */
     @Override
     public void setFocused(boolean focused) {
-        if (!focused) {
+        if (!enabled && focused) {
+            return;
+        }
+
+        if (this.isFocused() && !focused) {
             hasValidatedOnce = true;
             validateText();
         }
@@ -68,6 +61,10 @@ public class InputBoxWidget extends EditBoxWidget {
      */
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (!enabled) {
+            return false;
+        }
+
         if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             this.setFocused(false);
             return true;
@@ -75,20 +72,98 @@ public class InputBoxWidget extends EditBoxWidget {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    @Override
+    public boolean charTyped(char chr, int modifiers) {
+        if (!enabled) {
+            return false;
+        }
+        return super.charTyped(chr, modifiers);
+    }
+
     /**
-     * Render the input box and, if present, the error message.
+     * If the widget is disabled, render its background/border (via super.render) then
+     * overdraw its text in a light gray color and show a tooltip when hovered.
      */
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
+
+        if (!enabled) {
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            matrices.translate(0, 0, 2);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.7f);
+            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0xFF000000);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            matrices.pop();
+            return;
+        }
 
         if (errorMessage != null && !errorMessage.isEmpty()) {
             int errorX = this.getX();
             int errorY = this.getY() + this.height + 2;
             context.getMatrices().push();
             context.getMatrices().scale(0.85f, 0.85f, 1.0f);
-            context.drawTextWithShadow(MinecraftClient.getInstance().textRenderer, errorMessage, (int) (errorX / 0.85), (int) (errorY / 0.85), 0xFFFF5555);
+            context.drawTextWithShadow(Client.mc().textRenderer, errorMessage, (int) (errorX / 0.85), (int) (errorY / 0.85), 0xFFFF5555);
             context.getMatrices().pop();
         }
+    }
+
+    /**
+     * Prevent mouse clicks if disabled.
+     */
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!isEnabled()) {
+            return false;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /**
+     * Getters and setters for enabled state.
+     */
+    public void enable() {
+        this.enabled = true;
+        this.setTooltip(null);
+    }
+
+    public void disable() {
+        this.enabled = false;
+        this.setFocused(false);
+        this.setTooltip(Tooltip.of(Text.literal("Disabled")));
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * Validates the current text. If the text is invalid, stores the error message.
+     */
+    public boolean validateText() {
+        try {
+            validator.validate(getText());
+            errorMessage = null;
+            return true;
+        } catch (TextValidationError e) {
+            errorMessage = e.getMessage();
+            return false;
+        }
+    }
+
+    public void resetValidation() {
+        errorMessage = null;
+        hasValidatedOnce = false;
+    }
+
+    public void reset() {
+        setText("");
+        resetValidation();
+    }
+
+    public void reset(String text) {
+        setText(text);
+        resetValidation();
     }
 }

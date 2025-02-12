@@ -12,14 +12,14 @@ public class ChapterData {
     @SerializedName("date")
     private String date;
 
-    public ChapterData(String id) {
-        this(id, null, null);
-    }
+    @SerializedName("index")
+    private int index;
 
-    public ChapterData(String id, String name, String date) {
+    public ChapterData(String id, String name, String date, int index) {
         this.id = id;
         this.name = name;
         this.date = date;
+        this.index = index;
     }
 
     /**
@@ -70,6 +70,23 @@ public class ChapterData {
      */
     public ChapterData setDate(String date) {
         this.date = date;
+        return this;
+    }
+
+    /**
+     * @return The index of this chapter
+     */
+    public int getIndex() {
+        return index;
+    }
+
+    /**
+     * Sets the index of this chapter.
+     *
+     * @param index The new index
+     */
+    public ChapterData setIndex(int index) {
+        this.index = index;
         return this;
     }
 }

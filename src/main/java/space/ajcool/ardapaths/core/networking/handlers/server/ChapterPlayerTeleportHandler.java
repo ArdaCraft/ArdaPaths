@@ -21,7 +21,7 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
         final BlockPos start = ArdaPaths.CONFIG.getChapterStart(pathId, chapterId);
 
         if (start != null) {
-            server.execute(() -> player.requestTeleport(start.getX(), start.getY(), start.getZ()));
+            server.execute(() -> player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5));
         }
     }
 }

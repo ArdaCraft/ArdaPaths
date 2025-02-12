@@ -8,22 +8,28 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.screen.ScreenTexts;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
-import space.ajcool.ardapaths.screens.widgets.dropdowns.ChapterDropdownWidget;
-import space.ajcool.ardapaths.screens.widgets.dropdowns.PathDropdownWidget;
+import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
+import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
+import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
+import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.core.Client;
 
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
-public class PathMarkerEditScreen extends Screen {
+public class MarkerEditScreen extends Screen {
     private final PathMarkerBlockEntity MARKER;
 
     private String selectedPathId;
@@ -33,7 +39,7 @@ public class PathMarkerEditScreen extends Screen {
     private int activationRange;
     private EditBoxWidget multiLineEditBox;
 
-    public PathMarkerEditScreen(PathMarkerBlockEntity marker) {
+    public MarkerEditScreen(PathMarkerBlockEntity marker) {
         super(Text.literal("Path Marker Edit Screen"));
         MARKER = marker;
 
@@ -50,57 +56,62 @@ public class PathMarkerEditScreen extends Screen {
         super.init();
 
         int centerX = this.width / 2;
-        int currentY = 60;
+        int currentY = 20;
 
-        PathDropdownWidget pathDropdown = this.addDrawableChild(new PathDropdownWidget(
-                centerX - 140,
-                currentY,
-                280,
-                20,
-                selectedPathId
-        ));
+        this.addDrawableChild(TextBuilder.create()
+                .setPosition(centerX - 140, currentY)
+                .setSize(280, 20)
+                .setText(Text.literal("Edit Path Marker"))
+                .build()
+        );
 
-        ChapterDropdownWidget chapterDropdown = this.addDrawableChild(new ChapterDropdownWidget(
-                centerX - 140,
-                currentY += 40,
-                280,
-                20,
-                selectedChapterId
-        ));
-        chapterDropdown.setHasNullItem(true);
-        System.out.println("selectedChapterId: " + selectedChapterId);
+        DropdownWidget<PathData> pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
+                .setPosition(centerX - 140, currentY += 40)
+                .setSize(280, 20)
+                .setTitle(Text.literal("Edit Data for Path:"))
+                .setOptions(ArdaPathsClient.CONFIG.getPaths())
+                .setOnSelect(path -> selectedPathId = path.getId())
+                .setOptionDisplay(item -> {
+                    if (item == null) return Text.literal("No Path");
+                    return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getColor().asHex()));
+                })
+                .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
+                .build()
+        );
 
-        int plusButtonX = (centerX + 140) + 3;
-        int pencilButtonX = plusButtonX + 22;
+        PathMarkerBlockEntity.NbtData markerData = MARKER.getNbt(selectedPathId);
+        ChapterData currentChapter = ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(markerData.getChapterId());
+
+        DropdownWidget<ChapterData> chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+                .setPosition(centerX - 140, currentY += 40)
+                .setSize(280, 20)
+                .setTitle(Text.literal("Chapter:"))
+                .setOnSelect(chapter -> selectedChapterId = chapter.getId())
+                .setOptionDisplay(item -> {
+                    if (item == null) return Text.literal("No Chapter");
+                    return Text.literal(item.getName());
+                })
+                .setOptions(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapters())
+                .setSelected(currentChapter)
+                .build()
+        );
+
+        CheckboxWidget isChapterStartButton = this.addDrawableChild(CheckboxBuilder.create()
+                .setPosition(centerX - 140, currentY += 25)
+                .setSize(15, 15)
+                .setText(Text.literal("Is chapter start"))
+                .setChecked(isChapterStart)
+                .setOnChange(checked -> isChapterStart = checked)
+                .build()
+        );
+
         this.addDrawableChild(new ButtonWidget(
-                plusButtonX,
+                centerX + 70,
                 currentY,
+                70,
                 20,
-                20,
-                Text.literal("+"),
+                Text.literal("Edit Chapters"),
                 button -> this.client.setScreen(new ChapterEditScreen(this)),
-                Supplier::get
-        ));
-        this.addDrawableChild(new ButtonWidget(
-                pencilButtonX,
-                currentY,
-                20,
-                20,
-                Text.literal("✎"),
-                button -> this.client.setScreen(new ChapterEditScreen(this, chapterDropdown.getSelected())),
-                Supplier::get
-        ));
-
-        ButtonWidget isChapterStartButton = this.addDrawableChild(new ButtonWidget(
-                centerX - 140,
-                currentY += 25,
-                120,
-                20,
-                Text.literal("Is Chapter Start: " + (isChapterStart ? "Yes" : "No")),
-                button -> {
-                    isChapterStart = !isChapterStart;
-                    button.setMessage(Text.literal("Is Chapter Start: " + (isChapterStart ? "Yes" : "No")));
-                },
                 Supplier::get
         ));
 
@@ -150,47 +161,44 @@ public class PathMarkerEditScreen extends Screen {
                 Supplier::get
         ));
 
-        pathDropdown.setItemSelectedListener(path -> {
+        pathDropdown.setOnSelect(path -> {
             selectedPathId = path.getId();
             chapterDropdown.setOptions(path.getChapters());
-            chapterDropdown.setSelected(ArdaPathsClient.CONFIG.getCurrentChapter());
 
             PathMarkerBlockEntity.NbtData data = MARKER.getNbt(selectedPathId);
+            chapterDropdown.setSelected(path.getChapter(data.getChapterId()));
+
             if (chapterDropdown.getSelected() != null) {
                 selectedChapterId = chapterDropdown.getSelected().getId();
                 isChapterStart = data.isChapterStart();
-                isChapterStartButton.setMessage(Text.literal("Is Chapter Start: " + (isChapterStart ? "Yes" : "No")));
+                isChapterStartButton.setChecked(isChapterStart);
+            } else {
+                selectedChapterId = "";
+                isChapterStart = false;
+                isChapterStartButton.setChecked(false);
             }
+
             this.multiLineEditBox.setText(data.getProximityMessage());
             rangeWidget.setValue(data.getActivationRange() / 100.0);
         });
 
-        chapterDropdown.setItemSelectedListener(chapter -> {
+        chapterDropdown.setOnSelect(chapter -> {
             if (chapter == null) {
                 selectedChapterId = "";
                 isChapterStart = false;
+                isChapterStartButton.setChecked(false);
                 return;
             }
             selectedChapterId = chapter.getId();
-
         });
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context);
-        context.drawCenteredTextWithShadow(
-                this.textRenderer,
-                Text.literal("Edit Path Marker"),
-                this.width / 2,
-                20,
-                0xFFFFFF
-        );
 
         int centerX = this.width / 2;
         int currentY = 60;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Edit Data for Path:"), centerX - 140, currentY - 12, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Chapter:"), centerX - 140, currentY + 28, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.literal("Proximity Message:"), centerX - 140, currentY + 93, 0xFFFFFF);
         super.render(context, mouseX, mouseY, delta);
     }
@@ -217,18 +225,17 @@ public class PathMarkerEditScreen extends Screen {
             data.setChapterId(selectedChapterId);
             data.setProximityMessage(proximityMessage);
             data.setActivationRange(activationRange);
+            data.setChapterStart(isChapterStart);
 
-            if (!selectedChapterId.isEmpty()) {
-                data.setChapterStart(isChapterStart);
+            if (isChapterStart) {
                 ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getPos());
                 PacketRegistry.CHAPTER_START_UPDATE.send(packet);
             } else if (!previousChapterId.isEmpty()) {
-                data.setChapterStart(false);
                 ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, previousChapterId);
                 PacketRegistry.CHAPTER_START_REMOVE.send(packet);
             }
 
-            PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), data.toNbt());
+            PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());
             PacketRegistry.PATH_MARKER_UPDATE.send(packet);
             MARKER.markUpdated();
         }

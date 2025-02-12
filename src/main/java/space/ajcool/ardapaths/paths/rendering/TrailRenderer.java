@@ -5,6 +5,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -45,8 +46,14 @@ public class TrailRenderer {
                 boolean withinDistance = playerPos.isWithinDistance(markerPos, activationRange);
 
                 if (withinDistance && data.isChapterStart()) {
-                    ArdaPathsClient.CONFIG.setCurrentChapter(data.getChapterId());
-                    ArdaPathsClient.CONFIG_MANAGER.save();
+                    ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
+                    ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(chapterId);
+                    int currentChapterIndex = currentChapter != null ? currentChapter.getIndex() : -1;
+                    int chapterIndex = chapter != null ? chapter.getIndex() : -1;
+                    if (chapterIndex >= currentChapterIndex) {
+                        ArdaPathsClient.CONFIG.setCurrentChapter(chapterId);
+                        ArdaPathsClient.CONFIG_MANAGER.save();
+                    }
                 }
 
                 if (onlyRenderChapter && (!chapterId.isEmpty() && !chapterId.equalsIgnoreCase(currentChapterId))) {

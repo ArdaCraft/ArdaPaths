@@ -26,7 +26,8 @@ public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacke
         final String chapterId = packet.chapterId();
         final String chapterName = packet.chapterName();
         final String chapterDate = packet.chapterDate();
-        final ChapterData chapterData = new ChapterData(chapterId, chapterName, chapterDate);
+        final int chapterIndex = packet.chapterIndex();
+        final ChapterData chapterData = new ChapterData(chapterId, chapterName, chapterDate, chapterIndex);
         pathData.setChapter(chapterData);
         ArdaPaths.CONFIG_MANAGER.save();
     }
