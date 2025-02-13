@@ -29,14 +29,12 @@ public class PathSelectionScreen extends Screen {
     private String selectedPathId;
     private String selectedChapterId;
     private boolean showProximityMessages;
-    private boolean onlyRenderChapter;
 
     public PathSelectionScreen() {
         super(Text.literal("Path Selection"));
         this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         this.selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
         this.showProximityMessages = ArdaPathsClient.CONFIG.showProximityMessages();
-        this.onlyRenderChapter = ArdaPathsClient.CONFIG.onlyRenderChapter();
     }
 
     @Override
@@ -109,8 +107,8 @@ public class PathSelectionScreen extends Screen {
         ));
 
         this.addDrawableChild(new ButtonWidget(
-                center - 153,
-                y += 30,
+                center - 65,
+                y + 30,
                 130,
                 20,
                 Text.literal("Marker Text: " + (showProximityMessages ? "On" : "Off")),
@@ -119,20 +117,6 @@ public class PathSelectionScreen extends Screen {
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityMessageRenderer.clearMessage();
                     button.setMessage(Text.literal("Marker Text: " + (showProximityMessages ? "On" : "Off")));
-                },
-                Supplier::get
-        ));
-
-        this.addDrawableChild(new ButtonWidget(
-                center - 17,
-                y,
-                170,
-                20,
-                Text.literal("Only Show Current Chapter: " + (onlyRenderChapter ? "On" : "Off")),
-                button -> {
-                    onlyRenderChapter = !onlyRenderChapter;
-                    Paths.onlyRenderChapter(onlyRenderChapter);
-                    button.setMessage(Text.literal("Only Show Current Chapter: " + (onlyRenderChapter ? "On" : "Off")));
                 },
                 Supplier::get
         ));

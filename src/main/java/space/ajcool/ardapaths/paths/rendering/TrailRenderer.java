@@ -32,7 +32,6 @@ public class TrailRenderer {
         if (player.isHolding(ModItems.PATH_MARKER) || player.isHolding(ModItems.PATH_REVEALER)) {
             boolean foundMessage = false;
             boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
-            boolean onlyRenderChapter = ArdaPathsClient.CONFIG.onlyRenderChapter();
             String selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
             String currentChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
 
@@ -56,7 +55,7 @@ public class TrailRenderer {
                     }
                 }
 
-                if (onlyRenderChapter && (!chapterId.isEmpty() && !chapterId.equalsIgnoreCase(currentChapterId))) {
+                if (!chapterId.isEmpty() && !chapterId.equalsIgnoreCase(currentChapterId)) {
                     removeTrail(markerPos);
                     continue;
                 }

@@ -40,11 +40,6 @@ public class Paths {
         configManager.save();
     }
 
-    public static void onlyRenderChapter(final boolean onlyRender) {
-        config.onlyRenderChapter(onlyRender);
-        configManager.save();
-    }
-
     public static void updateChapter(String pathId, ChapterData chapter) {
         PathData path = config.getPath(pathId);
         if (path != null) {

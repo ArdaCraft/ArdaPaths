@@ -15,9 +15,6 @@ public class ClientConfig {
     @SerializedName("proximity_messages")
     private boolean proximityMessages;
 
-    @SerializedName("only_render_chapter")
-    private boolean onlyRenderChapter;
-
     @SerializedName("selected_paths")
     private Map<String, SelectedPathData> selectedPaths = new HashMap<>();
 
@@ -47,29 +44,6 @@ public class ClientConfig {
      */
     public void toggleProximityMessages() {
         proximityMessages = !proximityMessages;
-    }
-
-    /**
-     * @return True if only the current chapter should be rendered, otherwise false
-     */
-    public boolean onlyRenderChapter() {
-        return onlyRenderChapter;
-    }
-
-    /**
-     * Sets whether only the current chapter should be rendered.
-     *
-     * @param onlyRenderChapter True if only the current chapter should be rendered, otherwise false
-     */
-    public void onlyRenderChapter(boolean onlyRenderChapter) {
-        this.onlyRenderChapter = onlyRenderChapter;
-    }
-
-    /**
-     * Toggles whether only the current chapter should be rendered.
-     */
-    public void toggleOnlyRenderChapter() {
-        onlyRenderChapter = !onlyRenderChapter;
     }
 
     /**

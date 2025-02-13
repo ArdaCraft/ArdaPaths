@@ -28,7 +28,6 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
     protected ClientConfig createDefault() {
         ClientConfig config = new ClientConfig();
         config.showProximityMessages(true);
-        config.onlyRenderChapter(true);
         return config;
     }
 
