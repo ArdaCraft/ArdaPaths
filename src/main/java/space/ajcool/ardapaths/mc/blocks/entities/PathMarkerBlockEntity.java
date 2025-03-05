@@ -43,7 +43,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         if (!this.data.containsKey(pathId)) return;
         NbtData nbtData = this.data.get(pathId);
         if (nbtData.getTarget() == null) return;
-        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), nbtData.getTarget(), color);
+        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), nbtData.getTarget(), nbtData.displayAboveBlocks(), color);
         TrailRenderer.registerTrail(trail);
     }
 
@@ -172,18 +172,27 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         private BlockPos target;
         private String chapterId;
         private boolean isChapterStart;
+        private boolean displayAboveBlocks;
 
         private NbtData(NbtCompound nbt) {
-            this("", 0, null, "", false);
+            this("", 0, null, "", false, true);
             this.applyNbt(nbt);
         }
 
-        private NbtData(String proximityMessage, int activationRange, BlockPos target, String chapterId, boolean isChapterStart) {
+        private NbtData(
+                String proximityMessage,
+                int activationRange,
+                BlockPos target,
+                String chapterId,
+                boolean isChapterStart,
+                boolean displayAboveBlocks
+        ) {
             this.proximityMessage = proximityMessage;
             this.activationRange = activationRange;
             this.target = target;
             this.chapterId = chapterId;
             this.isChapterStart = isChapterStart;
+            this.displayAboveBlocks = displayAboveBlocks;
         }
 
         /**
@@ -199,7 +208,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * Create an empty NBT data object.
          */
         public static NbtData empty() {
-            return new NbtData("", 0, null, "", false);
+            return new NbtData("", 0, null, "", false, true);
         }
 
         /**
@@ -219,13 +228,6 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         }
 
         /**
-         * Remove the proximity message.
-         */
-        public void removeProximityMessage() {
-            this.proximityMessage = "";
-        }
-
-        /**
          * @return The activation range
          */
         public int getActivationRange() {
@@ -239,13 +241,6 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          */
         public void setActivationRange(int activationRange) {
             this.activationRange = activationRange;
-        }
-
-        /**
-         * Remove the activation range.
-         */
-        public void removeActivationRange() {
-            this.activationRange = 0;
         }
 
         /**
@@ -288,13 +283,6 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         }
 
         /**
-         * Remove the chapter ID.
-         */
-        public void removeChapterId() {
-            this.chapterId = "";
-        }
-
-        /**
          * @return Whether the path marker is the start of a chapter
          */
         public boolean isChapterStart() {
@@ -308,6 +296,22 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          */
         public void setChapterStart(boolean chapterStart) {
             isChapterStart = chapterStart;
+        }
+
+        /**
+         * @return Whether the path marker should display above blocks
+         */
+        public boolean displayAboveBlocks() {
+            return displayAboveBlocks;
+        }
+
+        /**
+         * Set whether the path marker should display above blocks.
+         *
+         * @param displayAboveBlocks Whether the path marker should display above blocks
+         */
+        public void setDisplayAboveBlocks(boolean displayAboveBlocks) {
+            this.displayAboveBlocks = displayAboveBlocks;
         }
 
         /**
@@ -326,6 +330,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             this.activationRange = nbt.getInt("activation_range");
             this.chapterId = nbt.getString("chapter");
             this.isChapterStart = nbt.getBoolean("chapter_start");
+            this.displayAboveBlocks = !nbt.contains("display_above_blocks") || nbt.getBoolean("display_above_blocks");
         }
 
         /**
@@ -341,6 +346,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             if (activationRange != 0) nbt.putInt("activation_range", activationRange);
             if (!chapterId.isEmpty()) nbt.putString("chapter", chapterId);
             if (isChapterStart) nbt.putBoolean("chapter_start", true);
+            if (!displayAboveBlocks) nbt.putBoolean("display_above_blocks", false);
             return nbt;
         }
     }

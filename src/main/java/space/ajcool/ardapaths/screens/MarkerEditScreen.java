@@ -37,6 +37,7 @@ public class MarkerEditScreen extends Screen {
     private boolean isChapterStart;
     private String proximityMessage;
     private int activationRange;
+    private boolean displayAboveBlocks;
     private EditBoxWidget multiLineEditBox;
 
     public MarkerEditScreen(PathMarkerBlockEntity marker) {
@@ -49,6 +50,7 @@ public class MarkerEditScreen extends Screen {
         this.isChapterStart = data.isChapterStart();
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
+        this.displayAboveBlocks = data.displayAboveBlocks();
     }
 
     @Override
@@ -151,6 +153,15 @@ public class MarkerEditScreen extends Screen {
             }
         });
 
+        CheckboxWidget displayAboveBlocksButton = this.addDrawableChild(CheckboxBuilder.create()
+                .setPosition(centerX - 140, currentY += 30)
+                .setSize(15, 15)
+                .setText(Text.literal("Display trail above blocks"))
+                .setChecked(displayAboveBlocks)
+                .setOnChange(checked -> displayAboveBlocks = checked)
+                .build()
+        );
+
         this.addDrawableChild(new ButtonWidget(
                 centerX - 75,
                 currentY + 35,
@@ -172,10 +183,14 @@ public class MarkerEditScreen extends Screen {
                 selectedChapterId = chapterDropdown.getSelected().getId();
                 isChapterStart = data.isChapterStart();
                 isChapterStartButton.setChecked(isChapterStart);
+                displayAboveBlocks = data.displayAboveBlocks();
+                displayAboveBlocksButton.setChecked(displayAboveBlocks);
             } else {
                 selectedChapterId = "";
                 isChapterStart = false;
                 isChapterStartButton.setChecked(false);
+                displayAboveBlocks = true;
+                displayAboveBlocksButton.setChecked(true);
             }
 
             this.multiLineEditBox.setText(data.getProximityMessage());
@@ -226,6 +241,7 @@ public class MarkerEditScreen extends Screen {
             data.setProximityMessage(proximityMessage);
             data.setActivationRange(activationRange);
             data.setChapterStart(isChapterStart);
+            data.setDisplayAboveBlocks(displayAboveBlocks);
 
             if (isChapterStart) {
                 ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getPos());

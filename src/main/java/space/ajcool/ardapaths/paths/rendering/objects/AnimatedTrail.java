@@ -1,8 +1,10 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
+import net.minecraft.block.BlockState;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 
@@ -10,14 +12,16 @@ public class AnimatedTrail {
     private static final double SPEED = 0.215;
     private final BlockPos start;
     private final Vec3d end;
+    private final boolean aboveBlocks;
     private final int color;
     private Vec3d currentPos;
     private double tick;
 
-    private AnimatedTrail(BlockPos start, Vec3d end, int color) {
+    private AnimatedTrail(BlockPos start, Vec3d end, boolean aboveBlocks, int color) {
         this.start = start;
         this.end = end;
         this.currentPos = new Vec3d(start.getX(), start.getY(), start.getZ());
+        this.aboveBlocks = aboveBlocks;
         this.color = color;
         this.tick = 0;
     }
@@ -29,7 +33,7 @@ public class AnimatedTrail {
      * @param offset The offset from the starting position
      * @param color The color of the trail
      */
-    public static AnimatedTrail from(BlockPos start, BlockPos offset, Color color) {
+    public static AnimatedTrail from(BlockPos start, BlockPos offset, boolean aboveBlocks, Color color) {
         return new AnimatedTrail(
                 start,
                 new Vec3d(
@@ -37,6 +41,7 @@ public class AnimatedTrail {
                     start.getY() + offset.getY(),
                     start.getZ() + offset.getZ()
                 ).add(0.5, 0.5, 0.5),
+                aboveBlocks,
                 color.asHex()
         );
     }
@@ -61,10 +66,26 @@ public class AnimatedTrail {
         }
 
         currentPos = startPos.lerp(end, fraction);
+        double spawnY = currentPos.y + 0.3;
+
+        if (aboveBlocks) {
+            BlockPos blockPos = new BlockPos(
+                    (int) Math.floor(currentPos.x),
+                    (int) Math.floor(currentPos.y),
+                    (int) Math.floor(currentPos.z)
+            );
+            BlockState blockState = level.getBlockState(blockPos);
+
+            while (!blockState.isAir() && !(blockState.getBlock() instanceof PathMarkerBlock)) {
+                spawnY += 1;
+                blockPos = blockPos.up();
+                blockState = level.getBlockState(blockPos);
+            }
+        }
 
         level.addParticle(ModParticles.PATH,
                 currentPos.x,
-                currentPos.y + 0.3,
+                spawnY,
                 currentPos.z,
                 color, color, color
         );
