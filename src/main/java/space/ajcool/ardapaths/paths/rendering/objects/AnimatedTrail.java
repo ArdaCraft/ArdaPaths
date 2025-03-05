@@ -7,7 +7,7 @@ import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 
 public class AnimatedTrail {
-    private static final double SPEED = 0.3;
+    private static final double SPEED = 0.215;
     private final BlockPos start;
     private final Vec3d end;
     private final int color;
