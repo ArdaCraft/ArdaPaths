@@ -154,7 +154,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             {
                 NbtCompound chapterNbt = chapterEntry.getValue().toNbt();
 
-                if (chapterNbt.isEmpty()) continue;
+                if (chapterEntry.getValue().isEmpty() || chapterNbt.isEmpty()) continue;
                 pathNbt.put(chapterEntry.getKey(), chapterNbt);
             }
 
@@ -397,6 +397,20 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         public void setDisplayAboveBlocks(boolean displayAboveBlocks)
         {
             this.displayAboveBlocks = displayAboveBlocks;
+        }
+
+        /**
+         * @return If the data object is "default" and contains no user defined data.
+         */
+        public boolean isEmpty()
+        {
+            if (target != null) return false;
+            if (!proximityMessage.isEmpty()) return false;
+            if (activationRange != 0) return false;
+            if (isChapterStart) return false;
+            if (!displayAboveBlocks) return false;
+
+            return true;
         }
 
         /**
