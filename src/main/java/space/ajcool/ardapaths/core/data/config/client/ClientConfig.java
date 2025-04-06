@@ -2,9 +2,9 @@ package space.ajcool.ardapaths.core.data.config.client;
 
 import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.Nullable;
+import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
-import space.ajcool.ardapaths.core.Client;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,7 +118,7 @@ public class ClientConfig {
      * @return The chapter ID for the given identifier, or an empty string if no chapter is selected
      */
     public String getCurrentChapterId(String identifier) {
-        if (!selectedPaths.containsKey(identifier)) return "";
+        if (!selectedPaths.containsKey(identifier)) return "default";
         return selectedPaths.get(identifier).getChapterId();
     }
 

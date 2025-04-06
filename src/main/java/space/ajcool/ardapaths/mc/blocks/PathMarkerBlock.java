@@ -1,11 +1,7 @@
 package space.ajcool.ardapaths.mc.blocks;
 
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.BlockRenderType;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.BlockWithEntity;
-import net.minecraft.block.ShapeContext;
+import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
@@ -24,13 +20,13 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.screens.Screens;
-import space.ajcool.ardapaths.core.Client;
 
 @SuppressWarnings("deprecation")
 public class PathMarkerBlock extends BlockWithEntity {
@@ -81,7 +77,7 @@ public class PathMarkerBlock extends BlockWithEntity {
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block removed.").formatted(Formatting.RED));
 
-                    PathMarkerBlockEntity.NbtData data = pathMarker.getNbt(ArdaPathsClient.CONFIG.getSelectedPathId());
+                    PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
                     data.removeTarget();
                 }
                 else {
@@ -89,7 +85,7 @@ public class PathMarkerBlock extends BlockWithEntity {
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
 
-                    PathMarkerBlockEntity.NbtData data = pathMarker.getNbt(ArdaPathsClient.CONFIG.getSelectedPathId());
+                    PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
                     data.setTarget(blockPos.subtract(selectedBlockPosition));
                 }
 

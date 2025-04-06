@@ -1,67 +1,77 @@
 package space.ajcool.ardapaths.mc.blocks.entities;
 
-import net.minecraft.nbt.NbtHelper;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtHelper;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
-import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable {
-    private Map<String, NbtData> data;
+public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
+{
+    private Map<String, Map<String, ChapterNbtData>> pathData;
 
-    public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public PathMarkerBlockEntity(BlockPos blockPos, BlockState blockState)
+    {
         super(ModBlockEntities.PATH_MARKER, blockPos, blockState);
-        this.data = new HashMap<>();
+        this.pathData = new HashMap<>();
     }
 
     /**
      * Create a trail using the path's target and the given color.
      *
      * @param pathId The path ID to use when getting the target
-     * @param color The color of the trail
+     * @param colors The colors of the trail
      */
-    public void createTrail(@NotNull String pathId, @NotNull Color color) {
-        if (!this.data.containsKey(pathId)) return;
-        NbtData nbtData = this.data.get(pathId);
-        if (nbtData.getTarget() == null) return;
-        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), nbtData.getTarget(), nbtData.displayAboveBlocks(), color);
+    public void createTrail(@NotNull String pathId, @NotNull String chapterId, @NotNull Color[] colors)
+    {
+        if (!this.pathData.containsKey(pathId)) return;
+        if (!this.pathData.get(pathId).containsKey(chapterId)) return;
+
+        ChapterNbtData chapterNbtData = this.pathData.get(pathId).get(chapterId);
+        if (chapterNbtData.getTarget() == null) return;
+
+        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), chapterNbtData.getTarget(), chapterNbtData.displayAboveBlocks(), colors);
         TrailRenderer.registerTrail(trail);
     }
 
-    public static void tick(World level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity) {
+    public static void tick(World level, BlockPos blockPos, BlockState blockState, PathMarkerBlockEntity pathMarkerBlockEntity)
+    {
         Paths.addTickingMarker(pathMarkerBlockEntity);
     }
 
     @Override
-    public @Nullable Packet<ClientPlayPacketListener> toUpdatePacket() {
+    public @Nullable Packet<ClientPlayPacketListener> toUpdatePacket()
+    {
         return BlockEntityUpdateS2CPacket.create(this);
     }
 
     @Override
-    public @NotNull NbtCompound toInitialChunkDataNbt() {
+    public @NotNull NbtCompound toInitialChunkDataNbt()
+    {
         return this.createNbt();
     }
 
-    public void markUpdated() {
+    public void markUpdated()
+    {
         this.markDirty();
         this.world.updateListeners(this.getPos(), this.getCachedState(), this.getCachedState(), 3);
     }
@@ -72,7 +82,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param compoundTag The NBT compound tag
      */
     @Override
-    public void readNbt(NbtCompound compoundTag) {
+    public void readNbt(NbtCompound compoundTag)
+    {
         NbtCompound converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
         super.readNbt(converted);
         this.applyNbt(converted.getCompound("paths"));
@@ -84,7 +95,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param compoundTag The NBT compound tag
      */
     @Override
-    public void writeNbt(NbtCompound compoundTag) {
+    public void writeNbt(NbtCompound compoundTag)
+    {
         super.writeNbt(compoundTag);
         this.toNbt(compoundTag);
     }
@@ -95,15 +107,29 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param nbt The NBT compound
      */
     @Override
-    public void applyNbt(NbtCompound nbt) {
-        this.data = new HashMap<>();
+    public void applyNbt(NbtCompound nbt)
+    {
         if (nbt == null) return;
-        for (String key : nbt.getKeys()) {
-            if (ArdaPaths.CONFIG.getPath(key) == null) {
-                continue;
+        this.pathData = new HashMap<>();
+
+        for (String pathKey : nbt.getKeys())
+        {
+            var configPath = ArdaPaths.CONFIG.getPath(pathKey);
+            if (configPath == null) continue;
+
+            var chapterData = new HashMap<String, ChapterNbtData>();
+
+            var nbtEntry = nbt.getCompound(pathKey);
+
+            for (String chapterKey : nbtEntry.getKeys())
+            {
+                if (configPath.getChapter(chapterKey) == null) continue;
+
+                ChapterNbtData chapterNbtData = ChapterNbtData.fromNbt(nbtEntry.getCompound(chapterKey));
+                chapterData.put(chapterKey, chapterNbtData);
             }
-            NbtData nbtData = NbtData.fromNbt(nbt.getCompound(key));
-            this.data.put(key, nbtData);
+
+            this.pathData.put(pathKey, chapterData);
         }
     }
 
@@ -113,60 +139,104 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return The NBT compound
      */
     @Override
-    public NbtCompound toNbt(@Nullable NbtCompound nbt) {
+    public NbtCompound toNbt(@Nullable NbtCompound nbt)
+    {
         if (nbt == null) nbt = new NbtCompound();
-        if (this.data.isEmpty()) {
-            return nbt;
-        }
-        NbtCompound paths = new NbtCompound();
-        for (Map.Entry<String, NbtData> entry : this.data.entrySet()) {
-            NbtCompound pathNbt = entry.getValue().toNbt();
-            if (!pathNbt.isEmpty()) {
-                paths.put(entry.getKey(), pathNbt);
+        if (this.pathData.isEmpty()) return nbt;
+
+        NbtCompound pathsNbt = new NbtCompound();
+
+        for (Map.Entry<String, Map<String, ChapterNbtData>> pathEntry : this.pathData.entrySet())
+        {
+            NbtCompound pathNbt = new NbtCompound();
+
+            for (Map.Entry<String, ChapterNbtData> chapterEntry : pathEntry.getValue().entrySet())
+            {
+                NbtCompound chapterNbt = chapterEntry.getValue().toNbt();
+
+                if (chapterNbt.isEmpty()) continue;
+                pathNbt.put(chapterEntry.getKey(), chapterNbt);
             }
+
+            if (pathNbt.isEmpty()) continue;
+            pathsNbt.put(pathEntry.getKey(), pathNbt);
         }
-        if (!paths.isEmpty()) nbt.put("paths", paths);
+
+        if (!pathsNbt.isEmpty()) nbt.put("paths", pathsNbt);
+
         return nbt;
     }
 
     /**
      * @return The center position of the block entity
      */
-    public Vec3d getCenterPos() {
+    public Vec3d getCenterPos()
+    {
         BlockPos position = this.getPos();
         return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
     }
 
-    /**
-     * Get the NBT data for the given path ID.
-     *
-     * @param pathId The path ID
-     */
-    public @NotNull NbtData getNbt(String pathId) {
-        return Objects.requireNonNull(this.getNbt(pathId, true));
+    public @NotNull List<ChapterNbtData> getChapters(String pathId)
+    {
+        return Objects.requireNonNull(getChapters(pathId, true));
+    }
+
+    public @Nullable List<ChapterNbtData> getChapters(String pathId, boolean createIfNull)
+    {
+        if (!this.pathData.containsKey(pathId) && createIfNull)
+        {
+            var newEmpty = new HashMap<String, ChapterNbtData>();
+            this.pathData.put(pathId, newEmpty);
+        }
+
+        if (!this.pathData.containsKey(pathId)) return null;
+
+        return this.pathData.get(pathId).values().stream().toList();
     }
 
     /**
      * Get the NBT data for the given path ID.
      *
      * @param pathId The path ID
+     */
+    public @NotNull PathMarkerBlockEntity.ChapterNbtData getChapterData(String pathId, String chapterId)
+    {
+        return Objects.requireNonNull(this.getChapterData(pathId, chapterId, true));
+    }
+
+    /**
+     * Get the NBT data for the given path ID.
+     *
+     * @param pathId       The path ID
      * @param createIfNull Whether to create an empty NBT set if no data is found
      */
-    public @Nullable NbtData getNbt(String pathId, boolean createIfNull) {
-        if (!this.data.containsKey(pathId)) {
-            if (createIfNull) {
-                this.data.put(pathId, NbtData.empty());
-            } else {
-                return null;
-            }
+    public @Nullable PathMarkerBlockEntity.ChapterNbtData getChapterData(String pathId, String chapterId, boolean createIfNull)
+    {
+        if (!this.pathData.containsKey(pathId) && createIfNull)
+        {
+            var newEmpty = new HashMap<String, ChapterNbtData>();
+            newEmpty.put(chapterId, ChapterNbtData.empty(chapterId));
+
+            this.pathData.put(pathId, newEmpty);
         }
-        return this.data.get(pathId);
+
+        if (!this.pathData.containsKey(pathId)) return null;
+
+        if (!this.pathData.get(pathId).containsKey(chapterId) && createIfNull)
+        {
+            this.pathData.get(pathId).put(chapterId, ChapterNbtData.empty(chapterId));
+        }
+
+        if (!this.pathData.get(pathId).containsKey(chapterId)) return null;
+
+        return this.pathData.get(pathId).get(chapterId);
     }
 
     /**
      * Represents the NBT data for a path marker.
      */
-    public static class NbtData implements NbtEncodeable {
+    public static class ChapterNbtData implements NbtEncodeable
+    {
         private String proximityMessage;
         private int activationRange;
         private BlockPos target;
@@ -174,19 +244,21 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         private boolean isChapterStart;
         private boolean displayAboveBlocks;
 
-        private NbtData(NbtCompound nbt) {
+        private ChapterNbtData(NbtCompound nbt)
+        {
             this("", 0, null, "", false, true);
             this.applyNbt(nbt);
         }
 
-        private NbtData(
+        private ChapterNbtData(
                 String proximityMessage,
                 int activationRange,
                 BlockPos target,
                 String chapterId,
                 boolean isChapterStart,
                 boolean displayAboveBlocks
-        ) {
+        )
+        {
             this.proximityMessage = proximityMessage;
             this.activationRange = activationRange;
             this.target = target;
@@ -200,21 +272,24 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param nbt The NBT compound
          */
-        public static NbtData fromNbt(NbtCompound nbt) {
-            return new NbtData(nbt);
+        public static ChapterNbtData fromNbt(NbtCompound nbt)
+        {
+            return new ChapterNbtData(nbt);
         }
 
         /**
          * Create an empty NBT data object.
          */
-        public static NbtData empty() {
-            return new NbtData("", 0, null, "", false, true);
+        public static ChapterNbtData empty(String chapterId)
+        {
+            return new ChapterNbtData("", 0, null, chapterId, false, true);
         }
 
         /**
          * @return The proximity message
          */
-        public String getProximityMessage() {
+        public String getProximityMessage()
+        {
             return proximityMessage;
         }
 
@@ -223,14 +298,16 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param proximityMessage The proximity message
          */
-        public void setProximityMessage(@NotNull String proximityMessage) {
+        public void setProximityMessage(@NotNull String proximityMessage)
+        {
             this.proximityMessage = proximityMessage;
         }
 
         /**
          * @return The activation range
          */
-        public int getActivationRange() {
+        public int getActivationRange()
+        {
             return activationRange;
         }
 
@@ -239,14 +316,16 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param activationRange The activation range
          */
-        public void setActivationRange(int activationRange) {
+        public void setActivationRange(int activationRange)
+        {
             this.activationRange = activationRange;
         }
 
         /**
          * @return The target position
          */
-        public @Nullable BlockPos getTarget() {
+        public @Nullable BlockPos getTarget()
+        {
             return target;
         }
 
@@ -255,14 +334,16 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param target The target position
          */
-        public void setTarget(@NotNull BlockPos target) {
+        public void setTarget(@NotNull BlockPos target)
+        {
             this.target = target;
         }
 
         /**
          * Remove the target position.
          */
-        public void removeTarget() {
+        public void removeTarget()
+        {
             this.target = null;
         }
 
@@ -285,7 +366,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         /**
          * @return Whether the path marker is the start of a chapter
          */
-        public boolean isChapterStart() {
+        public boolean isChapterStart()
+        {
             return isChapterStart;
         }
 
@@ -294,14 +376,16 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param chapterStart Whether the path marker is the start of a chapter
          */
-        public void setChapterStart(boolean chapterStart) {
+        public void setChapterStart(boolean chapterStart)
+        {
             isChapterStart = chapterStart;
         }
 
         /**
          * @return Whether the path marker should display above blocks
          */
-        public boolean displayAboveBlocks() {
+        public boolean displayAboveBlocks()
+        {
             return displayAboveBlocks;
         }
 
@@ -310,7 +394,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          *
          * @param displayAboveBlocks Whether the path marker should display above blocks
          */
-        public void setDisplayAboveBlocks(boolean displayAboveBlocks) {
+        public void setDisplayAboveBlocks(boolean displayAboveBlocks)
+        {
             this.displayAboveBlocks = displayAboveBlocks;
         }
 
@@ -320,10 +405,14 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @param nbt The NBT compound
          */
         @Override
-        public void applyNbt(NbtCompound nbt) {
-            if (nbt.contains("target")) {
+        public void applyNbt(NbtCompound nbt)
+        {
+            if (nbt.contains("target"))
+            {
                 this.target = NbtHelper.toBlockPos(nbt.getCompound("target"));
-            } else {
+            }
+            else
+            {
                 this.target = null;
             }
             this.proximityMessage = nbt.getString("proximity_message");
@@ -339,7 +428,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @return The NBT compound
          */
         @Override
-        public NbtCompound toNbt(@Nullable NbtCompound nbt) {
+        public NbtCompound toNbt(@Nullable NbtCompound nbt)
+        {
             nbt = nbt == null ? new NbtCompound() : nbt;
             if (target != null) nbt.put("target", NbtHelper.fromBlockPos(target));
             if (!proximityMessage.isEmpty()) nbt.putString("proximity_message", proximityMessage);

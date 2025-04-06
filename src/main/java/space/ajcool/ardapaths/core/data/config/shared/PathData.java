@@ -14,8 +14,14 @@ public class PathData {
     @SerializedName("name")
     private String name;
 
-    @SerializedName("color")
-    private Color color;
+    @SerializedName("primaryColor")
+    private Color primaryColor;
+
+    @SerializedName("secondaryColor")
+    private Color secondaryColor;
+
+    @SerializedName("tertiaryColor")
+    private Color tertiaryColor;
 
     @SerializedName("chapters")
     private Map<String, ChapterData> chapters = new HashMap<>();
@@ -55,19 +61,67 @@ public class PathData {
     }
 
     /**
-     * @return The color of this path
+     * @return The primary color of this path.
      */
-    public Color getColor() {
-        return color == null ? new Color(100, 100, 100) : color;
+    public Color getPrimaryColor()
+    {
+        return primaryColor == null ? new Color(191, 64, 191) : primaryColor;
     }
 
     /**
-     * Sets the color of this path.
+     * @return The secondary color of this path.
+     */
+    public Color getSecondaryColor()
+    {
+        return secondaryColor == null ? new Color(191, 64, 191) : secondaryColor;
+    }
+
+    /**
+     * @return The tertiary color of this path.
+     */
+    public Color getTertiaryColor()
+    {
+        return tertiaryColor == null ? new Color(191, 64, 191) : tertiaryColor;
+    }
+
+    /**
+     * @return Array containing the primary, secondary, and tertiary colors of this path.
+     */
+    public Color[] getColors()
+    {
+        return new Color[]{getPrimaryColor(), getSecondaryColor(), getTertiaryColor()};
+    }
+
+    /**
+     * Sets the primary color of this path.
      *
      * @param color The new color
      */
-    public PathData setColor(Color color) {
-        this.color = color;
+    public PathData setPrimaryColor(Color color)
+    {
+        this.primaryColor = color;
+        return this;
+    }
+
+    /**
+     * Sets the secondary color of this path.
+     *
+     * @param color The new color
+     */
+    public PathData setSecondaryColor(Color color)
+    {
+        this.secondaryColor = color;
+        return this;
+    }
+
+    /**
+     * Sets the tertiary color of this path.
+     *
+     * @param color The new color
+     */
+    public PathData setTertiaryColor(Color color)
+    {
+        this.tertiaryColor = color;
         return this;
     }
 

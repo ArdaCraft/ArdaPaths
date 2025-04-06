@@ -12,19 +12,17 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
-import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
-import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
-import space.ajcool.ardapaths.core.Client;
 
 import java.util.function.Supplier;
 
@@ -44,9 +42,11 @@ public class MarkerEditScreen extends Screen {
         super(Text.literal("Path Marker Edit Screen"));
         MARKER = marker;
 
-        this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
-        PathMarkerBlockEntity.NbtData data = marker.getNbt(selectedPathId);
-        this.selectedChapterId = data.getChapterId();
+        selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
+        selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
+
+        PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId);
+
         this.isChapterStart = data.isChapterStart();
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
@@ -56,6 +56,13 @@ public class MarkerEditScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+
+        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId);
+
+        this.isChapterStart = data.isChapterStart();
+        this.proximityMessage = data.getProximityMessage();
+        this.activationRange = data.getActivationRange();
+        this.displayAboveBlocks = data.displayAboveBlocks();
 
         int centerX = this.width / 2;
         int currentY = 20;
@@ -67,38 +74,44 @@ public class MarkerEditScreen extends Screen {
                 .build()
         );
 
-        DropdownWidget<PathData> pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
+        this.addDrawableChild(DropdownBuilder.<PathData>create()
                 .setPosition(centerX - 140, currentY += 40)
                 .setSize(280, 20)
                 .setTitle(Text.literal("Edit Data for Path:"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
-                .setOnSelect(path -> selectedPathId = path.getId())
                 .setOptionDisplay(item -> {
                     if (item == null) return Text.literal("No Path");
-                    return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getColor().asHex()));
+                    return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
                 })
-                .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
+                .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId))
+                .setOnSelect(path ->
+                {
+                    selectedPathId = path.getId();
+                    selectedChapterId = path.getChapterIds().get(0);
+                    this.clearAndInit();
+                })
                 .build()
         );
 
-        PathMarkerBlockEntity.NbtData markerData = MARKER.getNbt(selectedPathId);
-        ChapterData currentChapter = ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(markerData.getChapterId());
-
-        DropdownWidget<ChapterData> chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+        this.addDrawableChild(DropdownBuilder.<ChapterData>create()
                 .setPosition(centerX - 140, currentY += 40)
                 .setSize(280, 20)
                 .setTitle(Text.literal("Chapter:"))
-                .setOnSelect(chapter -> selectedChapterId = chapter.getId())
                 .setOptionDisplay(item -> {
                     if (item == null) return Text.literal("No Chapter");
                     return Text.literal(item.getName());
                 })
                 .setOptions(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapters())
-                .setSelected(currentChapter)
+                .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(selectedChapterId))
+                .setOnSelect(chapter ->
+                {
+                    selectedChapterId = chapter.getId();
+                    this.clearAndInit();
+                })
                 .build()
         );
 
-        CheckboxWidget isChapterStartButton = this.addDrawableChild(CheckboxBuilder.create()
+        this.addDrawableChild(CheckboxBuilder.create()
                 .setPosition(centerX - 140, currentY += 25)
                 .setSize(15, 15)
                 .setText(Text.literal("Is chapter start"))
@@ -108,9 +121,9 @@ public class MarkerEditScreen extends Screen {
         );
 
         this.addDrawableChild(new ButtonWidget(
-                centerX + 70,
+                centerX + 40,
                 currentY,
-                70,
+                100,
                 20,
                 Text.literal("Edit Chapters"),
                 button -> this.client.setScreen(new ChapterEditScreen(this)),
@@ -126,11 +139,12 @@ public class MarkerEditScreen extends Screen {
                 Text.literal("Add your message here..."),
                 Text.empty()
         ));
+
         this.multiLineEditBox.setMaxLength(1000);
         this.multiLineEditBox.setChangeListener(string -> proximityMessage = string);
         this.multiLineEditBox.setText(proximityMessage);
 
-        SliderWidget rangeWidget = this.addDrawableChild(new SliderWidget(
+        this.addDrawableChild(new SliderWidget(
                 centerX - 140,
                 currentY += 115,
                 280,
@@ -153,7 +167,7 @@ public class MarkerEditScreen extends Screen {
             }
         });
 
-        CheckboxWidget displayAboveBlocksButton = this.addDrawableChild(CheckboxBuilder.create()
+        this.addDrawableChild(CheckboxBuilder.create()
                 .setPosition(centerX - 140, currentY += 30)
                 .setSize(15, 15)
                 .setText(Text.literal("Display trail above blocks"))
@@ -163,49 +177,28 @@ public class MarkerEditScreen extends Screen {
         );
 
         this.addDrawableChild(new ButtonWidget(
-                centerX - 75,
-                currentY + 35,
-                150,
+                centerX + 15,
+                currentY,
+                60,
                 20,
                 Text.literal("Done"),
                 button -> close(),
                 Supplier::get
         ));
 
-        pathDropdown.setOnSelect(path -> {
-            selectedPathId = path.getId();
-            chapterDropdown.setOptions(path.getChapters());
-
-            PathMarkerBlockEntity.NbtData data = MARKER.getNbt(selectedPathId);
-            chapterDropdown.setSelected(path.getChapter(data.getChapterId()));
-
-            if (chapterDropdown.getSelected() != null) {
-                selectedChapterId = chapterDropdown.getSelected().getId();
-                isChapterStart = data.isChapterStart();
-                isChapterStartButton.setChecked(isChapterStart);
-                displayAboveBlocks = data.displayAboveBlocks();
-                displayAboveBlocksButton.setChecked(displayAboveBlocks);
-            } else {
-                selectedChapterId = "";
-                isChapterStart = false;
-                isChapterStartButton.setChecked(false);
-                displayAboveBlocks = true;
-                displayAboveBlocksButton.setChecked(true);
-            }
-
-            this.multiLineEditBox.setText(data.getProximityMessage());
-            rangeWidget.setValue(data.getActivationRange() / 100.0);
-        });
-
-        chapterDropdown.setOnSelect(chapter -> {
-            if (chapter == null) {
-                selectedChapterId = "";
-                isChapterStart = false;
-                isChapterStartButton.setChecked(false);
-                return;
-            }
-            selectedChapterId = chapter.getId();
-        });
+        this.addDrawableChild(new ButtonWidget(
+                centerX + 80,
+                currentY,
+                60,
+                20,
+                Text.literal("Save"),
+                button ->
+                {
+                    save();
+                    this.clearAndInit();
+                },
+                Supplier::get
+        ));
     }
 
     @Override
@@ -233,27 +226,33 @@ public class MarkerEditScreen extends Screen {
     public void close() {
         super.close();
 
-        if (!selectedPathId.isEmpty()) {
-            PathMarkerBlockEntity.NbtData data = MARKER.getNbt(selectedPathId);
-            String previousChapterId = data.getChapterId();
+        save();
+    }
 
-            data.setChapterId(selectedChapterId);
-            data.setProximityMessage(proximityMessage);
-            data.setActivationRange(activationRange);
-            data.setChapterStart(isChapterStart);
-            data.setDisplayAboveBlocks(displayAboveBlocks);
+    private void save()
+    {
+        if (selectedPathId.isEmpty()) return;
 
-            if (isChapterStart) {
-                ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getPos());
-                PacketRegistry.CHAPTER_START_UPDATE.send(packet);
-            } else if (!previousChapterId.isEmpty()) {
-                ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, previousChapterId);
-                PacketRegistry.CHAPTER_START_REMOVE.send(packet);
-            }
+        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId);
 
-            PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());
-            PacketRegistry.PATH_MARKER_UPDATE.send(packet);
-            MARKER.markUpdated();
+        data.setProximityMessage(proximityMessage);
+        data.setActivationRange(activationRange);
+        data.setChapterStart(isChapterStart);
+        data.setDisplayAboveBlocks(displayAboveBlocks);
+
+        if (isChapterStart)
+        {
+            ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getPos());
+            PacketRegistry.CHAPTER_START_UPDATE.send(packet);
         }
+        else if (!selectedChapterId.isEmpty())
+        {
+            ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, selectedChapterId);
+            PacketRegistry.CHAPTER_START_REMOVE.send(packet);
+        }
+
+        PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());
+        PacketRegistry.PATH_MARKER_UPDATE.send(packet);
+        MARKER.markUpdated();
     }
 }

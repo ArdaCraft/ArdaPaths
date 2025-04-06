@@ -5,14 +5,14 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.Json;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.core.networking.PacketRegistry;
-import space.ajcool.ardapaths.core.Client;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -67,7 +67,7 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
         ColorProviderRegistry.ITEM.register((itemStack, i) -> {
             for (PathData path : paths) {
                 if (!path.getId().equalsIgnoreCase(this.config.getSelectedPathId())) continue;
-                return path.getColor().asHex();
+                return path.getPrimaryColor().asHex();
             }
             return Color.fromRgb(100, 100, 100).asHex();
         }, ModItems.PATH_REVEALER);

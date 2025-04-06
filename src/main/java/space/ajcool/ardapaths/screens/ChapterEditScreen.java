@@ -46,7 +46,7 @@ public class ChapterEditScreen extends Screen {
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(path -> {
                     if (path == null) return Text.literal("No Path Selected");
-                    return Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getColor().asHex()));
+                    return Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex()));
                 })
                 .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
                 .build()

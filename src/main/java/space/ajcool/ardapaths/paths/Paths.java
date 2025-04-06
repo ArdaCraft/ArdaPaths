@@ -20,16 +20,26 @@ public class Paths {
     private static final List<PathMarkerBlockEntity> tickingMarkers = new ArrayList<>();
 
     public static void setSelectedPath(final String pathId) {
+
         if (!config.getSelectedPathId().equalsIgnoreCase(pathId)) {
             config.setCurrentChapter("");
         }
+
         config.setSelectedPath(pathId);
         configManager.save();
     }
 
     public static void gotoChapter(final String chapterId) {
+        gotoChapter(chapterId, true);
+    }
+
+    public static void gotoChapter(final String chapterId, boolean teleport)
+    {
         config.setCurrentChapter(chapterId);
         configManager.save();
+
+        if (!teleport) return;
+
         ChapterPlayerTeleportPacket packet = new ChapterPlayerTeleportPacket(config.getSelectedPathId(), chapterId);
         PacketRegistry.CHAPTER_PLAYER_TELEPORT.send(packet);
         TrailRenderer.clearTrails();

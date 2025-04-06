@@ -32,7 +32,9 @@ public class PathMarkerBlockEntityConverter {
         }
 
         List<PathData> paths = ArdaPaths.CONFIG.getPaths();
+
         int i = 0;
+
         for (PathData path : paths) {
             String legacyKey = "targetOffset-" + i;
             if (oldNbt.contains(legacyKey, 10)) {
@@ -45,13 +47,17 @@ public class PathMarkerBlockEntityConverter {
                     dataCompound.putInt("activation_range", activationRange);
                 }
 
-                pathsCompound.put(path.getId(), dataCompound);
+                NbtCompound defaultChapter = new NbtCompound();
+                defaultChapter.putInt("default", i);
+
+                pathsCompound.put(path.getId(), defaultChapter);
             }
             i++;
         }
 
         oldNbt.remove("proximityMessage");
         oldNbt.remove("activationRange");
+
         for (i = 0; i < paths.size(); i++) {
             oldNbt.remove("targetOffset-" + i);
         }

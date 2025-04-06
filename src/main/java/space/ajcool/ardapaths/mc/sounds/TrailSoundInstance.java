@@ -28,7 +28,8 @@ public class TrailSoundInstance extends MovingSoundInstance {
         this.repeatDelay = 0;
         this.volume = 0.01F;
 
-        Vec3d currentPos = animatedTrail.getCurrentPos();
+        Vec3d currentPos = animatedTrail.getCurrentRenderPos();
+
         this.x = (float) currentPos.x;
         this.y = (float) currentPos.y;
         this.z = (float) currentPos.z;
@@ -60,12 +61,13 @@ public class TrailSoundInstance extends MovingSoundInstance {
             return;
         }
 
-        Vec3d currentPos = animatedTrail.getCurrentPos();
+        Vec3d currentPos = animatedTrail.getCurrentRenderPos();
+
         this.x = (float) currentPos.x;
         this.y = (float) currentPos.y;
         this.z = (float) currentPos.z;
 
-        if (timeAlive < 1500) volume = Math.max(((float) timeAlive / 1500) * 0.5F, 0.001F);
+        if (timeAlive < 2000) volume = Math.max(((float) timeAlive / 2000) * 0.5F, 0.001F);
         else if (volume > 0) volume = Math.max(volume - 0.02F, 0);
     }
 }

@@ -44,7 +44,7 @@ public class PathRevealerItem extends Item
 
         PathData path = ArdaPathsClient.CONFIG.getSelectedPath();
         if (path != null) {
-            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getColor().asHex())));
+            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex())));
             list.add(text);
         }
 

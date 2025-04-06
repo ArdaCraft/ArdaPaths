@@ -1,108 +1,156 @@
 package space.ajcool.ardapaths.paths.rendering;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
-import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.Color;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
+import space.ajcool.ardapaths.mc.sounds.TrailSoundInstance;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TrailRenderer {
+public class TrailRenderer
+{
     private static final double DESIRED_SPACING = 15.0;
     private static final List<AnimatedTrail> trails = new ArrayList<>();
+    public static TrailSoundInstance trailSoundInstance = null;
 
     /**
      * Render all registered trails.
      *
      * @param level The client world
      */
-    public static void render(ClientWorld level) {
+    public static void render(ClientWorld level)
+    {
         ClientPlayerEntity player = Client.player();
         if (player == null) return;
 
-        if (player.isHolding(ModItems.PATH_MARKER) || player.isHolding(ModItems.PATH_REVEALER)) {
-            boolean foundMessage = false;
-            boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
-            String selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
-            String currentChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
+        boolean foundMessage = false;
+        boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
 
-            for (PathMarkerBlockEntity marker : Paths.getTickingMarkers()) {
-                BlockPos markerPos = marker.getPos();
-                BlockPos playerPos = player.getBlockPos();
-                PathMarkerBlockEntity.NbtData data = marker.getNbt(selectedPathId);
+        PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
+        if (selectedPath == null) return;
 
-                String chapterId = data.getChapterId();
-                int activationRange = data.getActivationRange();
-                boolean withinDistance = playerPos.isWithinDistance(markerPos, activationRange);
+        String currentPathId = selectedPath.getId();
+        Color[] currentPathColors = selectedPath.getColors();
+        String currentChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
 
-                if (withinDistance && data.isChapterStart()) {
-                    ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
-                    ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(chapterId);
-                    int currentChapterIndex = currentChapter != null ? currentChapter.getIndex() : -1;
-                    int chapterIndex = chapter != null ? chapter.getIndex() : -1;
-                    if (chapterIndex >= currentChapterIndex) {
-                        ArdaPathsClient.CONFIG.setCurrentChapter(chapterId);
-                        ArdaPathsClient.CONFIG_MANAGER.save();
-                    }
-                }
-
-                if (!chapterId.isEmpty() && !chapterId.equalsIgnoreCase(currentChapterId)) {
-                    removeTrail(markerPos);
-                    continue;
-                }
-
-                if (playerPos.isWithinDistance(markerPos, 100)) {
-                    Vec3d markerCenter = marker.getCenterPos();
-                    List<AnimatedTrail> markerTrails = trails.stream()
-                            .filter(trail -> trail.getStart().equals(marker.getPos()))
-                            .toList();
-
-                    double minTraveled = Double.MAX_VALUE;
-                    for (AnimatedTrail t : markerTrails) {
-                        double traveled = markerCenter.distanceTo(t.getCurrentPos());
-                        if (traveled < minTraveled) {
-                            minTraveled = traveled;
-                        }
-                    }
-
-                    if (markerTrails.isEmpty() || minTraveled >= DESIRED_SPACING) {
-                        PathData pathData = ArdaPathsClient.CONFIG.getSelectedPath();
-                        if (pathData == null) continue;
-                        marker.createTrail(pathData.getId(), pathData.getColor());
-                    }
-                } else {
-                    removeTrail(markerPos);
-                }
-
-                if (withinDistance && !data.getProximityMessage().isEmpty() && renderMessages) {
-                    ProximityMessageRenderer.setMessage(data.getProximityMessage());
-                    foundMessage = true;
-                }
-            }
-
-            if (!foundMessage) {
-                ProximityMessageRenderer.clearMessage();
-            }
-
-            for (AnimatedTrail trail : List.copyOf(trails)) {
-                if (trail.isAtEnd()) {
-                    removeTrail(trail);
-                } else {
-                    trail.render(level);
-                }
-            }
-        } else {
+        if (!player.isHolding(ModItems.PATH_REVEALER) && !player.isHolding(ModItems.PATH_MARKER))
+        {
             clearTrails();
             ProximityMessageRenderer.clearMessage();
+            return;
+        }
+
+        if (player.isHolding(ModItems.PATH_MARKER))
+        {
+            Paths.getTickingMarkers().forEach(marker ->
+            {
+                PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(currentPathId, currentChapterId, false);
+
+                if (data == null) return;
+                if (trails.stream().anyMatch(trail -> trail.getStart().equals(marker.getPos()))) return;
+
+                marker.createTrail(currentPathId, currentChapterId, currentPathColors);
+            });
+        }
+        else
+        {
+            PathMarkerBlockEntity closestValidMarker = null;
+            var closestSquaredDistance = Double.MAX_VALUE;
+
+            for (PathMarkerBlockEntity marker : Paths.getTickingMarkers())
+            {
+                BlockPos markerPos = marker.getPos();
+                BlockPos playerPos = player.getBlockPos();
+                var squaredDistance = playerPos.getSquaredDistance(markerPos);
+
+                PathMarkerBlockEntity.ChapterNbtData currentChapterData = marker.getChapterData(currentPathId, currentChapterId, false);
+
+                if (currentChapterData != null)
+                {
+                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && !currentChapterData.getProximityMessage().isEmpty() && renderMessages)
+                    {
+                        ProximityMessageRenderer.setMessage(currentChapterData.getProximityMessage());
+                        foundMessage = true;
+                    }
+
+                    if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance)
+                    {
+                        closestValidMarker = marker;
+                        closestSquaredDistance = squaredDistance;
+                    }
+                }
+
+                for (var otherChapterData : marker.getChapters(currentPathId))
+                {
+                    String otherChapterId = otherChapterData.getChapterId();
+
+                    if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
+                    ;
+                    if (squaredDistance > MathHelper.square(otherChapterData.getActivationRange())) continue;
+
+                    ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
+                    ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
+
+                    if (currentChapter == null || chapter == null) continue;
+                    if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+
+                    ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
+                    ArdaPathsClient.CONFIG_MANAGER.save();
+                }
+            }
+
+            if (!foundMessage) ProximityMessageRenderer.clearMessage();
+
+            if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100)
+            {
+                closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);
+            }
+        }
+
+        for (AnimatedTrail trail : List.copyOf(trails))
+        {
+
+            var playerPosition = player.getPos();
+            var distanceToTrail = playerPosition.squaredDistanceTo(trail.getCurrentPos());
+
+            if (distanceToTrail > (player.isHolding(ModItems.PATH_REVEALER) ? 225 : 10000))
+            {
+                removeTrail(trail);
+                continue;
+            }
+
+            if (trail.isAtEnd())
+            {
+                if (player.isHolding(ModItems.PATH_REVEALER))
+                {
+                    var stopPos = BlockPos.ofFloored(trail.getCurrentPos());
+                    var optionalMarkerAtPos = level.getBlockEntity(stopPos, ModBlockEntities.PATH_MARKER);
+
+                    if (optionalMarkerAtPos.isPresent())
+                    {
+                        var marker = optionalMarkerAtPos.get();
+                        marker.createTrail(selectedPath.getId(), currentChapterId, selectedPath.getColors());
+                    }
+                }
+
+                removeTrail(trail);
+                continue;
+            }
+
+            trail.render(level);
         }
     }
 
@@ -111,8 +159,14 @@ public class TrailRenderer {
      *
      * @param trail The trail to render
      */
-    public static void registerTrail(AnimatedTrail trail) {
+    public static void registerTrail(AnimatedTrail trail)
+    {
         trails.add(trail);
+
+        if (trailSoundInstance != null) return;
+
+        trailSoundInstance = new TrailSoundInstance(trail);
+        MinecraftClient.getInstance().getSoundManager().play(trailSoundInstance);
     }
 
     /**
@@ -120,7 +174,8 @@ public class TrailRenderer {
      *
      * @param start The starting position of the trail to remove
      */
-    public static void removeTrail(BlockPos start) {
+    public static void removeTrail(BlockPos start)
+    {
         trails.removeIf(trail -> trail.getStart().equals(start));
     }
 
@@ -129,14 +184,17 @@ public class TrailRenderer {
      *
      * @param trail The trail to remove
      */
-    public static void removeTrail(AnimatedTrail trail) {
+    public static void removeTrail(AnimatedTrail trail)
+    {
         trails.remove(trail);
     }
 
     /**
      * Clear all registered trails.
      */
-    public static void clearTrails() {
+    public static void clearTrails()
+    {
         trails.clear();
+        trailSoundInstance = null;
     }
 }
