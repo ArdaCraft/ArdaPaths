@@ -27,7 +27,8 @@ import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
-public class MarkerEditScreen extends Screen {
+public class MarkerEditScreen extends Screen
+{
     private final PathMarkerBlockEntity MARKER;
 
     private String selectedPathId;
@@ -38,7 +39,8 @@ public class MarkerEditScreen extends Screen {
     private boolean displayAboveBlocks;
     private EditBoxWidget multiLineEditBox;
 
-    public MarkerEditScreen(PathMarkerBlockEntity marker) {
+    public MarkerEditScreen(PathMarkerBlockEntity marker)
+    {
         super(Text.literal("Path Marker Edit Screen"));
         MARKER = marker;
 
@@ -54,7 +56,8 @@ public class MarkerEditScreen extends Screen {
     }
 
     @Override
-    protected void init() {
+    protected void init()
+    {
         super.init();
 
         PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId);
@@ -79,7 +82,8 @@ public class MarkerEditScreen extends Screen {
                 .setSize(280, 20)
                 .setTitle(Text.literal("Edit Data for Path:"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
-                .setOptionDisplay(item -> {
+                .setOptionDisplay(item ->
+                {
                     if (item == null) return Text.literal("No Path");
                     return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
                 })
@@ -97,7 +101,8 @@ public class MarkerEditScreen extends Screen {
                 .setPosition(centerX - 140, currentY += 40)
                 .setSize(280, 20)
                 .setTitle(Text.literal("Chapter:"))
-                .setOptionDisplay(item -> {
+                .setOptionDisplay(item ->
+                {
                     if (item == null) return Text.literal("No Chapter");
                     return Text.literal(item.getName());
                 })
@@ -151,18 +156,21 @@ public class MarkerEditScreen extends Screen {
                 20,
                 ScreenTexts.EMPTY,
                 activationRange / 100.0
-        ) {
+        )
+        {
             {
                 this.updateMessage();
             }
 
             @Override
-            protected void updateMessage() {
+            protected void updateMessage()
+            {
                 this.setMessage(Text.literal("Activation Range: " + activationRange));
             }
 
             @Override
-            protected void applyValue() {
+            protected void applyValue()
+            {
                 activationRange = MathHelper.floor(MathHelper.clampedLerp(0.0, 100.0, this.value));
             }
         });
@@ -202,7 +210,8 @@ public class MarkerEditScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         this.renderBackground(context);
 
         int centerX = this.width / 2;
@@ -212,18 +221,21 @@ public class MarkerEditScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(double mouseX, double mouseY, int button)
+    {
         return super.mouseReleased(mouseX, mouseY, button) || this.multiLineEditBox.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
-    public void tick() {
+    public void tick()
+    {
         this.multiLineEditBox.tick();
         super.tick();
     }
 
     @Override
-    public void close() {
+    public void close()
+    {
         super.close();
 
         save();

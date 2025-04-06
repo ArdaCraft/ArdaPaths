@@ -19,13 +19,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Environment(EnvType.CLIENT)
-public class ClientConfigManager extends ConfigManager<ClientConfig> {
-    public ClientConfigManager(String configPath) {
+public class ClientConfigManager extends ConfigManager<ClientConfig>
+{
+    public ClientConfigManager(String configPath)
+    {
         super(configPath);
     }
 
     @Override
-    protected ClientConfig createDefault() {
+    protected ClientConfig createDefault()
+    {
         ClientConfig config = new ClientConfig();
         config.showProximityMessages(true);
         return config;
@@ -34,18 +37,26 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
     /**
      * Update the path data from the server.
      */
-    public void updatePathData() {
-        if (Client.isInSinglePlayer()) {
+    public void updatePathData()
+    {
+        if (Client.isInSinglePlayer())
+        {
             ServerConfigManager serverConfigManager = ArdaPaths.CONFIG_MANAGER;
             this.onPathData(serverConfigManager.getConfig().getPaths());
-        } else {
-            PacketRegistry.PATH_DATA_REQUEST.send(new EmptyPacket(), response -> {
+        }
+        else
+        {
+            PacketRegistry.PATH_DATA_REQUEST.send(new EmptyPacket(), response ->
+            {
                 String json = response.json();
 
-                Type listType = new TypeToken<ArrayList<PathData>>(){}.getType();
+                Type listType = new TypeToken<ArrayList<PathData>>()
+                {
+                }.getType();
                 List<PathData> paths = Json.fromJson(json, listType);
 
-                if (paths != null) {
+                if (paths != null)
+                {
                     this.onPathData(paths);
                 }
             });
@@ -57,15 +68,19 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
      *
      * @param paths The path data
      */
-    public void onPathData(List<PathData> paths) {
+    public void onPathData(List<PathData> paths)
+    {
         this.config.setPaths(paths);
-        if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty()) {
+        if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty())
+        {
             this.config.setSelectedPath(paths.get(0).getId());
         }
         this.save();
 
-        ColorProviderRegistry.ITEM.register((itemStack, i) -> {
-            for (PathData path : paths) {
+        ColorProviderRegistry.ITEM.register((itemStack, i) ->
+        {
+            for (PathData path : paths)
+            {
                 if (!path.getId().equalsIgnoreCase(this.config.getSelectedPathId())) continue;
                 return path.getPrimaryColor().asHex();
             }

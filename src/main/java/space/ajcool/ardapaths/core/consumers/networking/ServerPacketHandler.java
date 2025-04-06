@@ -8,15 +8,18 @@ import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.function.Function;
 
-public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandler implements IServerPacketHandler<T> {
+public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandler implements IServerPacketHandler<T>
+{
     private final Function<PacketByteBuf, T> reader;
 
-    public ServerPacketHandler(final String channel, final Function<PacketByteBuf, T> reader) {
+    public ServerPacketHandler(final String channel, final Function<PacketByteBuf, T> reader)
+    {
         super(channel);
         this.reader = reader;
     }
 
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender) {
+    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender)
+    {
         System.out.println("Reading packet");
         T packet = reader.apply(buf);
         System.out.println(packet);

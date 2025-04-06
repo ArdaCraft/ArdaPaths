@@ -6,7 +6,8 @@ import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 
-public class AnimatedTrail {
+public class AnimatedTrail
+{
     private static final double SPEED = 0.21585D;
     private final BlockPos start;
     private final Vec3d end;
@@ -40,7 +41,7 @@ public class AnimatedTrail {
     /**
      * Create a new animated trail.
      *
-     * @param start The starting position
+     * @param start  The starting position
      * @param offset The offset from the starting position
      * @param colors The color of the trail
      */
@@ -55,9 +56,9 @@ public class AnimatedTrail {
         return new AnimatedTrail(
                 start,
                 new Vec3d(
-                    start.getX() + offset.getX(),
-                    start.getY() + offset.getY(),
-                    start.getZ() + offset.getZ()
+                        start.getX() + offset.getX(),
+                        start.getY() + offset.getY(),
+                        start.getZ() + offset.getZ()
                 ).add(0.5, 0.5, 0.5),
                 aboveBlocks,
                 colors[0].asHex(),
@@ -71,7 +72,8 @@ public class AnimatedTrail {
      *
      * @param level The client world
      */
-    public void render(ClientWorld level) {
+    public void render(ClientWorld level)
+    {
         if (isAtEnd()) ticksAlive = 0;
 
         Vec3d startPos = new Vec3d(start.getX(), start.getY(), start.getZ()).add(0.5, 0.5, 0.5);
@@ -169,14 +171,16 @@ public class AnimatedTrail {
     /**
      * Get the starting position of the trail.
      */
-    public BlockPos getStart() {
+    public BlockPos getStart()
+    {
         return start;
     }
 
     /**
      * Get the current position of the trail.
      */
-    public Vec3d getCurrentPos() {
+    public Vec3d getCurrentPos()
+    {
         return currentPos;
     }
 
@@ -188,7 +192,8 @@ public class AnimatedTrail {
     /**
      * @return True if the trail has reached the end, otherwise false
      */
-    public boolean isAtEnd() {
+    public boolean isAtEnd()
+    {
         return currentPos.equals(end);
     }
 

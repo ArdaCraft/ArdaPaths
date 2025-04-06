@@ -14,14 +14,17 @@ import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Paths {
+public class Paths
+{
     private static final ClientConfig config = ArdaPathsClient.CONFIG;
     private static final ClientConfigManager configManager = ArdaPathsClient.CONFIG_MANAGER;
     private static final List<PathMarkerBlockEntity> tickingMarkers = new ArrayList<>();
 
-    public static void setSelectedPath(final String pathId) {
+    public static void setSelectedPath(final String pathId)
+    {
 
-        if (!config.getSelectedPathId().equalsIgnoreCase(pathId)) {
+        if (!config.getSelectedPathId().equalsIgnoreCase(pathId))
+        {
             config.setCurrentChapter("");
         }
 
@@ -29,7 +32,8 @@ public class Paths {
         configManager.save();
     }
 
-    public static void gotoChapter(final String chapterId) {
+    public static void gotoChapter(final String chapterId)
+    {
         gotoChapter(chapterId, true);
     }
 
@@ -45,14 +49,17 @@ public class Paths {
         TrailRenderer.clearTrails();
     }
 
-    public static void showProximityMessages(final boolean show) {
+    public static void showProximityMessages(final boolean show)
+    {
         config.showProximityMessages(show);
         configManager.save();
     }
 
-    public static void updateChapter(String pathId, ChapterData chapter) {
+    public static void updateChapter(String pathId, ChapterData chapter)
+    {
         PathData path = config.getPath(pathId);
-        if (path != null) {
+        if (path != null)
+        {
             path.setChapter(chapter);
             configManager.save();
             ChapterUpdatePacket packet = new ChapterUpdatePacket(pathId, chapter);
@@ -60,15 +67,18 @@ public class Paths {
         }
     }
 
-    public static void addTickingMarker(PathMarkerBlockEntity marker) {
+    public static void addTickingMarker(PathMarkerBlockEntity marker)
+    {
         tickingMarkers.add(marker);
     }
 
-    public static List<PathMarkerBlockEntity> getTickingMarkers() {
+    public static List<PathMarkerBlockEntity> getTickingMarkers()
+    {
         return List.copyOf(tickingMarkers);
     }
 
-    public static void clearTickingMarkers() {
+    public static void clearTickingMarkers()
+    {
         tickingMarkers.clear();
     }
 }

@@ -3,7 +3,8 @@ package space.ajcool.ardapaths.screens.widgets;
 /**
  * A callback interface for validating text.
  */
-public interface TextValidator {
+public interface TextValidator
+{
     /**
      * Validates the provided text.
      *

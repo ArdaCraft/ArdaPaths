@@ -5,13 +5,16 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
-public class ServerConfigManager extends ConfigManager<ServerConfig> {
-    public ServerConfigManager(String configPath) {
+public class ServerConfigManager extends ConfigManager<ServerConfig>
+{
+    public ServerConfigManager(String configPath)
+    {
         super(configPath);
     }
 
     @Override
-    protected ServerConfig createDefault() {
+    protected ServerConfig createDefault()
+    {
         ServerConfig config = new ServerConfig();
         config.addPath(new PathData()
                 .setId("frodo")

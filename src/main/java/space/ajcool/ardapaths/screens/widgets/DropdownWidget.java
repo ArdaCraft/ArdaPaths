@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class DropdownWidget<T> extends ClickableWidget {
+public class DropdownWidget<T> extends ClickableWidget
+{
     private static final Identifier WIDGETS_TEXTURE = new Identifier("textures/gui/widgets.png");
 
     private final int originalWidth;
@@ -42,7 +43,8 @@ public class DropdownWidget<T> extends ClickableWidget {
             boolean allowNull,
             boolean expanded,
             int maxVisibleOptions
-    ) {
+    )
+    {
         super(x, y, width, height, title);
         this.originalWidth = width;
         this.originalHeight = height;
@@ -56,18 +58,21 @@ public class DropdownWidget<T> extends ClickableWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         // First, draw the button itself.
         super.render(context, mouseX, mouseY, delta);
         Text title = this.getMessage();
-        if (title != null) {
+        if (title != null)
+        {
             TextRenderer textRenderer = Client.mc().textRenderer;
             int titleY = getY() - (textRenderer.fontHeight / 2) - 8;
             context.drawTextWithShadow(textRenderer, title, getX(), titleY, 0xFFFFFF);
         }
 
         // If expanded, draw the dropdown list.
-        if (expanded) {
+        if (expanded)
+        {
             MatrixStack matrices = context.getMatrices();
             matrices.push();
             matrices.translate(0, 0, 100); // Raise the dropdown above other elements.
@@ -78,7 +83,8 @@ public class DropdownWidget<T> extends ClickableWidget {
             // Build a combined list of items. When allowNull is true we add a null entry
             // (which we later display as "None").
             List<T> allItems = new ArrayList<>();
-            if (allowNull) {
+            if (allowNull)
+            {
                 allItems.add(null);
             }
             allItems.addAll(options);
@@ -88,7 +94,8 @@ public class DropdownWidget<T> extends ClickableWidget {
             this.height = originalHeight + visibleCount * originalHeight;
 
             // Render each visible option, starting from scrollOffset.
-            for (int i = 0; i < visibleCount; i++) {
+            for (int i = 0; i < visibleCount; i++)
+            {
                 int actualIndex = scrollOffset + i;
                 if (actualIndex >= totalItems) break;
                 T item = allItems.get(actualIndex);
@@ -104,7 +111,8 @@ public class DropdownWidget<T> extends ClickableWidget {
     }
 
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         TextRenderer textRenderer = Client.mc().textRenderer;
         int x = getX();
         int y = getY();
@@ -123,14 +131,18 @@ public class DropdownWidget<T> extends ClickableWidget {
     /**
      * Renders an individual option in the dropdown.
      */
-    private void renderItem(DrawContext context, int x, int y, T item, boolean selected, boolean hovered) {
+    private void renderItem(DrawContext context, int x, int y, T item, boolean selected, boolean hovered)
+    {
         TextRenderer textRenderer = Client.mc().textRenderer;
         int width = getWidth();
 
         int v = 46;
-        if (hovered) {
+        if (hovered)
+        {
             v += 40;
-        } else if (selected) {
+        }
+        else if (selected)
+        {
             v += 20;
         }
         renderBox(context, x, y, item, textRenderer, width, originalHeight, v);
@@ -140,7 +152,8 @@ public class DropdownWidget<T> extends ClickableWidget {
      * Renders a box with text. If item is null, "None" is displayed.
      */
     private void renderBox(DrawContext context, int x, int y, T item, TextRenderer textRenderer,
-                           int width, int height, int v) {
+                           int width, int height, int v)
+    {
         context.drawNineSlicedTexture(WIDGETS_TEXTURE, x, y, width, height, 20, 4, 200, 20, 0, v);
         Text display = (item == null) ? Text.literal("None") : optionDisplay.apply(item);
         int textX = x + 4;
@@ -153,22 +166,28 @@ public class DropdownWidget<T> extends ClickableWidget {
      * clicking outside collapses the list.
      */
     @Override
-    public void onClick(double mouseX, double mouseY) {
-        if (!expanded) {
+    public void onClick(double mouseX, double mouseY)
+    {
+        if (!expanded)
+        {
             expanded = true;
             scrollOffset = 0;
             List<T> allItems = new ArrayList<>();
-            if (allowNull) {
+            if (allowNull)
+            {
                 allItems.add(null);
             }
             allItems.addAll(options);
             int totalItems = allItems.size();
             int visibleCount = Math.min(totalItems, maxVisibleOptions);
             this.height = originalHeight + visibleCount * originalHeight;
-        } else {
+        }
+        else
+        {
             int dropdownTop = getY() + originalHeight;
             List<T> allItems = new ArrayList<>();
-            if (allowNull) {
+            if (allowNull)
+            {
                 allItems.add(null);
             }
             allItems.addAll(options);
@@ -177,7 +196,8 @@ public class DropdownWidget<T> extends ClickableWidget {
             int dropdownBottom = dropdownTop + visibleCount * originalHeight;
 
             // If the click is outside the dropdown list, simply collapse
-            if (mouseY < dropdownTop || mouseY > dropdownBottom) {
+            if (mouseY < dropdownTop || mouseY > dropdownBottom)
+            {
                 expanded = false;
                 this.height = originalHeight;
                 return;
@@ -186,10 +206,12 @@ public class DropdownWidget<T> extends ClickableWidget {
             // Determine which visible item was clicked
             int clickedIndex = (int) ((mouseY - dropdownTop) / originalHeight);
             int actualIndex = scrollOffset + clickedIndex;
-            if (actualIndex < totalItems) {
+            if (actualIndex < totalItems)
+            {
                 T item = allItems.get(actualIndex);
                 selected = item;
-                if (onSelect != null) {
+                if (onSelect != null)
+                {
                     System.out.println("Accepting");
                     onSelect.accept(item);
                 }
@@ -205,15 +227,19 @@ public class DropdownWidget<T> extends ClickableWidget {
      * the user can scroll using the mouse wheel.
      */
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        if (expanded) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount)
+    {
+        if (expanded)
+        {
             List<T> allItems = new ArrayList<>();
-            if (allowNull) {
+            if (allowNull)
+            {
                 allItems.add(null);
             }
             allItems.addAll(options);
             int totalItems = allItems.size();
-            if (totalItems > maxVisibleOptions) {
+            if (totalItems > maxVisibleOptions)
+            {
                 // Adjust scrollOffset
                 scrollOffset -= (int) amount;
                 scrollOffset = Math.max(0, scrollOffset);
@@ -225,47 +251,60 @@ public class DropdownWidget<T> extends ClickableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+    protected void appendClickableNarrations(NarrationMessageBuilder builder)
+    {
         appendDefaultNarrations(builder);
     }
 
-    public List<T> getOptions() {
+    public List<T> getOptions()
+    {
         return options;
     }
 
-    public void setOptions(List<T> options) {
+    public void setOptions(List<T> options)
+    {
         this.options = options;
     }
 
-    public void setOptionDisplay(Function<T, Text> optionDisplay) {
+    public void setOptionDisplay(Function<T, Text> optionDisplay)
+    {
         this.optionDisplay = optionDisplay;
     }
 
-    public @Nullable T getSelected() {
+    public @Nullable T getSelected()
+    {
         return selected;
     }
 
-    public void setSelected(@Nullable T selected) {
-        if (!options.contains(selected)) {
+    public void setSelected(@Nullable T selected)
+    {
+        if (!options.contains(selected))
+        {
             this.selected = null;
-        } else {
+        }
+        else
+        {
             this.selected = selected;
         }
     }
 
-    public void setOnSelect(Consumer<T> onSelect) {
+    public void setOnSelect(Consumer<T> onSelect)
+    {
         this.onSelect = onSelect;
     }
 
-    public void setAllowNull(boolean allowNull) {
+    public void setAllowNull(boolean allowNull)
+    {
         this.allowNull = allowNull;
     }
 
-    public void setExpanded(boolean expanded) {
+    public void setExpanded(boolean expanded)
+    {
         this.expanded = expanded;
     }
 
-    public boolean isExpanded() {
+    public boolean isExpanded()
+    {
         return expanded;
     }
 }

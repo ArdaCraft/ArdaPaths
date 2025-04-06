@@ -7,13 +7,15 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 
-public interface IServerPacketHandler<T extends IPacket> extends IPacketHandler {
+public interface IServerPacketHandler<T extends IPacket> extends IPacketHandler
+{
     /**
      * Send a packet to the server.
      *
      * @param packet The packet to send
      */
-    default void send(final T packet) {
+    default void send(final T packet)
+    {
         ClientPlayNetworking.send(getChannelId(), packet.build());
     }
 

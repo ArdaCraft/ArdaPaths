@@ -3,7 +3,8 @@ package space.ajcool.ardapaths.core.data.config.server;
 import com.google.gson.annotations.SerializedName;
 import net.minecraft.util.math.BlockPos;
 
-public class PositionData {
+public class PositionData
+{
     @SerializedName("x")
     private final int x;
 
@@ -13,7 +14,8 @@ public class PositionData {
     @SerializedName("z")
     private final int z;
 
-    public PositionData(int x, int y, int z) {
+    public PositionData(int x, int y, int z)
+    {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -22,28 +24,32 @@ public class PositionData {
     /**
      * @return The X coordinate
      */
-    public int getX() {
+    public int getX()
+    {
         return x;
     }
 
     /**
      * @return The Y coordinate
      */
-    public int getY() {
+    public int getY()
+    {
         return y;
     }
 
     /**
      * @return The Z coordinate
      */
-    public int getZ() {
+    public int getZ()
+    {
         return z;
     }
 
     /**
      * @return The block position
      */
-    public BlockPos toBlockPos() {
+    public BlockPos toBlockPos()
+    {
         return new BlockPos(x, y, z);
     }
 
@@ -52,7 +58,8 @@ public class PositionData {
      *
      * @param pos The block position
      */
-    public static PositionData fromBlockPos(BlockPos pos) {
+    public static PositionData fromBlockPos(BlockPos pos)
+    {
         return new PositionData(pos.getX(), pos.getY(), pos.getZ());
     }
 }

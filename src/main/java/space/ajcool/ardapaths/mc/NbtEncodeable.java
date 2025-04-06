@@ -3,7 +3,8 @@ package space.ajcool.ardapaths.mc;
 import net.minecraft.nbt.NbtCompound;
 import org.jetbrains.annotations.Nullable;
 
-public interface NbtEncodeable {
+public interface NbtEncodeable
+{
     /**
      * Apply an NBT compound to the object.
      *
@@ -16,7 +17,8 @@ public interface NbtEncodeable {
      *
      * @return The NBT compound
      */
-    default NbtCompound toNbt() {
+    default NbtCompound toNbt()
+    {
         return toNbt(null);
     }
 
@@ -30,7 +32,8 @@ public interface NbtEncodeable {
     /**
      * Create an empty object.
      */
-    static <T extends NbtEncodeable> T asEmpty() {
+    static <T extends NbtEncodeable> T asEmpty()
+    {
         return null;
     }
 }

@@ -21,12 +21,14 @@ import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
-public class PathSelectionScreen extends Screen {
+public class PathSelectionScreen extends Screen
+{
     private String selectedPathId;
     private String selectedChapterId;
     private boolean showProximityMessages;
 
-    public PathSelectionScreen() {
+    public PathSelectionScreen()
+    {
         super(Text.literal("Path Selection"));
         this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         this.selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
@@ -34,7 +36,8 @@ public class PathSelectionScreen extends Screen {
     }
 
     @Override
-    protected void init() {
+    protected void init()
+    {
         int center = width / 2;
         int y = 35;
 
@@ -57,7 +60,8 @@ public class PathSelectionScreen extends Screen {
                 .setSize(150, 20)
                 .setTitle(Text.literal("Select a Path to Follow:"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
-                .setOptionDisplay(item -> {
+                .setOptionDisplay(item ->
+                {
                     if (item == null) return Text.literal("No Path");
                     return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
                 })
@@ -108,7 +112,8 @@ public class PathSelectionScreen extends Screen {
                 130,
                 20,
                 Text.literal("Return to Path"),
-                button -> {
+                button ->
+                {
                     ArdaPathsClient.callingForTeleport = true;
                     TrailRenderer.clearTrails();
                     this.close();
@@ -121,9 +126,11 @@ public class PathSelectionScreen extends Screen {
                 130,
                 20,
                 Text.literal("Return to Chapter Start"),
-                button -> {
+                button ->
+                {
                     this.close();
-                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
+                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty())
+                    {
                         Paths.gotoChapter(selectedChapterId);
                     }
                 },
@@ -135,7 +142,8 @@ public class PathSelectionScreen extends Screen {
                 130,
                 20,
                 Text.literal("Proximity Text: " + (showProximityMessages ? "On" : "Off")),
-                button -> {
+                button ->
+                {
                     showProximityMessages = !showProximityMessages;
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityMessageRenderer.clearMessage();
@@ -146,7 +154,8 @@ public class PathSelectionScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
     }

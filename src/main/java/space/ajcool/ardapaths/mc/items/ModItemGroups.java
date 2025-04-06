@@ -12,7 +12,8 @@ import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 
-public class ModItemGroups {
+public class ModItemGroups
+{
     public static final ItemGroup PATH = register(
             "path",
             FabricItemGroup.builder()
@@ -26,19 +27,23 @@ public class ModItemGroups {
     /**
      * Register an item group.
      *
-     * @param id The item group's ID
+     * @param id    The item group's ID
      * @param group The item group to register
      * @param items The items to add to the item group
      */
-    private static ItemGroup register(final String id, final ItemGroup group, Item ...items) {
+    private static ItemGroup register(final String id, final ItemGroup group, Item... items)
+    {
         RegistryKey<ItemGroup> key = RegistryKey.of(Registries.ITEM_GROUP.getKey(), new Identifier(ArdaPaths.MOD_ID, id));
-        if (Registries.ITEM_GROUP.contains(key)) {
+        if (Registries.ITEM_GROUP.contains(key))
+        {
             return Registries.ITEM_GROUP.get(key);
         }
 
         Registry.register(Registries.ITEM_GROUP, key, group);
-        ItemGroupEvents.modifyEntriesEvent(key).register(itemGroup -> {
-            for (Item item : items) {
+        ItemGroupEvents.modifyEntriesEvent(key).register(itemGroup ->
+        {
+            for (Item item : items)
+            {
                 itemGroup.add(item.getDefaultStack());
             }
         });
@@ -46,5 +51,7 @@ public class ModItemGroups {
         return group;
     }
 
-    public static void init() {}
+    public static void init()
+    {
+    }
 }

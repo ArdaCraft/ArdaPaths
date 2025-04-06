@@ -5,7 +5,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.PacketByteBuf;
 
-public interface IClientPacketHandler {
+public interface IClientPacketHandler
+{
     /**
      * Handle an incoming packet on the client.
      */

@@ -2,7 +2,8 @@ package space.ajcool.ardapaths.core.data.config.shared;
 
 import com.google.gson.annotations.SerializedName;
 
-public class Color {
+public class Color
+{
     @SerializedName("red")
     public int r;
 
@@ -12,7 +13,8 @@ public class Color {
     @SerializedName("blue")
     public int b;
 
-    public Color(int r, int g, int b) {
+    public Color(int r, int g, int b)
+    {
         this.r = r;
         this.g = g;
         this.b = b;
@@ -25,7 +27,8 @@ public class Color {
      * @param g Green
      * @param b Blue
      */
-    public static Color fromRgb(int r, int g, int b) {
+    public static Color fromRgb(int r, int g, int b)
+    {
         return new Color(r, g, b);
     }
 
@@ -34,14 +37,16 @@ public class Color {
      *
      * @param hex The hex value
      */
-    public static Color fromHex(int hex) {
+    public static Color fromHex(int hex)
+    {
         return new Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
     }
 
     /**
      * Convert the color to a hex value.
      */
-    public int asHex() {
+    public int asHex()
+    {
         return (r << 16) | (g << 8) | b;
     }
 }

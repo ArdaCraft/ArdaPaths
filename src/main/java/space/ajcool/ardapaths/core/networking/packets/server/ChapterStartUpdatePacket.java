@@ -5,10 +5,12 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
-public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos position) implements IPacket {
+public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos position) implements IPacket
+{
 
     @Override
-    public PacketByteBuf build() {
+    public PacketByteBuf build()
+    {
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(pathId);
         buf.writeString(chapterId);
@@ -16,7 +18,8 @@ public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos
         return buf;
     }
 
-    public static ChapterStartUpdatePacket read(PacketByteBuf buf) {
+    public static ChapterStartUpdatePacket read(PacketByteBuf buf)
+    {
         final String pathId = buf.readString();
         final String chapterId = buf.readString();
         final BlockPos position = buf.readBlockPos();

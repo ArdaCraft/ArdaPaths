@@ -10,14 +10,16 @@ import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
-@Environment(value=EnvType.CLIENT)
-public class TrailSoundInstance extends MovingSoundInstance {
+@Environment(value = EnvType.CLIENT)
+public class TrailSoundInstance extends MovingSoundInstance
+{
     public AnimatedTrail animatedTrail;
 
     public long lastTick;
     public long timeAlive;
 
-    public TrailSoundInstance(AnimatedTrail animatedTrail) {
+    public TrailSoundInstance(AnimatedTrail animatedTrail)
+    {
         super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
 
         this.timeAlive = 0;
@@ -36,7 +38,8 @@ public class TrailSoundInstance extends MovingSoundInstance {
     }
 
     @Override
-    public boolean canPlay() {
+    public boolean canPlay()
+    {
         if (MinecraftClient.getInstance().player == null) return false;
         var mainHandItem = MinecraftClient.getInstance().player.getMainHandStack();
 
@@ -44,12 +47,14 @@ public class TrailSoundInstance extends MovingSoundInstance {
     }
 
     @Override
-    public boolean shouldAlwaysPlay() {
+    public boolean shouldAlwaysPlay()
+    {
         return true;
     }
 
     @Override
-    public void tick() {
+    public void tick()
+    {
         var delta = System.currentTimeMillis() - lastTick;
 
         timeAlive += delta;

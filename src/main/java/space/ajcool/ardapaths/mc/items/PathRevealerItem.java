@@ -30,7 +30,8 @@ public class PathRevealerItem extends Item
     @Override
     public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand)
     {
-        if (level.isClient()) {
+        if (level.isClient())
+        {
             Screens.openSelectionScreen();
         }
 
@@ -43,7 +44,8 @@ public class PathRevealerItem extends Item
         super.appendTooltip(itemStack, level, list, tooltipFlag);
 
         PathData path = ArdaPathsClient.CONFIG.getSelectedPath();
-        if (path != null) {
+        if (path != null)
+        {
             var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex())));
             list.add(text);
         }

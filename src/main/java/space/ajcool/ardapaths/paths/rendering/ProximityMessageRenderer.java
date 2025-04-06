@@ -3,17 +3,20 @@ package space.ajcool.ardapaths.paths.rendering;
 import net.minecraft.client.gui.DrawContext;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 
-public class ProximityMessageRenderer {
+public class ProximityMessageRenderer
+{
     private static AnimatedMessage message;
 
     /**
      * Render the current proximity message.
      *
      * @param context The draw context
-     * @param delta The partial tick
+     * @param delta   The partial tick
      */
-    public static void render(DrawContext context, float delta) {
-        if (message != null) {
+    public static void render(DrawContext context, float delta)
+    {
+        if (message != null)
+        {
             message.render(context, delta);
         }
     }
@@ -24,8 +27,10 @@ public class ProximityMessageRenderer {
      *
      * @param newMessage The new message to render
      */
-    public static void setMessage(String newMessage) {
-        if (message == null) {
+    public static void setMessage(String newMessage)
+    {
+        if (message == null)
+        {
             message = new AnimatedMessage(newMessage);
         }
     }
@@ -33,7 +38,8 @@ public class ProximityMessageRenderer {
     /**
      * Clear the current proximity message.
      */
-    public static void clearMessage() {
+    public static void clearMessage()
+    {
         ProximityMessageRenderer.message = null;
     }
 }

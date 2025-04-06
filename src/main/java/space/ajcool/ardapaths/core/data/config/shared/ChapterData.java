@@ -2,7 +2,8 @@ package space.ajcool.ardapaths.core.data.config.shared;
 
 import com.google.gson.annotations.SerializedName;
 
-public class ChapterData {
+public class ChapterData
+{
     @SerializedName("id")
     private String id;
 
@@ -15,7 +16,8 @@ public class ChapterData {
     @SerializedName("index")
     private int index;
 
-    public ChapterData(String id, String name, String date, int index) {
+    public ChapterData(String id, String name, String date, int index)
+    {
         this.id = id;
         this.name = name;
         this.date = date;
@@ -25,7 +27,8 @@ public class ChapterData {
     /**
      * @return The ID of this chapter
      */
-    public String getId() {
+    public String getId()
+    {
         return id == null ? "" : id;
     }
 
@@ -34,7 +37,8 @@ public class ChapterData {
      *
      * @param id The new ID
      */
-    public ChapterData setId(String id) {
+    public ChapterData setId(String id)
+    {
         this.id = id;
         return this;
     }
@@ -42,7 +46,8 @@ public class ChapterData {
     /**
      * @return The name of this chapter
      */
-    public String getName() {
+    public String getName()
+    {
         return name == null ? "" : name;
     }
 
@@ -51,7 +56,8 @@ public class ChapterData {
      *
      * @param name The new name
      */
-    public ChapterData setName(String name) {
+    public ChapterData setName(String name)
+    {
         this.name = name;
         return this;
     }
@@ -59,7 +65,8 @@ public class ChapterData {
     /**
      * @return The start date of this chapter
      */
-    public String getDate() {
+    public String getDate()
+    {
         return date == null ? "" : date;
     }
 
@@ -68,7 +75,8 @@ public class ChapterData {
      *
      * @param date The start date
      */
-    public ChapterData setDate(String date) {
+    public ChapterData setDate(String date)
+    {
         this.date = date;
         return this;
     }
@@ -76,7 +84,8 @@ public class ChapterData {
     /**
      * @return The index of this chapter
      */
-    public int getIndex() {
+    public int getIndex()
+    {
         return index;
     }
 
@@ -85,7 +94,8 @@ public class ChapterData {
      *
      * @param index The new index
      */
-    public ChapterData setIndex(int index) {
+    public ChapterData setIndex(int index)
+    {
         this.index = index;
         return this;
     }

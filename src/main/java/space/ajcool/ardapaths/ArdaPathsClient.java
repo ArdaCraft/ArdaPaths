@@ -27,13 +27,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class ArdaPathsClient implements ClientModInitializer {
+public class ArdaPathsClient implements ClientModInitializer
+{
     public static ClientConfigManager CONFIG_MANAGER;
     public static ClientConfig CONFIG;
     public static boolean callingForTeleport = false;
 
     @Override
-    public void onInitializeClient() {
+    public void onInitializeClient()
+    {
         CONFIG_MANAGER = new ClientConfigManager("./config/arda-paths/config.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
@@ -46,12 +48,15 @@ public class ArdaPathsClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        {
             CONFIG_MANAGER.updatePathData();
         });
 
-        ClientTickEvents.START_WORLD_TICK.register(level -> {
-            if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER)) {
+        ClientTickEvents.START_WORLD_TICK.register(level ->
+        {
+            if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER))
+            {
                 PathMarkerBlock.selectedBlockPosition = null;
 
                 var message = Text.empty()
@@ -61,14 +66,17 @@ public class ArdaPathsClient implements ClientModInitializer {
                 MinecraftClient.getInstance().player.sendMessage(message);
 
             }
-            else if (PathMarkerBlock.selectedBlockPosition != null) {
+            else if (PathMarkerBlock.selectedBlockPosition != null)
+            {
                 var random = level.random;
-                level.addParticle(ParticleTypes.COMPOSTER, PathMarkerBlock.selectedBlockPosition.getX() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getY()+ random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getZ() + random.nextDouble(), 0.0, 0.0, 0.0);
+                level.addParticle(ParticleTypes.COMPOSTER, PathMarkerBlock.selectedBlockPosition.getX() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getY() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getZ() + random.nextDouble(), 0.0, 0.0, 0.0);
             }
         });
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (callingForTeleport && MinecraftClient.getInstance().player != null) {
+        ClientTickEvents.END_CLIENT_TICK.register(client ->
+        {
+            if (callingForTeleport && MinecraftClient.getInstance().player != null)
+            {
                 var playerPosition = MinecraftClient.getInstance().player.getPos();
 
                 Vec3d closestPosition = null;
@@ -76,7 +84,8 @@ public class ArdaPathsClient implements ClientModInitializer {
                 String selectedPathId = CONFIG.getSelectedPathId();
                 String selectedChapterId = CONFIG.getCurrentChapterId();
 
-                for (PathMarkerBlockEntity tickingPathMarker : Paths.getTickingMarkers()) {
+                for (PathMarkerBlockEntity tickingPathMarker : Paths.getTickingMarkers())
+                {
                     PathMarkerBlockEntity.ChapterNbtData data = tickingPathMarker.getChapterData(selectedPathId, selectedChapterId);
                     if (data.getTarget() == null) continue;
 
@@ -89,7 +98,8 @@ public class ArdaPathsClient implements ClientModInitializer {
                     }
                 }
 
-                if (closestPosition != null) {
+                if (closestPosition != null)
+                {
                     PlayerTeleportPacket packet = new PlayerTeleportPacket(closestPosition.x + 0.5, closestPosition.y, closestPosition.z + 0.5);
                     PacketRegistry.PLAYER_TELEPORT.send(packet);
                 }

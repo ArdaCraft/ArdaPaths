@@ -5,7 +5,8 @@ import com.google.gson.GsonBuilder;
 
 import java.lang.reflect.Type;
 
-public class Json {
+public class Json
+{
     private static final Gson GSON = new GsonBuilder().create();
 
     /**
@@ -14,7 +15,8 @@ public class Json {
      * @param json The JSON string to convert
      * @param type The type of the object
      */
-    public static <T> T fromJson(String json, Class<T> type) {
+    public static <T> T fromJson(String json, Class<T> type)
+    {
         return GSON.fromJson(json, type);
     }
 
@@ -24,7 +26,8 @@ public class Json {
      * @param json The JSON string to convert
      * @param type The type of the object
      */
-    public static <T> T fromJson(String json, Type type) {
+    public static <T> T fromJson(String json, Type type)
+    {
         return GSON.fromJson(json, type);
     }
 
@@ -33,7 +36,8 @@ public class Json {
      *
      * @param object The object to convert
      */
-    public static String toJson(Object object) {
+    public static String toJson(Object object)
+    {
         return GSON.toJson(object);
     }
 }

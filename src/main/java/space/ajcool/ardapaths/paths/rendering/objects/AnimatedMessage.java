@@ -9,7 +9,8 @@ import net.minecraft.util.math.ColorHelper;
 
 import java.util.ArrayList;
 
-public class AnimatedMessage {
+public class AnimatedMessage
+{
     private static final int CHAR_REVEAL_SPEED = 5;
     private static final int FADE_DELAY_OFFSET = 200;
     private static final int FADE_DELAY_FACTOR = 5;
@@ -21,7 +22,8 @@ public class AnimatedMessage {
     private boolean showing;
     private boolean done;
 
-    public AnimatedMessage(String message) {
+    public AnimatedMessage(String message)
+    {
         this.message = message;
         this.timeAlive = 0;
         this.showing = true;
@@ -32,9 +34,10 @@ public class AnimatedMessage {
      * Renders the partially revealed (and possibly fading) text onto the screen.
      *
      * @param drawContext The draw context
-     * @param tickDelta The partial tick
+     * @param tickDelta   The partial tick
      */
-    public void render(DrawContext drawContext, float tickDelta) {
+    public void render(DrawContext drawContext, float tickDelta)
+    {
         if (!showing) return;
 
         this.timeAlive++;
@@ -53,11 +56,15 @@ public class AnimatedMessage {
         int numCharsLeft = numChars;
 
         var lines = new ArrayList<Text>();
-        for (String line : splitMessage) {
-            if (line.length() < numCharsLeft) {
+        for (String line : splitMessage)
+        {
+            if (line.length() < numCharsLeft)
+            {
                 lines.add(Text.literal(line));
                 numCharsLeft -= line.length();
-            } else {
+            }
+            else
+            {
                 var partialLine = Text.empty()
                         .append(Text.literal(line.substring(0, numCharsLeft - 1))) // fully visible
                         .append(Text.literal(line.substring(numCharsLeft - 1, numCharsLeft))
@@ -70,16 +77,19 @@ public class AnimatedMessage {
 
         int opacity = 255;
         int fadeDelay = FADE_DELAY_OFFSET + (textLength * FADE_DELAY_FACTOR);
-        if (timeAlive > fadeDelay) {
+        if (timeAlive > fadeDelay)
+        {
             opacity = 255 - ((timeAlive - fadeDelay) * FADE_SPEED);
         }
 
-        if (opacity <= MIN_OPACITY) {
+        if (opacity <= MIN_OPACITY)
+        {
             showing = false;
             done = true;
         }
 
-        for (int i = 0; i < lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++)
+        {
             drawContext.drawCenteredTextWithShadow(
                     font,
                     lines.get(i),
@@ -92,15 +102,18 @@ public class AnimatedMessage {
         RenderSystem.disableBlend();
     }
 
-    public boolean isShowing() {
+    public boolean isShowing()
+    {
         return showing;
     }
 
-    public boolean isDone() {
+    public boolean isDone()
+    {
         return done;
     }
 
-    public void stop() {
+    public void stop()
+    {
         showing = false;
         done = true;
     }

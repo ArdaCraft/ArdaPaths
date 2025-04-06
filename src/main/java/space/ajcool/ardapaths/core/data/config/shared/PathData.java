@@ -7,7 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PathData {
+public class PathData
+{
     @SerializedName("id")
     private String id;
 
@@ -29,7 +30,8 @@ public class PathData {
     /**
      * @return The ID of this path
      */
-    public String getId() {
+    public String getId()
+    {
         return id == null ? "" : id;
     }
 
@@ -38,7 +40,8 @@ public class PathData {
      *
      * @param id The new ID
      */
-    public PathData setId(String id) {
+    public PathData setId(String id)
+    {
         this.id = id;
         return this;
     }
@@ -46,7 +49,8 @@ public class PathData {
     /**
      * @return The name of this path
      */
-    public String getName() {
+    public String getName()
+    {
         return name == null ? "" : name;
     }
 
@@ -55,7 +59,8 @@ public class PathData {
      *
      * @param name The new name
      */
-    public PathData setName(String name) {
+    public PathData setName(String name)
+    {
         this.name = name;
         return this;
     }
@@ -128,14 +133,16 @@ public class PathData {
     /**
      * @return The IDs of the chapters in this path
      */
-    public List<String> getChapterIds() {
+    public List<String> getChapterIds()
+    {
         return chapters.keySet().stream().toList();
     }
 
     /**
      * @return The chapters in this path
      */
-    public List<ChapterData> getChapters() {
+    public List<ChapterData> getChapters()
+    {
         return chapters.values().stream().toList();
     }
 
@@ -143,7 +150,8 @@ public class PathData {
      * @param id The ID of the chapter
      * @return The chapter with the given ID, or null if not found
      */
-    public @Nullable ChapterData getChapter(String id) {
+    public @Nullable ChapterData getChapter(String id)
+    {
         return chapters.get(id);
     }
 
@@ -152,7 +160,8 @@ public class PathData {
      *
      * @param chapter The chapter data
      */
-    public PathData setChapter(ChapterData chapter) {
+    public PathData setChapter(ChapterData chapter)
+    {
         chapters.put(chapter.getId(), chapter);
         return this;
     }
@@ -162,7 +171,8 @@ public class PathData {
      *
      * @param id The ID of the chapter
      */
-    public PathData removeChapter(String id) {
+    public PathData removeChapter(String id)
+    {
         chapters.remove(id);
         return this;
     }

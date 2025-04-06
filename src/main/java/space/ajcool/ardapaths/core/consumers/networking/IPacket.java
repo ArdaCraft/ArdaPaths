@@ -2,7 +2,8 @@ package space.ajcool.ardapaths.core.consumers.networking;
 
 import net.minecraft.network.PacketByteBuf;
 
-public interface IPacket {
+public interface IPacket
+{
     /**
      * Build the packet.
      */
@@ -13,7 +14,8 @@ public interface IPacket {
      *
      * @param buf The packet byte buffer to read
      */
-    static <T> T read(PacketByteBuf buf) {
+    static <T> T read(PacketByteBuf buf)
+    {
         return null;
     }
 }

@@ -29,34 +29,43 @@ import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.screens.Screens;
 
 @SuppressWarnings("deprecation")
-public class PathMarkerBlock extends BlockWithEntity {
+public class PathMarkerBlock extends BlockWithEntity
+{
     public static BlockPos selectedBlockPosition = null;
 
-    public PathMarkerBlock(AbstractBlock.Settings properties) {
+    public PathMarkerBlock(AbstractBlock.Settings properties)
+    {
         super(properties);
     }
 
-    public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult) {
-        if (!Permissions.check(player, "ardapaths.edit", 4)) {
+    public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult)
+    {
+        if (!Permissions.check(player, "ardapaths.edit", 4))
+        {
             return ActionResult.CONSUME;
         }
 
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
-        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity)) {
+        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
+        {
             return ActionResult.PASS;
         }
-        if (!level.isClient()) {
+        if (!level.isClient())
+        {
             return ActionResult.CONSUME;
         }
 
-        if (Client.isCtrlDown()) {
+        if (Client.isCtrlDown())
+        {
             Screens.openEditorScreen(pathMarkerBlockEntity);
             return ActionResult.CONSUME;
         }
 
-        if (selectedBlockPosition == null) {
-            if (selectedBlockEntity instanceof PathMarkerBlockEntity) {
+        if (selectedBlockPosition == null)
+        {
+            if (selectedBlockEntity instanceof PathMarkerBlockEntity)
+            {
                 selectedBlockPosition = blockPos;
 
                 var message = Text.empty()
@@ -66,13 +75,16 @@ public class PathMarkerBlock extends BlockWithEntity {
                 player.sendMessage(message);
             }
         }
-        else {
+        else
+        {
             BlockEntity blockEntity = level.getBlockEntity(selectedBlockPosition);
 
-            if (blockEntity instanceof PathMarkerBlockEntity pathMarker) {
+            if (blockEntity instanceof PathMarkerBlockEntity pathMarker)
+            {
                 MutableText message;
 
-                if (selectedBlockPosition.equals(blockPos)) {
+                if (selectedBlockPosition.equals(blockPos))
+                {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block removed.").formatted(Formatting.RED));
@@ -80,7 +92,8 @@ public class PathMarkerBlock extends BlockWithEntity {
                     PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
                     data.removeTarget();
                 }
-                else {
+                else
+                {
                     message = Text.empty()
                             .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
                             .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
@@ -101,31 +114,37 @@ public class PathMarkerBlock extends BlockWithEntity {
         return ActionResult.CONSUME;
     }
 
-    public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
+    public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos)
+    {
         return true;
     }
 
-    public BlockRenderType getRenderType(BlockState blockState) {
+    public BlockRenderType getRenderType(BlockState blockState)
+    {
         return BlockRenderType.INVISIBLE;
     }
 
-    public float getAmbientOcclusionLightLevel(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
+    public float getAmbientOcclusionLightLevel(BlockState blockState, BlockView blockGetter, BlockPos blockPos)
+    {
         return 1.0F;
     }
 
-    public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext) {
+    public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext)
+    {
         return collisionContext.isHolding(ModItems.PATH_MARKER) ? VoxelShapes.fullCube() : VoxelShapes.empty();
     }
 
     @Nullable
     @Override
-    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState)
+    {
         return new PathMarkerBlockEntity(blockPos, blockState);
     }
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType) {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType)
+    {
         return level.isClient ? checkType(blockEntityType, ModBlockEntities.PATH_MARKER, PathMarkerBlockEntity::tick) : null;
     }
 }

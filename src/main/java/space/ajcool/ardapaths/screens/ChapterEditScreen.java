@@ -17,18 +17,21 @@ import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
-public class ChapterEditScreen extends Screen {
+public class ChapterEditScreen extends Screen
+{
     private final Screen parent;
     private boolean creatingNew;
 
-    protected ChapterEditScreen(Screen parent) {
+    protected ChapterEditScreen(Screen parent)
+    {
         super(Text.literal("Chapter Edit Screen"));
         this.parent = parent;
         this.creatingNew = false;
     }
 
     @Override
-    public void init() {
+    public void init()
+    {
         int centerX = this.width / 2;
         int y = 20;
 
@@ -44,7 +47,8 @@ public class ChapterEditScreen extends Screen {
                 .setSize(280, 20)
                 .setTitle(Text.literal("Select Path:"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
-                .setOptionDisplay(path -> {
+                .setOptionDisplay(path ->
+                {
                     if (path == null) return Text.literal("No Path Selected");
                     return Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex()));
                 })
@@ -57,7 +61,8 @@ public class ChapterEditScreen extends Screen {
                 .setSize(258, 20)
                 .setTitle(Text.literal("Select Chapter to Edit:"))
                 .setOptions(ArdaPathsClient.CONFIG.getSelectedPath().getChapters())
-                .setOptionDisplay(chapter -> {
+                .setOptionDisplay(chapter ->
+                {
                     if (chapter == null) return Text.literal("No Chapter Selected");
                     return Text.literal(chapter.getName());
                 })
@@ -69,18 +74,28 @@ public class ChapterEditScreen extends Screen {
                 .setPosition(centerX - 75, y += 40)
                 .setSize(150, 20)
                 .setPlaceholder(Text.literal("Id..."))
-                .setValidator(text -> {
-                    if (text.length() < 3) {
+                .setValidator(text ->
+                {
+                    if (text.length() < 3)
+                    {
                         throw new TextValidationError("Must be at least 3 characters long.");
-                    } else if (text.length() > 32) {
+                    }
+                    else if (text.length() > 32)
+                    {
                         throw new TextValidationError("Cannot be more than 32 characters long.");
-                    } else if (creatingNew) {
+                    }
+                    else if (creatingNew)
+                    {
                         PathData path = pathDropdown.getSelected();
-                        if (path == null) {
+                        if (path == null)
+                        {
                             throw new TextValidationError("No path selected.");
-                        } else if (path.getChapters() != null && !path.getChapters().isEmpty()) {
+                        }
+                        else if (path.getChapters() != null && !path.getChapters().isEmpty())
+                        {
                             ChapterData chapter = path.getChapters().stream().filter(ch -> ch.getId().equalsIgnoreCase(text)).findFirst().orElse(null);
-                            if (chapter != null) {
+                            if (chapter != null)
+                            {
                                 throw new TextValidationError("This ID is already in use.");
                             }
                         }
@@ -107,10 +122,14 @@ public class ChapterEditScreen extends Screen {
                 .setPosition(centerX - 75, y += 30)
                 .setSize(150, 20)
                 .setPlaceholder(Text.literal("Index..."))
-                .setValidator(text -> {
-                    try {
+                .setValidator(text ->
+                {
+                    try
+                    {
                         Integer.parseInt(text);
-                    } catch (NumberFormatException e) {
+                    }
+                    catch (NumberFormatException e)
+                    {
                         throw new TextValidationError("Must be an integer.");
                     }
                 })
@@ -119,7 +138,8 @@ public class ChapterEditScreen extends Screen {
 
         this.addDrawableChild(ButtonWidget.builder(
                         Text.literal("＋"),
-                        button -> {
+                        button ->
+                        {
                             creatingNew = true;
                             chapterDropdown.setSelected(null);
                             idInput.enable();
@@ -135,52 +155,56 @@ public class ChapterEditScreen extends Screen {
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("Clear"),
-                button -> {
-                    creatingNew = false;
-                    chapterDropdown.setSelected(null);
-                    idInput.enable();
-                    idInput.reset();
-                    nameInput.reset();
-                    dateInput.reset();
-                    indexInput.reset();
-                })
+                        Text.literal("Clear"),
+                        button ->
+                        {
+                            creatingNew = false;
+                            chapterDropdown.setSelected(null);
+                            idInput.enable();
+                            idInput.reset();
+                            nameInput.reset();
+                            dateInput.reset();
+                            indexInput.reset();
+                        })
                 .position(centerX - 152, y += 40)
                 .size(150, 20)
                 .build()
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("Save"),
-                button -> {
-                        if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText()) return;
+                        Text.literal("Save"),
+                        button ->
+                        {
+                            if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText())
+                                return;
 
-                        PathData path = pathDropdown.getSelected();
-                        if (path == null) return;
+                            PathData path = pathDropdown.getSelected();
+                            if (path == null) return;
 
-                        ChapterData chapter = new ChapterData(
-                                idInput.getText(),
-                                nameInput.getText(),
-                                dateInput.getText(),
-                                Integer.parseInt(indexInput.getText())
-                        );
-                        Paths.updateChapter(path.getId(), chapter);
+                            ChapterData chapter = new ChapterData(
+                                    idInput.getText(),
+                                    nameInput.getText(),
+                                    dateInput.getText(),
+                                    Integer.parseInt(indexInput.getText())
+                            );
+                            Paths.updateChapter(path.getId(), chapter);
 
-                        creatingNew = false;
-                        chapterDropdown.setOptions(path.getChapters());
-                        chapterDropdown.setSelected(null);
-                        idInput.enable();
-                        idInput.reset();
-                        nameInput.reset();
-                        dateInput.reset();
-                        indexInput.reset();
-                })
+                            creatingNew = false;
+                            chapterDropdown.setOptions(path.getChapters());
+                            chapterDropdown.setSelected(null);
+                            idInput.enable();
+                            idInput.reset();
+                            nameInput.reset();
+                            dateInput.reset();
+                            indexInput.reset();
+                        })
                 .position(centerX + 2, y)
                 .size(150, 20)
                 .build()
         );
 
-        pathDropdown.setOnSelect(path -> {
+        pathDropdown.setOnSelect(path ->
+        {
             if (path == null) return;
             chapterDropdown.setOptions(path.getChapters());
             chapterDropdown.setSelected(null);
@@ -191,7 +215,8 @@ public class ChapterEditScreen extends Screen {
             indexInput.reset();
         });
 
-        chapterDropdown.setOnSelect(chapter -> {
+        chapterDropdown.setOnSelect(chapter ->
+        {
             if (chapter == null) return;
             idInput.disable();
             idInput.setText(chapter.getId());
@@ -202,18 +227,21 @@ public class ChapterEditScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(double mouseX, double mouseY, int button)
+    {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
-    public void close() {
+    public void close()
+    {
         this.client.setScreen(this.parent);
     }
 }

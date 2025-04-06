@@ -5,15 +5,10 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import space.ajcool.ardapaths.core.Fabric;
 import space.ajcool.ardapaths.core.consumers.networking.IServerPacketHandler;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.ChapterPlayerTeleportHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.ChapterStartRemoveHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.ChapterStartUpdateHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.ChapterUpdateHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.PathDataRequestHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.PathMarkerUpdateHandler;
-import space.ajcool.ardapaths.core.networking.handlers.server.PlayerTeleportHandler;
+import space.ajcool.ardapaths.core.networking.handlers.server.*;
 
-public class PacketRegistry {
+public class PacketRegistry
+{
     /**
      * Client-To-Server
      */
@@ -30,13 +25,17 @@ public class PacketRegistry {
      *
      * @param handler The handler to register
      */
-    private static <T extends IServerPacketHandler<?>> T register(T handler) {
+    private static <T extends IServerPacketHandler<?>> T register(T handler)
+    {
         ServerPlayNetworking.registerGlobalReceiver(handler.getChannelId(), handler::handle);
-        if (Fabric.isClient() && handler instanceof RespondablePacketHandler<?, ?> responseHandler) {
+        if (Fabric.isClient() && handler instanceof RespondablePacketHandler<?, ?> responseHandler)
+        {
             ClientPlayNetworking.registerGlobalReceiver(responseHandler.getResponseChannelId(), responseHandler::handle);
         }
         return handler;
     }
 
-    public static void init() {}
+    public static void init()
+    {
+    }
 }

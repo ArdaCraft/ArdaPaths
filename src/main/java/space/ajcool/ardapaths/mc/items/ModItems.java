@@ -9,7 +9,8 @@ import net.minecraft.util.Rarity;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 
-public class ModItems {
+public class ModItems
+{
     public static final PathRevealerItem PATH_REVEALER = register(
             "path_revealer",
             new PathRevealerItem(new FabricItemSettings().maxCount(1).fireproof().rarity(Rarity.EPIC))
@@ -19,13 +20,16 @@ public class ModItems {
     /**
      * Register an item and add it to an item group.
      *
-     * @param id The item's ID
+     * @param id   The item's ID
      * @param item The item to register
      */
-    private static <T extends Item> T register(final String id, final T item) {
+    private static <T extends Item> T register(final String id, final T item)
+    {
         Registry.register(Registries.ITEM, Identifier.of(ArdaPaths.MOD_ID, id), item);
         return item;
     }
 
-    public static void init() {}
+    public static void init()
+    {
+    }
 }

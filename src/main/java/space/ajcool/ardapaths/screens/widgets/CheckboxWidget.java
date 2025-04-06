@@ -10,13 +10,15 @@ import space.ajcool.ardapaths.core.Client;
 
 import java.util.function.Consumer;
 
-public class CheckboxWidget extends PressableWidget {
+public class CheckboxWidget extends PressableWidget
+{
     private static final Identifier TEXTURE = new Identifier("textures/gui/checkbox.png");
     private final Text text;
     private boolean checked;
     private Consumer<Boolean> onChange;
 
-    public CheckboxWidget(int x, int y, int width, int height, Text text, boolean checked, Consumer<Boolean> onChange) {
+    public CheckboxWidget(int x, int y, int width, int height, Text text, boolean checked, Consumer<Boolean> onChange)
+    {
         super(x, y, width, height, null);
         this.text = text;
         this.checked = checked;
@@ -24,20 +26,30 @@ public class CheckboxWidget extends PressableWidget {
     }
 
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta)
+    {
         int x = this.getX();
         int y = this.getY();
 
-        if (this.isHovered()) {
-            if (checked) {
+        if (this.isHovered())
+        {
+            if (checked)
+            {
                 context.drawTexture(TEXTURE, x, y, width, height, 20, 20, 20, 20, 64, 64);
-            } else {
+            }
+            else
+            {
                 context.drawTexture(TEXTURE, x, y, width, height, 20, 0, 20, 20, 64, 64);
             }
-        } else {
-            if (checked) {
+        }
+        else
+        {
+            if (checked)
+            {
                 context.drawTexture(TEXTURE, x, y, width, height, 0, 20, 20, 20, 64, 64);
-            } else {
+            }
+            else
+            {
                 context.drawTexture(TEXTURE, x, y, width, height, 0, 0, 20, 20, 64, 64);
             }
         }
@@ -49,30 +61,37 @@ public class CheckboxWidget extends PressableWidget {
     }
 
     @Override
-    public void onPress() {
+    public void onPress()
+    {
         checked = !checked;
-        if (onChange != null) {
+        if (onChange != null)
+        {
             onChange.accept(checked);
         }
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+    protected void appendClickableNarrations(NarrationMessageBuilder builder)
+    {
         this.appendDefaultNarrations(builder);
     }
 
-    public boolean isChecked() {
+    public boolean isChecked()
+    {
         return checked;
     }
 
-    public void setChecked(boolean checked) {
+    public void setChecked(boolean checked)
+    {
         this.checked = checked;
-        if (onChange != null) {
+        if (onChange != null)
+        {
             onChange.accept(checked);
         }
     }
 
-    public void setOnChange(Consumer<Boolean> onChange) {
+    public void setOnChange(Consumer<Boolean> onChange)
+    {
         this.onChange = onChange;
     }
 }

@@ -11,14 +11,17 @@ public record ChapterUpdatePacket(
         String chapterName,
         String chapterDate,
         int chapterIndex
-) implements IPacket {
+) implements IPacket
+{
 
-    public ChapterUpdatePacket(String pathId, ChapterData chapter) {
+    public ChapterUpdatePacket(String pathId, ChapterData chapter)
+    {
         this(pathId, chapter.getId(), chapter.getName(), chapter.getDate(), chapter.getIndex());
     }
 
     @Override
-    public PacketByteBuf build() {
+    public PacketByteBuf build()
+    {
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(pathId);
         buf.writeString(chapterId);
@@ -28,7 +31,8 @@ public record ChapterUpdatePacket(
         return buf;
     }
 
-    public static ChapterUpdatePacket read(PacketByteBuf buf) {
+    public static ChapterUpdatePacket read(PacketByteBuf buf)
+    {
         final String pathId = buf.readString();
         final String chapterId = buf.readString();
         final String chapterName = buf.readString();
