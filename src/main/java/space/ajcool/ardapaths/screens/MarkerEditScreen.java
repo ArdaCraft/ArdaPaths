@@ -11,8 +11,10 @@ import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -22,7 +24,10 @@ import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePac
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
+import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
+import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import java.util.function.Supplier;
 
@@ -39,6 +44,12 @@ public class MarkerEditScreen extends Screen
     private boolean displayAboveBlocks;
     private EditBoxWidget multiLineEditBox;
 
+    private int charRevealSpeed;
+    private int fadeDelayOffset;
+    private int fadeDelayFactor;
+    private int fadeSpeed;
+    private int minOpacity;
+
     public MarkerEditScreen(PathMarkerBlockEntity marker)
     {
         super(Text.literal("Path Marker Edit Screen"));
@@ -53,6 +64,16 @@ public class MarkerEditScreen extends Screen
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
         this.displayAboveBlocks = data.displayAboveBlocks();
+
+        ArdaPaths.LOGGER.info("" + data.getPackedMessageData());
+
+        var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
+
+        charRevealSpeed = unpackedMessageData[0];
+        fadeDelayOffset = unpackedMessageData[1];
+        fadeDelayFactor = unpackedMessageData[2];
+        fadeSpeed = unpackedMessageData[3];
+        minOpacity = unpackedMessageData[4];
     }
 
     @Override
@@ -66,6 +87,14 @@ public class MarkerEditScreen extends Screen
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
         this.displayAboveBlocks = data.displayAboveBlocks();
+
+        var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
+
+        charRevealSpeed = unpackedMessageData[0];
+        fadeDelayOffset = unpackedMessageData[1];
+        fadeDelayFactor = unpackedMessageData[2];
+        fadeSpeed = unpackedMessageData[3];
+        minOpacity = unpackedMessageData[4];
 
         int centerX = this.width / 2;
         int currentY = 20;
@@ -139,11 +168,104 @@ public class MarkerEditScreen extends Screen
                 Client.mc().textRenderer,
                 centerX - 140,
                 currentY += 40,
-                280,
+                180,
                 100,
                 Text.literal("Add your message here..."),
                 Text.empty()
         ));
+
+        var sideY = currentY;
+
+        var charRevealInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX + 100, sideY)
+                .setSize(40, 17)
+                .setValidator(text ->
+                {
+                    try
+                    {
+                        Integer.parseInt(text);
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        throw new TextValidationError("Must be an integer.");
+                    }
+                })
+                .build()
+        );
+
+        var fadeDelayOffsetInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX + 100, sideY += 20)
+                .setSize(40, 17)
+                .setValidator(text ->
+                {
+                    try
+                    {
+                        Integer.parseInt(text);
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        throw new TextValidationError("Must be an integer.");
+                    }
+                })
+                .build()
+        );
+
+        var fadeDelayFactorInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX + 100, sideY+= 20)
+                .setSize(40, 17)
+                .setValidator(text ->
+                {
+                    try
+                    {
+                        Integer.parseInt(text);
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        throw new TextValidationError("Must be an integer.");
+                    }
+                })
+                .build()
+        );
+
+        var fadeSpeedInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX + 100, sideY+= 20)
+                .setSize(40, 17)
+                .setValidator(text ->
+                {
+                    try
+                    {
+                        Integer.parseInt(text);
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        throw new TextValidationError("Must be an integer.");
+                    }
+                })
+                .build()
+        );
+
+        var minOpacityInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX + 100, sideY+= 20)
+                .setSize(40, 17)
+                .setValidator(text ->
+                {
+                    try
+                    {
+                        Integer.parseInt(text);
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        throw new TextValidationError("Must be an integer.");
+                    }
+                })
+                .build()
+        );
+
+        charRevealInput.setText(String.valueOf(charRevealSpeed));
+        fadeDelayOffsetInput.setText(String.valueOf(fadeDelayOffset));
+        fadeDelayFactorInput.setText(String.valueOf(fadeDelayFactor));
+        fadeSpeedInput.setText(String.valueOf(fadeSpeed));
+        minOpacityInput.setText(String.valueOf(minOpacity));
 
         this.multiLineEditBox.setMaxLength(1000);
         this.multiLineEditBox.setChangeListener(string -> proximityMessage = string);
@@ -190,7 +312,15 @@ public class MarkerEditScreen extends Screen
                 60,
                 20,
                 Text.literal("Done"),
-                button -> close(),
+                button -> {
+                    charRevealSpeed = Integer.parseInt(charRevealInput.getText());
+                    fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
+                    fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
+                    fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
+                    minOpacity = Integer.parseInt(minOpacityInput.getText());
+
+                    close();
+                },
                 Supplier::get
         ));
 
@@ -202,6 +332,12 @@ public class MarkerEditScreen extends Screen
                 Text.literal("Save"),
                 button ->
                 {
+                    charRevealSpeed = Integer.parseInt(charRevealInput.getText());
+                    fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
+                    fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
+                    fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
+                    minOpacity = Integer.parseInt(minOpacityInput.getText());
+
                     save();
                     this.clearAndInit();
                 },
@@ -217,6 +353,15 @@ public class MarkerEditScreen extends Screen
         int centerX = this.width / 2;
         int currentY = 60;
         context.drawTextWithShadow(this.textRenderer, Text.literal("Proximity Message:"), centerX - 140, currentY + 93, 0xFFFFFF);
+
+        int sideY = 170;
+
+        context.drawTextWithShadow(this.textRenderer, Text.literal("R Speed:"), centerX + 49, sideY, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("F Delay:"), centerX + 52, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("F Factor:"), centerX + 45, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("F Speed:"), centerX + 49, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("Opacity:"), centerX + 53, sideY += 20, 0xFFFFFF);
+
         super.render(context, mouseX, mouseY, delta);
     }
 
@@ -251,6 +396,10 @@ public class MarkerEditScreen extends Screen
         data.setActivationRange(activationRange);
         data.setChapterStart(isChapterStart);
         data.setDisplayAboveBlocks(displayAboveBlocks);
+
+        var packedData = BitPacker.packFive(charRevealSpeed, fadeDelayOffset, fadeDelayFactor, fadeSpeed, minOpacity);
+
+        data.setPackedMessageData(packedData);
 
         if (isChapterStart)
         {

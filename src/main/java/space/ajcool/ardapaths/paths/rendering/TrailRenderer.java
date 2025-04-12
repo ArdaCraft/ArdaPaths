@@ -5,8 +5,10 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -15,6 +17,7 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.sounds.TrailSoundInstance;
 import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
 import java.util.ArrayList;
@@ -81,7 +84,9 @@ public class TrailRenderer
                 {
                     if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && !currentChapterData.getProximityMessage().isEmpty() && renderMessages)
                     {
-                        ProximityMessageRenderer.setMessage(currentChapterData.getProximityMessage());
+                        var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
+
+                        ProximityMessageRenderer.setMessage(animatedMessage);
                     }
 
                     if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance)

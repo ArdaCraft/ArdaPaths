@@ -243,10 +243,11 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         private String chapterId;
         private boolean isChapterStart;
         private boolean displayAboveBlocks;
+        private long packedMessageData;
 
         private ChapterNbtData(NbtCompound nbt)
         {
-            this("", 0, null, "", false, true);
+            this("", 0, null, "", false, true, 360727776182960136L);
             this.applyNbt(nbt);
         }
 
@@ -256,7 +257,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
                 BlockPos target,
                 String chapterId,
                 boolean isChapterStart,
-                boolean displayAboveBlocks
+                boolean displayAboveBlocks,
+                long packedMessageData
         )
         {
             this.proximityMessage = proximityMessage;
@@ -265,6 +267,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             this.chapterId = chapterId;
             this.isChapterStart = isChapterStart;
             this.displayAboveBlocks = displayAboveBlocks;
+            this.packedMessageData = packedMessageData;
         }
 
         /**
@@ -282,7 +285,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
          */
         public static ChapterNbtData empty(String chapterId)
         {
-            return new ChapterNbtData("", 0, null, chapterId, false, true);
+            return new ChapterNbtData("", 0, null, chapterId, false, true, 360727776182960136L);
         }
 
         /**
@@ -400,6 +403,28 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         }
 
         /**
+         * Returns the packed message data as a long value.
+         * This value contains multiple integers encoded using bitwise operations.
+         *
+         * @return the packed message data
+         */
+        public long getPackedMessageData()
+        {
+            return packedMessageData;
+        }
+
+        /**
+         * Sets the packed message data.
+         * This method should be used when assigning a new packed long that contains encoded integers.
+         *
+         * @param packedMessageData the new packed message data to set
+         */
+        public void setPackedMessageData(long packedMessageData)
+        {
+            this.packedMessageData = packedMessageData;
+        }
+
+        /**
          * @return If the data object is "default" and contains no user defined data.
          */
         public boolean isEmpty()
@@ -409,6 +434,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             if (activationRange != 0) return false;
             if (isChapterStart) return false;
             if (!displayAboveBlocks) return false;
+            if (packedMessageData == 360727776182960136L) return false;
 
             return true;
         }
@@ -429,11 +455,13 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             {
                 this.target = null;
             }
+
             this.proximityMessage = nbt.getString("proximity_message");
             this.activationRange = nbt.getInt("activation_range");
             this.chapterId = nbt.getString("chapter");
             this.isChapterStart = nbt.getBoolean("chapter_start");
             this.displayAboveBlocks = !nbt.contains("display_above_blocks") || nbt.getBoolean("display_above_blocks");
+            this.packedMessageData = nbt.contains("packed_message_data") ? nbt.getLong("packed_message_data") : 360727776182960136L;
         }
 
         /**
@@ -445,12 +473,15 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         public NbtCompound toNbt(@Nullable NbtCompound nbt)
         {
             nbt = nbt == null ? new NbtCompound() : nbt;
+
             if (target != null) nbt.put("target", NbtHelper.fromBlockPos(target));
             if (!proximityMessage.isEmpty()) nbt.putString("proximity_message", proximityMessage);
             if (activationRange != 0) nbt.putInt("activation_range", activationRange);
             if (!chapterId.isEmpty()) nbt.putString("chapter", chapterId);
             if (isChapterStart) nbt.putBoolean("chapter_start", true);
             if (!displayAboveBlocks) nbt.putBoolean("display_above_blocks", false);
+            if (packedMessageData != 360727776182960136L && packedMessageData != 0) nbt.putLong("packed_message_data", packedMessageData);
+
             return nbt;
         }
     }

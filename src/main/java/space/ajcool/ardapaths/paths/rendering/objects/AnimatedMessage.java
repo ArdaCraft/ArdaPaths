@@ -6,28 +6,71 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ColorHelper;
+import org.jetbrains.annotations.NotNull;
+import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.ArrayList;
 
 public class AnimatedMessage
 {
-    private static final int CHAR_REVEAL_SPEED = 5;
-    private static final int FADE_DELAY_OFFSET = 200;
-    private static final int FADE_DELAY_FACTOR = 5;
-    private static final int FADE_SPEED = 2;
-    private static final int MIN_OPACITY = 8;
-
     private final String message;
+
+    private final int charRevealSpeed;
+    private final int fadeDelayOffset;
+    private final int fadeDelayFactor;
+    private final int fadeSpeed;
+    private final int minOpacity;
+
     private int timeAlive;
     private boolean showing;
     private boolean done;
 
     public AnimatedMessage(String message)
     {
+        this(message, 5, 100, 5, 2, 8);
+    }
+
+    public AnimatedMessage(String message, int charRevealSpeed, int fadeDelayOffset, int fadeDelayFactor, int fadeSpeed, int minOpacity)
+    {
         this.message = message;
+
+        this.charRevealSpeed = charRevealSpeed;
+        this.fadeDelayOffset = fadeDelayOffset;
+        this.fadeDelayFactor = fadeDelayFactor;
+        this.fadeSpeed = fadeSpeed;
+        this.minOpacity = minOpacity;
+
         this.timeAlive = 0;
         this.showing = true;
         this.done = false;
+    }
+
+    /**
+     * Creates an {@link AnimatedMessage} by unpacking message-related data from the given chapter data.
+     * <p>
+     * The method retrieves a packed long value that encodes five integers using bitwise operations,
+     * unpacks them using {@link BitPacker#unpackFive(long)}, and uses them to construct a new
+     * {@code AnimatedMessage} instance along with the proximity message.
+     *
+     * @param currentChapterData the chapter data containing the packed message data and proximity message
+     * @return a fully constructed {@link AnimatedMessage} based on the chapter data
+     */
+    public static @NotNull AnimatedMessage getAnimatedMessage(PathMarkerBlockEntity.ChapterNbtData currentChapterData)
+    {
+        var packedMessageData = currentChapterData.getPackedMessageData();
+        var unpackedMessageData = BitPacker.unpackFive(packedMessageData);
+
+        if (packedMessageData == 0) return new AnimatedMessage(currentChapterData.getProximityMessage());
+
+        return new AnimatedMessage(
+                currentChapterData.getProximityMessage(),
+                unpackedMessageData[0],
+                unpackedMessageData[1],
+                unpackedMessageData[2],
+                unpackedMessageData[3],
+                unpackedMessageData[4]
+        );
     }
 
     /**
@@ -50,7 +93,7 @@ public class AnimatedMessage
         RenderSystem.defaultBlendFunc();
 
         int textLength = message.length() + 1;
-        int numChars = Math.max(Math.min(timeAlive / CHAR_REVEAL_SPEED, textLength), 1);
+        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min(timeAlive / charRevealSpeed, textLength), 1);
 
         var splitMessage = message.split("\n");
         int numCharsLeft = numChars;
@@ -76,13 +119,13 @@ public class AnimatedMessage
         }
 
         int opacity = 255;
-        int fadeDelay = FADE_DELAY_OFFSET + (textLength * FADE_DELAY_FACTOR);
+        int fadeDelay = fadeDelayOffset + (textLength * fadeDelayFactor);
         if (timeAlive > fadeDelay)
         {
-            opacity = 255 - ((timeAlive - fadeDelay) * FADE_SPEED);
+            opacity = 255 - ((timeAlive - fadeDelay) * fadeSpeed);
         }
 
-        if (opacity <= MIN_OPACITY)
+        if (opacity <= minOpacity)
         {
             showing = false;
             done = true;
@@ -121,5 +164,20 @@ public class AnimatedMessage
     {
         showing = false;
         done = true;
+    }
+
+    public void reset()
+    {
+        this.timeAlive = 0;
+        this.showing = true;
+        this.done = false;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (!(obj instanceof AnimatedMessage other)) return super.equals(obj);
+
+        return message.equals(other.message);
     }
 }

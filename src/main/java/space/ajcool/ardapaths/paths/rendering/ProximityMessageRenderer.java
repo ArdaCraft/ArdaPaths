@@ -33,6 +33,14 @@ public class ProximityMessageRenderer
         message = new AnimatedMessage(newMessage);
     }
 
+    public static void setMessage(AnimatedMessage newMessage)
+    {
+        if (newMessage.equals(message)) return;
+
+        message = newMessage;
+        message.reset();
+    }
+
     /**
      * Clear the current proximity message.
      */
