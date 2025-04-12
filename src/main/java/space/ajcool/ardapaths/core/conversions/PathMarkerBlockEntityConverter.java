@@ -57,7 +57,7 @@ public class PathMarkerBlockEntityConverter
                 }
 
                 NbtCompound defaultChapter = new NbtCompound();
-                defaultChapter.putInt("default", i);
+                defaultChapter.put("default", dataCompound);
 
                 pathsCompound.put(path.getId(), defaultChapter);
             }
