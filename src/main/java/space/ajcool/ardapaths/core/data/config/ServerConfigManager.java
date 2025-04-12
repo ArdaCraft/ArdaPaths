@@ -48,6 +48,14 @@ public class ServerConfigManager extends ConfigManager<ServerConfig>
                 .setTertiaryColor(new Color(235, 123, 113))
                 .setChapter(new ChapterData("default", "Default", "0", 0))
         );
+        config.addPath(new PathData()
+                .setId("info")
+                .setName("Project Info")
+                .setPrimaryColor(new Color(255, 255, 255))
+                .setSecondaryColor(new Color(255, 255, 255))
+                .setTertiaryColor(new Color(255, 255, 255))
+                .setChapter(new ChapterData("info", "Info", "0", 0))
+        );
         return config;
     }
 }
