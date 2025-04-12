@@ -116,7 +116,7 @@ public class AnimatedTrail
 
                 var posY = (checkBlockPos.getY() + (max > 0 ? max : 1));
 
-                boolean intermediateAnim = animationPoint != 0 && (Math.abs(currentRenderPos.y - posY) > 0.5);
+                boolean intermediateAnim = animationPoint != 0 && (Math.abs(currentRenderPos.y - posY) > 2);
 
                 if (intermediateAnim)
                 {

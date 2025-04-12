@@ -36,7 +36,6 @@ public class TrailRenderer
         ClientPlayerEntity player = Client.player();
         if (player == null) return;
 
-        boolean foundMessage = false;
         boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
 
         PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
@@ -83,7 +82,6 @@ public class TrailRenderer
                     if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && !currentChapterData.getProximityMessage().isEmpty() && renderMessages)
                     {
                         ProximityMessageRenderer.setMessage(currentChapterData.getProximityMessage());
-                        foundMessage = true;
                     }
 
                     if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance)
