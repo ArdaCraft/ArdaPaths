@@ -112,8 +112,6 @@ public class TrailRenderer
                 }
             }
 
-            if (!foundMessage) ProximityMessageRenderer.clearMessage();
-
             if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100)
             {
                 closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);

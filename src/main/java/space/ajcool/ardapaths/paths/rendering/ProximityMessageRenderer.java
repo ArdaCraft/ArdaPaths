@@ -15,10 +15,9 @@ public class ProximityMessageRenderer
      */
     public static void render(DrawContext context, float delta)
     {
-        if (message != null)
-        {
-            message.render(context, delta);
-        }
+        if (message == null) return;
+
+        message.render(context, delta);
     }
 
     /**
@@ -29,10 +28,9 @@ public class ProximityMessageRenderer
      */
     public static void setMessage(String newMessage)
     {
-        if (message == null)
-        {
-            message = new AnimatedMessage(newMessage);
-        }
+        if (message != null && message.getMessage().equals(newMessage)) return;
+
+        message = new AnimatedMessage(newMessage);
     }
 
     /**

@@ -102,6 +102,11 @@ public class AnimatedMessage
         RenderSystem.disableBlend();
     }
 
+    public String getMessage ()
+    {
+        return message;
+    }
+
     public boolean isShowing()
     {
         return showing;
