@@ -13,6 +13,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
@@ -85,7 +86,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
     public void readNbt(NbtCompound compoundTag)
     {
         NbtCompound converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
+
         super.readNbt(converted);
+
         this.applyNbt(converted.getCompound("paths"));
     }
 
@@ -109,12 +112,19 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
     @Override
     public void applyNbt(NbtCompound nbt)
     {
-        if (nbt == null) return;
+        if (nbt == null)
+        {
+            ArdaPaths.LOGGER.info("NBT compound is null");
+
+            return;
+        }
+
         this.pathData = new HashMap<>();
 
         for (String pathKey : nbt.getKeys())
         {
-            var configPath = ArdaPaths.CONFIG.getPath(pathKey);
+            var configPath = ArdaPaths.amITheServer() ? ArdaPaths.CONFIG.getPath(pathKey) : ArdaPathsClient.CONFIG.getPath(pathKey);
+
             if (configPath == null) continue;
 
             var chapterData = new HashMap<String, ChapterNbtData>();
@@ -447,15 +457,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         @Override
         public void applyNbt(NbtCompound nbt)
         {
-            if (nbt.contains("target"))
-            {
-                this.target = NbtHelper.toBlockPos(nbt.getCompound("target"));
-            }
-            else
-            {
-                this.target = null;
-            }
-
+            this.target = nbt.contains("target") ? NbtHelper.toBlockPos(nbt.getCompound("target")) : null;
             this.proximityMessage = nbt.getString("proximity_message");
             this.activationRange = nbt.getInt("activation_range");
             this.chapterId = nbt.getString("chapter");

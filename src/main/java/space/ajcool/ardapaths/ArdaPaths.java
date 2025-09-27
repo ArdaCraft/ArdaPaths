@@ -1,14 +1,17 @@
 package space.ajcool.ardapaths;
 
 import me.lucko.fabric.api.permissions.v0.Permissions;
+import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -68,5 +71,14 @@ public class ArdaPaths implements ModInitializer
 
             return true;
         });
+    }
+
+    public static boolean amITheServer()
+    {
+        var serverEnv = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
+
+        if (!serverEnv) return Client.isInSinglePlayer();
+
+        return true;
     }
 }

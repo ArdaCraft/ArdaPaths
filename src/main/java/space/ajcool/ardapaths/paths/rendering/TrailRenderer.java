@@ -5,10 +5,8 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
-import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -101,7 +99,7 @@ public class TrailRenderer
                     String otherChapterId = otherChapterData.getChapterId();
 
                     if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
-                    ;
+
                     if (squaredDistance > MathHelper.square(otherChapterData.getActivationRange())) continue;
 
                     ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
@@ -109,6 +107,7 @@ public class TrailRenderer
 
                     if (currentChapter == null || chapter == null) continue;
                     if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+                    if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
 
                     ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
                     ArdaPathsClient.CONFIG_MANAGER.save();

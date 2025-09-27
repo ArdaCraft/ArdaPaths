@@ -26,7 +26,6 @@ import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
-import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import java.util.function.Supplier;
@@ -57,6 +56,8 @@ public class MarkerEditScreen extends Screen
 
         selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
+
+        ArdaPaths.LOGGER.info("" + marker.toNbt().toString());
 
         PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId);
 

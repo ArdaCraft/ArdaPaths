@@ -2,6 +2,7 @@ package space.ajcool.ardapaths.core.conversions;
 
 import net.minecraft.nbt.NbtCompound;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public class PathMarkerBlockEntityConverter
             activationRange = oldNbt.getInt("activationRange");
         }
 
-        List<PathData> paths = ArdaPaths.CONFIG.getPaths();
+        List<PathData> paths = ArdaPaths.amITheServer() ? ArdaPaths.CONFIG.getPaths() : ArdaPathsClient.CONFIG.getPaths();
 
         int i = 0;
 

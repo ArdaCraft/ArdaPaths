@@ -19,13 +19,16 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterPlayerTeleportPacket packet, PacketSender sender)
     {
-        final String pathId = packet.pathId();
-        final String chapterId = packet.chapterId();
-        final BlockPos start = ArdaPaths.CONFIG.getChapterStart(pathId, chapterId);
-
-        if (start != null)
+        server.execute(() ->
         {
-            server.execute(() -> player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5));
-        }
+            final String pathId = packet.pathId();
+            final String chapterId = packet.chapterId();
+            final BlockPos start = ArdaPaths.CONFIG.getChapterStart(pathId, chapterId);
+
+            if (start != null)
+            {
+                player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
+            }
+        });
     }
 }

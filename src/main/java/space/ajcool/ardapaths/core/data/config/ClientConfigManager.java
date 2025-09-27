@@ -53,10 +53,13 @@ public class ClientConfigManager extends ConfigManager<ClientConfig>
                 Type listType = new TypeToken<ArrayList<PathData>>()
                 {
                 }.getType();
+
                 List<PathData> paths = Json.fromJson(json, listType);
 
                 if (paths != null)
                 {
+                    ArdaPaths.LOGGER.info("Updating path data");
+
                     this.onPathData(paths);
                 }
             });
@@ -71,10 +74,12 @@ public class ClientConfigManager extends ConfigManager<ClientConfig>
     public void onPathData(List<PathData> paths)
     {
         this.config.setPaths(paths);
+
         if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty())
         {
             this.config.setSelectedPath(paths.get(0).getId());
         }
+
         this.save();
 
         ColorProviderRegistry.ITEM.register((itemStack, i) ->
