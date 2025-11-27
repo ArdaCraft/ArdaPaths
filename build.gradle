@@ -25,7 +25,9 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     implementation 'com.google.code.gson:gson:2.12.1'
 
-    include(modImplementation('me.lucko:fabric-permissions-api:0.3.1'))
+    include(modImplementation('me.lucko:fabric-permissions-api:0.3.1') {
+        exclude group: "net.fabricmc.fabric-api"
+    })
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
 }
