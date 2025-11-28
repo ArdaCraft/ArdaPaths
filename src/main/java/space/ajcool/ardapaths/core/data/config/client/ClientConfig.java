@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,9 @@ public class ClientConfig
 {
     @SerializedName("proximity_messages")
     private boolean proximityMessages;
+
+    @SerializedName("proximity_text_speed_multiplier")
+    private Double proximityTextSpeedMultiplier;
 
     @SerializedName("selected_paths")
     private Map<String, SelectedPathData> selectedPaths = new HashMap<>();
@@ -40,6 +44,21 @@ public class ClientConfig
     public void showProximityMessages(boolean proximityMessages)
     {
         this.proximityMessages = proximityMessages;
+    }
+
+    /**
+     * @return the factor with which the speed of the text should be displayed
+     */
+    public Double getProximityTextSpeedMultiplier() {
+        return proximityTextSpeedMultiplier != null ? proximityTextSpeedMultiplier : AnimatedMessage.DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER;
+    }
+
+    /**
+     * Defines the factor at which the proximity messages are displayed
+     * @param proximityTextSpeedMultiplier the factor to set
+     */
+    public void setProximityTextSpeedMultiplier(Double proximityTextSpeedMultiplier) {
+        this.proximityTextSpeedMultiplier = proximityTextSpeedMultiplier;
     }
 
     /**

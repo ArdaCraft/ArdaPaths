@@ -55,6 +55,12 @@ public class Paths
         configManager.save();
     }
 
+    public static void setProximityMessagesSpeedMultiplier(final Double factor)
+    {
+        config.setProximityTextSpeedMultiplier(factor);
+        configManager.save();
+    }
+
     public static void updateChapter(String pathId, ChapterData chapter)
     {
         PathData path = config.getPath(pathId);

@@ -1,5 +1,23 @@
 {
   "block.ardapaths.path_marker": "Path Marker",
   "item.ardapaths.path_revealer": "Pathfinder",
-  "itemGroup.ardapaths.ardapaths": "Arda Paths"
+  "itemGroup.ardapaths.ardapaths": "Arda Paths",
+  "ardapaths.client.configuration.screens.select_path_follow": "Select a Path to Follow:",
+  "ardapaths.client.configuration.screens.path_selection": "Path Selection",
+  "ardapaths.client.configuration.screens.proximity_text_speed_multiplier": "Text speed multiplier",
+  "ardapaths.client.configuration.screens.proximity_text_speed_multiplier_tooltip": "Controls the speed at which the proximity texts are displayed",
+  "ardapaths.client.configuration.screens.path_selection.current_path_chapter": "You are currently on Chapter %s of ",
+  "ardapaths.client.configuration.screens.generic_path": "Generic Path",
+  "ardapaths.client.configuration.screens.return_chapter_start": "Return to Chapter Start",
+  "ardapaths.client.configuration.screens.return_path": "Return to Path",
+  "ardapaths.client.configuration.screens.select_path_follow_tooltip": "Select a character's path to follow",
+  "ardapaths.client.configuration.screens.select_chapter": "Select a Chapter",
+  "ardapaths.client.configuration.screens.no_chapter": "No Chapter",
+  "ardapaths.client.configuration.screens.return_path_tooltip": "Teleport to the last visited path node",
+  "ardapaths.client.configuration.screens.return_chapter_start_tooltip": "Teleport back to the beginning of the Chapter",
+  "ardapaths.client.configuration.screens.proximity_text": "Proximity Text: %s",
+  "ardapaths.generic.on": "On",
+  "ardapaths.generic.off": "Off",
+  "ardapaths.client.configuration.screens.marker_text": "Marker Text",
+  "ardapaths.client.configuration.screens.proximity_text_tooltip": "Display selected book excerpts while traveling the selected path"
 }

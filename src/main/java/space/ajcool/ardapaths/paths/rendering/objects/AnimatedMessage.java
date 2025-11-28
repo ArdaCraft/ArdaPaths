@@ -7,13 +7,17 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ColorHelper;
 import org.jetbrains.annotations.NotNull;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.ArrayList;
 
 public class AnimatedMessage
 {
+    public static final double DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER = 0.125d;
+
     private final String message;
 
     private final int charRevealSpeed;
@@ -22,9 +26,11 @@ public class AnimatedMessage
     private final int fadeSpeed;
     private final int minOpacity;
 
-    private int timeAlive;
+    private final double proximitySpeedMultiplier;
     private boolean showing;
     private boolean done;
+
+    private long startTime = -1;
 
     public AnimatedMessage(String message)
     {
@@ -33,6 +39,7 @@ public class AnimatedMessage
 
     public AnimatedMessage(String message, int charRevealSpeed, int fadeDelayOffset, int fadeDelayFactor, int fadeSpeed, int minOpacity)
     {
+        this.proximitySpeedMultiplier = ArdaPathsClient.CONFIG_MANAGER.getConfig().getProximityTextSpeedMultiplier();
         this.message = message;
 
         this.charRevealSpeed = charRevealSpeed;
@@ -41,7 +48,6 @@ public class AnimatedMessage
         this.fadeSpeed = fadeSpeed;
         this.minOpacity = minOpacity;
 
-        this.timeAlive = 0;
         this.showing = true;
         this.done = false;
     }
@@ -75,7 +81,7 @@ public class AnimatedMessage
 
     /**
      * Renders the partially revealed (and possibly fading) text onto the screen.
-     *
+     * This renders independently of FPS
      * @param drawContext The draw context
      * @param tickDelta   The partial tick
      */
@@ -83,7 +89,12 @@ public class AnimatedMessage
     {
         if (!showing) return;
 
-        this.timeAlive++;
+        if (startTime == -1) {
+            startTime = System.currentTimeMillis();
+        }
+
+        long elapsedMillis = (long)((System.currentTimeMillis() - startTime) * proximitySpeedMultiplier);
+
         var client = MinecraftClient.getInstance();
         var font = client.inGameHud.getTextRenderer();
         var width = client.getWindow().getScaledWidth();
@@ -93,7 +104,7 @@ public class AnimatedMessage
         RenderSystem.defaultBlendFunc();
 
         int textLength = message.length() + 1;
-        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min(timeAlive / charRevealSpeed, textLength), 1);
+        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min((int)(elapsedMillis / charRevealSpeed), textLength), 1);
 
         var splitMessage = message.split("\n");
         int numCharsLeft = numChars;
@@ -120,9 +131,9 @@ public class AnimatedMessage
 
         int opacity = 255;
         int fadeDelay = fadeDelayOffset + (textLength * fadeDelayFactor);
-        if (timeAlive > fadeDelay)
+        if (elapsedMillis > fadeDelay)
         {
-            opacity = 255 - ((timeAlive - fadeDelay) * fadeSpeed);
+            opacity = 255 - (int)((elapsedMillis - fadeDelay) / fadeSpeed);
         }
 
         if (opacity <= minOpacity)
@@ -168,7 +179,7 @@ public class AnimatedMessage
 
     public void reset()
     {
-        this.timeAlive = 0;
+        this.startTime = -1;
         this.showing = true;
         this.done = false;
     }
