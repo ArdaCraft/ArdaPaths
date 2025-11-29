@@ -55,7 +55,7 @@ public class CheckboxWidget extends PressableWidget
         }
 
         TextRenderer textRenderer = Client.mc().textRenderer;
-        int textX = x + width + 5;
+        int textX = x - width - textRenderer.getWidth(text) + 10;
         int textY = y + (height - textRenderer.fontHeight) / 2;
         context.drawTextWithShadow(textRenderer, text, textX, textY, 0xFFFFFF);
     }

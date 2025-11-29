@@ -136,6 +136,13 @@ public class ChapterEditScreen extends Screen
                 .build()
         );
 
+        InputBoxWidget warpInput = this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(centerX - 75, y += 30)
+                .setSize(150, 20)
+                .setPlaceholder(Text.literal("Warp Location..."))
+                .build()
+        );
+
         this.addDrawableChild(ButtonWidget.builder(
                         Text.literal("＋"),
                         button ->
@@ -147,6 +154,7 @@ public class ChapterEditScreen extends Screen
                             nameInput.reset();
                             dateInput.reset();
                             indexInput.reset(String.valueOf(chapterDropdown.getOptions().size() + 1));
+                            warpInput.reset();
                         })
                 .position(centerX + 120, addButtonY)
                 .size(20, 20)
@@ -165,6 +173,7 @@ public class ChapterEditScreen extends Screen
                             nameInput.reset();
                             dateInput.reset();
                             indexInput.reset();
+                            warpInput.reset();
                         })
                 .position(centerX - 152, y += 40)
                 .size(150, 20)
@@ -185,7 +194,8 @@ public class ChapterEditScreen extends Screen
                                     idInput.getText(),
                                     nameInput.getText(),
                                     dateInput.getText(),
-                                    Integer.parseInt(indexInput.getText())
+                                    Integer.parseInt(indexInput.getText()),
+                                    warpInput.getText()
                             );
                             Paths.updateChapter(path.getId(), chapter);
 
@@ -197,6 +207,7 @@ public class ChapterEditScreen extends Screen
                             nameInput.reset();
                             dateInput.reset();
                             indexInput.reset();
+                            warpInput.reset();
                         })
                 .position(centerX + 2, y)
                 .size(150, 20)
@@ -213,6 +224,7 @@ public class ChapterEditScreen extends Screen
             nameInput.reset();
             dateInput.reset();
             indexInput.reset();
+            warpInput.reset();
         });
 
         chapterDropdown.setOnSelect(chapter ->
@@ -223,6 +235,7 @@ public class ChapterEditScreen extends Screen
             nameInput.setText(chapter.getName());
             dateInput.setText(chapter.getDate());
             indexInput.setText(String.valueOf(chapter.getIndex()));
+            warpInput.setText(chapter.getWarp());
         });
     }
 

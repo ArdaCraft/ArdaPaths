@@ -11,6 +11,7 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
+import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -32,6 +33,7 @@ public class ArdaPathsClient implements ClientModInitializer
     public static ClientConfigManager CONFIG_MANAGER;
     public static ClientConfig CONFIG;
     public static boolean callingForTeleport = false;
+    public static LastVisitedTrailNodeData lastVisitedTrailNodeData;
 
     @Override
     public void onInitializeClient()
@@ -77,31 +79,38 @@ public class ArdaPathsClient implements ClientModInitializer
         {
             if (callingForTeleport && MinecraftClient.getInstance().player != null)
             {
-                var playerPosition = MinecraftClient.getInstance().player.getPos();
+                String currentSelectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId() != null ? ArdaPathsClient.CONFIG.getCurrentChapterId() : "";
 
-                Vec3d closestPosition = null;
-                var closestDistance = Double.MAX_VALUE;
-                String selectedPathId = CONFIG.getSelectedPathId();
-                String selectedChapterId = CONFIG.getCurrentChapterId();
+                if(lastVisitedTrailNodeData != null) {
 
-                for (PathMarkerBlockEntity tickingPathMarker : Paths.getTickingMarkers())
-                {
-                    PathMarkerBlockEntity.ChapterNbtData data = tickingPathMarker.getChapterData(selectedPathId, selectedChapterId);
-                    if (data.getTarget() == null) continue;
+                    String lastVisitedNodeChapterId = lastVisitedTrailNodeData.getSelectedChapterId() != null ? lastVisitedTrailNodeData.getSelectedChapterId() : "";
 
-                    var dist = tickingPathMarker.getCenterPos().distanceTo(playerPosition);
+                    if (!currentSelectedChapterId.isBlank() && currentSelectedChapterId.equals(lastVisitedNodeChapterId)) {
 
-                    if (dist < closestDistance)
-                    {
-                        closestPosition = tickingPathMarker.getCenterPos();
-                        closestDistance = dist;
+                        PlayerTeleportPacket packet = new PlayerTeleportPacket(lastVisitedTrailNodeData.getPosX() + 0.5, lastVisitedTrailNodeData.getPosY(), lastVisitedTrailNodeData.getPosZ() + 0.5, lastVisitedTrailNodeData.getWorldId());
+                        PacketRegistry.PLAYER_TELEPORT.send(packet);
+                        callingForTeleport = false;
+                        return;
+                    } else {
+                        var message = Text.empty()
+                                .append(Text.literal("Last visited trail does not belong to the current chapter. Teleporting to chapter start instead...").formatted(Formatting.DARK_AQUA));
+                        MinecraftClient.getInstance().player.sendMessage(message);
                     }
+                } else {
+
+                    var message = Text.empty()
+                            .append(Text.literal("No last visited trail node data found, teleporting to chapter start instead...").formatted(Formatting.DARK_AQUA));
+                    MinecraftClient.getInstance().player.sendMessage(message);
+                    ArdaPaths.LOGGER.info("");
                 }
 
-                if (closestPosition != null)
-                {
-                    PlayerTeleportPacket packet = new PlayerTeleportPacket(closestPosition.x + 0.5, closestPosition.y, closestPosition.z + 0.5);
-                    PacketRegistry.PLAYER_TELEPORT.send(packet);
+                if (!currentSelectedChapterId.isBlank())
+                    Paths.gotoChapter(currentSelectedChapterId, true);
+                else {
+
+                    var message = Text.empty()
+                            .append(Text.literal("No chapter selected, cannot teleport.").formatted(Formatting.DARK_AQUA));
+                    MinecraftClient.getInstance().player.sendMessage(message);
                 }
 
                 callingForTeleport = false;

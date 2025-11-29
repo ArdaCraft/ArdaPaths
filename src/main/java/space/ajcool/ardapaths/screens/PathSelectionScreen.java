@@ -92,6 +92,9 @@ public class PathSelectionScreen extends Screen
                         TrailRenderer.clearTrails();
                     }
 
+                    // Reset last visited node data
+                    ArdaPathsClient.lastVisitedTrailNodeData = null;
+
                     selectedPathId = path.getId();
                     selectedChapterId = path.getChapterIds().get(0);
 
@@ -124,6 +127,9 @@ public class PathSelectionScreen extends Screen
                 .setOnSelect(chapter ->
                 {
                     selectedChapterId = chapter == null ? "default" : chapter.getId();
+
+                    // Reset last visited node data
+                    ArdaPathsClient.lastVisitedTrailNodeData = null;
 
                     Paths.gotoChapter(selectedChapterId, false);
 

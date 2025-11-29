@@ -3,10 +3,12 @@ package space.ajcool.ardapaths.paths.rendering;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -21,7 +23,6 @@ import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TrailRenderer
 {
@@ -134,6 +135,7 @@ public class TrailRenderer
 
             if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100)
             {
+                updateLastVisitedTrailNode(currentChapterId, closestValidMarker);
                 closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);
             }
         }
@@ -170,6 +172,22 @@ public class TrailRenderer
 
             trail.render(level);
         }
+    }
+
+    private static void updateLastVisitedTrailNode(String currentChapterId, PathMarkerBlockEntity closestValidMarker){
+
+        Identifier worldId = null;
+
+        if (closestValidMarker.getWorld() != null)
+            worldId = closestValidMarker.getWorld()
+                    .getRegistryKey()
+                    .getValue();
+
+        ArdaPathsClient.lastVisitedTrailNodeData = new LastVisitedTrailNodeData(currentChapterId,
+                closestValidMarker.getPos().getX(),
+                closestValidMarker.getPos().getY(),
+                closestValidMarker.getPos().getZ(),
+                worldId);
     }
 
     /**

@@ -1,14 +1,14 @@
 package space.ajcool.ardapaths.core.data.config.server;
 
 import com.google.gson.annotations.SerializedName;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ServerConfig
 {
@@ -98,14 +98,79 @@ public class ServerConfig
      * @param chapterId The ID of the chapter
      * @return The chapter start position for the given path
      */
-    public @Nullable BlockPos getChapterStart(String pathId, String chapterId)
+    public @NotNull Optional<String> getChapterStartWarp(String pathId, String chapterId)
     {
-        PositionData data = chapterStarts.get(pathId + ":" + chapterId);
-        if (data == null)
-        {
-            return null;
+        Optional<String> startWarp = Optional.empty();
+        Optional<PathData> pathData = paths.stream()
+                .filter(item -> pathId.equals(item.getId()))
+                .findFirst();
+
+        if (pathData.isPresent()) {
+
+            String warpData = "";
+            ChapterData chapterData = pathData.get().getChapter(chapterId);
+
+            if (chapterData != null) {
+
+                warpData = chapterData.getWarp();
+
+                if (warpData != null && ! warpData.isBlank())  {
+
+                    // Check if the warp is coordinates
+                    boolean isCoordinates = warpData.matches("^[+-]?\\d+\\s+[+-]?\\d+\\s+[+-]?\\d+$");
+
+                    if (!isCoordinates) {
+                        startWarp = Optional.of(warpData.trim());
+                    }
+                }
+            }
         }
-        return data.toBlockPos();
+
+        return startWarp;
+    }
+
+    /**
+     * @param pathId    The ID of the path
+     * @param chapterId The ID of the chapter
+     * @return The chapter start position for the given path
+     */
+    public @Nullable BlockPos getChapterStartCoordinates(String pathId, String chapterId)
+    {
+        BlockPos startPosition = null;
+        Optional<PathData> pathData = paths.stream()
+                .filter(item -> pathId.equals(item.getId()))
+                .findFirst();
+
+        if (pathData.isPresent()) {
+
+            String warpData = "";
+            ChapterData chapterData = pathData.get().getChapter(chapterId);
+
+            if (chapterData != null) {
+
+                warpData = chapterData.getWarp();
+
+                if (warpData != null && ! warpData.isBlank())  {
+
+                    // Check if the warp is coordinates
+                    boolean isCoordinates = warpData.matches("^[+-]?\\d+\\s+[+-]?\\d+\\s+[+-]?\\d+$");
+
+                    if (isCoordinates) {
+                        String[] coords = warpData.trim().split("\\s+");
+                        startPosition = new BlockPos(Integer.parseInt(coords[0]), Integer.parseInt(coords[1]), Integer.parseInt(coords[2]));
+                    }
+                }
+            }
+        }
+
+        return startPosition != null ? startPosition : getChapterStartPosition(pathId, chapterId);
+    }
+
+    private BlockPos getChapterStartPosition(String pathId, String chapterId) {
+
+        var data = chapterStarts.get(pathId + ":" + chapterId);
+
+        return data != null ? data.toBlockPos() : null;
     }
 
     /**

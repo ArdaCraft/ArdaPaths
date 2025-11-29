@@ -129,7 +129,7 @@ public class MarkerEditScreen extends Screen
 
         this.addDrawableChild(DropdownBuilder.<ChapterData>create()
                 .setPosition(centerX - 140, currentY += 40)
-                .setSize(280, 20)
+                .setSize(175, 20)
                 .setTitle(Text.literal("Chapter:"))
                 .setOptionDisplay(item ->
                 {
@@ -146,15 +146,6 @@ public class MarkerEditScreen extends Screen
                 .build()
         );
 
-        this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 140, currentY += 25)
-                .setSize(15, 15)
-                .setText(Text.literal("Is chapter start"))
-                .setChecked(isChapterStart)
-                .setOnChange(checked -> isChapterStart = checked)
-                .build()
-        );
-
         this.addDrawableChild(new ButtonWidget(
                 centerX + 40,
                 currentY,
@@ -164,6 +155,15 @@ public class MarkerEditScreen extends Screen
                 button -> this.client.setScreen(new ChapterEditScreen(this)),
                 Supplier::get
         ));
+
+        this.addDrawableChild(CheckboxBuilder.create()
+                .setPosition(centerX - 45, currentY += 30)
+                .setSize(15, 15)
+                .setText(Text.literal("Is chapter start :"))
+                .setChecked(isChapterStart)
+                .setOnChange(checked -> isChapterStart = checked)
+                .build()
+        );
 
         this.multiLineEditBox = this.addDrawableChild(new EditBoxWidget(
                 Client.mc().textRenderer,
@@ -299,9 +299,9 @@ public class MarkerEditScreen extends Screen
         });
 
         this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 140, currentY += 30)
+                .setPosition(centerX - 2, currentY += 30)
                 .setSize(15, 15)
-                .setText(Text.literal("Display trail above blocks"))
+                .setText(Text.literal("Display trail above blocks:"))
                 .setChecked(displayAboveBlocks)
                 .setOnChange(checked -> displayAboveBlocks = checked)
                 .build()
@@ -309,7 +309,7 @@ public class MarkerEditScreen extends Screen
 
         this.addDrawableChild(new ButtonWidget(
                 centerX + 15,
-                currentY,
+                currentY -= 2,
                 60,
                 20,
                 Text.literal("Done"),
