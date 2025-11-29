@@ -19,7 +19,9 @@ import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TrailRenderer
 {
@@ -94,20 +96,36 @@ public class TrailRenderer
                     }
                 }
 
-                for (var otherChapterData : marker.getChapters(currentPathId))
+                List<PathMarkerBlockEntity.ChapterNbtData> filteredChapters =
+                        marker.getChapters(currentPathId).stream()
+                                // Must have a non-empty chapter ID
+                                .filter(data -> !data.getChapterId().isEmpty())
+                                // Must be a chapter start
+                                .filter(PathMarkerBlockEntity.ChapterNbtData::isChapterStart)
+                                // Must be within activation range
+                                .filter(data -> squaredDistance <= MathHelper.square(data.getActivationRange()))
+                                .toList();
+
+                for (var otherChapterData : filteredChapters)
                 {
                     String otherChapterId = otherChapterData.getChapterId();
-
-                    if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
-
-                    if (squaredDistance > MathHelper.square(otherChapterData.getActivationRange())) continue;
 
                     ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
                     ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
 
                     if (currentChapter == null || chapter == null) continue;
-                    if (chapter.getIndex() <= currentChapter.getIndex()) continue;
-                    if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
+
+                    if (!"default".equalsIgnoreCase(currentChapter.getName())) {
+                        if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+                        if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
+                    } else {
+
+                        otherChapterId = filteredChapters.stream()
+                                .map(otherChapterIdentifier -> ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterIdentifier.getChapterId()))
+                                .min(Comparator.comparingInt(chapterData -> chapterData != null ? chapterData.getIndex() : 0))
+                                .map(ChapterData::getId)
+                                .orElse(otherChapterId);
+                    }
 
                     ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
                     ArdaPathsClient.CONFIG_MANAGER.save();
