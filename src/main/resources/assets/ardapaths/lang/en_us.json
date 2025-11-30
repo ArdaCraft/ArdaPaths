@@ -28,6 +28,7 @@
   "ardapaths.generic.done": "Done",
   "ardapaths.generic.save": "Save",
   "ardapaths.generic.clear": "Clear",
+  "ardapaths.generic.validation.form.errors": "Form validation failed. Please correct the errors and try again.",
   "ardapaths.generic.validation.error.integer": "Must be an integer.",
   "ardapaths.generic.validation.error.string.three_char_long": "Must be at least 3 characters long.",
   "ardapaths.generic.validation.error.string.too_long_32": "Cannot be more than 32 characters long.",
@@ -67,5 +68,11 @@
   "ardapaths.client.chapter.configuration.screens.name": "Name...",
   "ardapaths.client.chapter.configuration.screens.select_path": "Select Path...",
   "ardapaths.client.chapter.configuration.screens.chapter_edit_title": "Chapter Edit Screen",
-  "ardapaths.client.chapter.configuration.screens.error.delete_default_chapter": "Default Chapter cannot be deleted"
+  "ardapaths.client.chapter.configuration.screens.error.delete_default_chapter": "Default Chapter cannot be deleted",
+  "ardapaths.client.marker.configuration.screens.path_colors": "Path Colors",
+  "ardapaths.client.marker.configuration.screens.path_primary_color": "Primary",
+  "ardapaths.client.marker.configuration.screens.path_secondary_color": "Secondary",
+  "ardapaths.client.marker.configuration.screens.path_tertiary_color": "Tertiary",
+  "ardapaths.client.marker.configuration.screens.path_colors_tooltip": "Hex color value",
+  "ardapaths.client.marker.configuration.screens.path_colors.validation.error": "Invalid Hex value."
 }

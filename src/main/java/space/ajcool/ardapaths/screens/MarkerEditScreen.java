@@ -17,16 +17,20 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
+import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
+import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import java.util.function.Supplier;
@@ -42,7 +46,16 @@ public class MarkerEditScreen extends Screen
     private String proximityMessage;
     private int activationRange;
     private boolean displayAboveBlocks;
+    private DropdownWidget<PathData> pathSelectionDropdown;
     private EditBoxWidget multiLineEditBox;
+    private InputBoxWidget charRevealInput;
+    private InputBoxWidget fadeDelayOffsetInput;
+    private InputBoxWidget fadeDelayFactorInput;
+    private InputBoxWidget fadeSpeedInput;
+    private InputBoxWidget minOpacityInput;
+    private InputBoxWidget pathColorPrimary;
+    private InputBoxWidget pathColorSecondary;
+    private InputBoxWidget pathColorTertiary;
 
     private int charRevealSpeed;
     private int fadeDelayOffset;
@@ -101,15 +114,107 @@ public class MarkerEditScreen extends Screen
         int centerX = this.width / 2;
         int currentY = 20;
 
+        this.buildTitle(centerX - 140, currentY);
+
+        pathSelectionDropdown = this.buildPathSelectionDropdown(centerX - 140, currentY += 40);
+
+        var defaultTextColor = new Color(255, 255, 255);
+
+        pathColorPrimary = buildColorInputBox(centerX - 140, currentY += 42, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getPrimaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_primary_color");
+        pathColorSecondary = buildColorInputBox(centerX - 46, currentY, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getSecondaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_secondary_color");
+        pathColorTertiary = buildColorInputBox(centerX + 49, currentY, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getTertiaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_tertiary_color");
+
+        this.addDrawableChild(pathColorPrimary);
+        this.addDrawableChild(pathColorSecondary);
+        this.addDrawableChild(pathColorTertiary);
+
+        this.buildChapterSelectionDropdown(centerX - 140, currentY += 40);
+        this.buildEditChaptersButton(centerX + 40, currentY);
+        this.buildChapterStartCheckbox(centerX - 49, currentY += 30);
+        this.buildMultilineEditBox(centerX - 140,currentY += 40);
+
+        var sideY = currentY;
+
+        charRevealInput = this.buildIntegerInput(centerX + 100, sideY);
+        fadeDelayOffsetInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
+        fadeDelayFactorInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
+        fadeSpeedInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
+        minOpacityInput = this.buildIntegerInput(centerX + 100, sideY+ 20);
+
+        charRevealInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.rspeed_tooltip")));
+        fadeDelayOffsetInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.ffactor_tooltip")));
+        fadeDelayFactorInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fdelay_tooltip")));
+        fadeSpeedInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fspeed_tooltip")));
+        minOpacityInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.opacity_tooltip")));
+
+        charRevealInput.setText(String.valueOf(charRevealSpeed));
+        fadeDelayOffsetInput.setText(String.valueOf(fadeDelayOffset));
+        fadeDelayFactorInput.setText(String.valueOf(fadeDelayFactor));
+        fadeSpeedInput.setText(String.valueOf(fadeSpeed));
+        minOpacityInput.setText(String.valueOf(minOpacity));
+
+        this.multiLineEditBox.setMaxLength(1000);
+        this.multiLineEditBox.setChangeListener(string -> proximityMessage = string);
+        this.multiLineEditBox.setText(proximityMessage);
+
+        this.buildActivationRangeSlider(centerX - 140, currentY += 115);
+        this.buildDisplayAboveBlocksCheckbox(centerX - 1, currentY += 30);
+        this.buildDoneButton(centerX + 15, currentY -=2);
+        this.buildSaveButton(centerX + 80, currentY);
+    }
+
+    private void buildTitle(int x, int y){
         this.addDrawableChild(TextBuilder.create()
-                .setPosition(centerX - 140, currentY)
+                .setPosition(x, y)
                 .setSize(280, 20)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_marker"))
                 .build()
         );
+    }
 
-        this.addDrawableChild(DropdownBuilder.<PathData>create()
-                .setPosition(centerX - 140, currentY += 40)
+    private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder)
+    {
+        InputBoxWidget colorInputBox = InputBoxBuilder.create()
+                .setPosition(x, y)
+                .setSize(90, 17)
+                .setValidator(text ->
+                {
+                    if (!text.matches("^#([a-fA-F0-9]{6})$"))
+                        throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors.validation.error").getString());
+                })
+                .setPlaceholder(Text.translatable(placeholder))
+                .build();
+
+        colorInputBox.setText(textColor.asHexString());
+        colorInputBox.setTextColor(textColor.asHex());
+
+        colorInputBox.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors_tooltip")));
+
+        colorInputBox.setChangeListener(input ->{
+            colorInputBox.validateText();
+            Color color = Color.fromHexString(input);
+            colorInputBox.setTextColor(color.asHex());
+        });
+
+        return colorInputBox;
+    }
+
+    private boolean validateForm()
+    {
+        return pathColorPrimary.validateText() &&
+                pathColorSecondary.validateText() &&
+                pathColorTertiary.validateText() &&
+                charRevealInput.validateText() &&
+                fadeDelayOffsetInput.validateText() &&
+                fadeDelayFactorInput.validateText() &&
+                fadeSpeedInput.validateText() &&
+                minOpacityInput.validateText();
+    }
+
+    private DropdownWidget<PathData> buildPathSelectionDropdown(int x, int y)
+    {
+        return this.addDrawableChild(DropdownBuilder.<PathData>create()
+                .setPosition(x,y)
                 .setSize(280, 20)
                 .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_data"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
@@ -127,9 +232,12 @@ public class MarkerEditScreen extends Screen
                 })
                 .build()
         );
+    }
 
+    private void buildChapterSelectionDropdown(int x, int y)
+    {
         this.addDrawableChild(DropdownBuilder.<ChapterData>create()
-                .setPosition(centerX - 140, currentY += 40)
+                .setPosition(x,y)
                 .setSize(175, 20)
                 .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.chapter"))
                 .setOptionDisplay(item ->
@@ -146,41 +254,52 @@ public class MarkerEditScreen extends Screen
                 })
                 .build()
         );
+    }
 
+    private void buildEditChaptersButton(int x, int y)
+    {
         this.addDrawableChild(new ButtonWidget(
-                centerX + 40,
-                currentY,
+                x,
+                y,
                 100,
                 20,
                 Text.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"),
                 button -> this.client.setScreen(new ChapterEditScreen(this)),
                 Supplier::get
         ));
+    }
 
+    private void buildChapterStartCheckbox(int x, int y)
+    {
         this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 49, currentY += 30)
+                .setPosition(x,y)
                 .setSize(15, 15)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
                 .setChecked(isChapterStart)
                 .setOnChange(checked -> isChapterStart = checked)
                 .build()
         );
+    }
 
+    private void buildMultilineEditBox(int x, int y)
+    {
         this.multiLineEditBox = this.addDrawableChild(new EditBoxWidget(
                 Client.mc().textRenderer,
-                centerX - 140,
-                currentY += 40,
+                x,
+                y,
                 180,
                 100,
                 Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message_placeholder"),
                 Text.empty()
         ));
+    }
 
-        var sideY = currentY;
-
-        var charRevealInput = this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(centerX + 100, sideY)
+    private InputBoxWidget buildIntegerInput(int x, int y)
+    {
+        return this.addDrawableChild(InputBoxBuilder.create()
+                .setPosition(x, y)
                 .setSize(40, 17)
+                .setPlaceholder(Text.empty())
                 .setValidator(text ->
                 {
                     try
@@ -194,93 +313,13 @@ public class MarkerEditScreen extends Screen
                 })
                 .build()
         );
-        charRevealInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.rspeed_tooltip")));
+    }
 
-        var fadeDelayOffsetInput = this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(centerX + 100, sideY += 20)
-                .setSize(40, 17)
-                .setValidator(text ->
-                {
-                    try
-                    {
-                        Integer.parseInt(text);
-                    }
-                    catch (NumberFormatException e)
-                    {
-                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
-                    }
-                })
-                .build()
-        );
-        fadeDelayOffsetInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.ffactor_tooltip")));
-
-        var fadeDelayFactorInput = this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(centerX + 100, sideY+= 20)
-                .setSize(40, 17)
-                .setValidator(text ->
-                {
-                    try
-                    {
-                        Integer.parseInt(text);
-                    }
-                    catch (NumberFormatException e)
-                    {
-                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
-                    }
-                })
-                .build()
-        );
-        fadeDelayFactorInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fdelay_tooltip")));
-
-        var fadeSpeedInput = this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(centerX + 100, sideY+= 20)
-                .setSize(40, 17)
-                .setValidator(text ->
-                {
-                    try
-                    {
-                        Integer.parseInt(text);
-                    }
-                    catch (NumberFormatException e)
-                    {
-                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
-                    }
-                })
-                .build()
-        );
-        fadeSpeedInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fspeed_tooltip")));
-
-        var minOpacityInput = this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(centerX + 100, sideY+= 20)
-                .setSize(40, 17)
-                .setValidator(text ->
-                {
-                    try
-                    {
-                        Integer.parseInt(text);
-                    }
-                    catch (NumberFormatException e)
-                    {
-                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
-                    }
-                })
-                .build()
-        );
-        minOpacityInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.opacity_tooltip")));
-
-        charRevealInput.setText(String.valueOf(charRevealSpeed));
-        fadeDelayOffsetInput.setText(String.valueOf(fadeDelayOffset));
-        fadeDelayFactorInput.setText(String.valueOf(fadeDelayFactor));
-        fadeSpeedInput.setText(String.valueOf(fadeSpeed));
-        minOpacityInput.setText(String.valueOf(minOpacity));
-
-        this.multiLineEditBox.setMaxLength(1000);
-        this.multiLineEditBox.setChangeListener(string -> proximityMessage = string);
-        this.multiLineEditBox.setText(proximityMessage);
-
+    private void buildActivationRangeSlider(int x, int y)
+    {
         this.addDrawableChild(new SliderWidget(
-                centerX - 140,
-                currentY += 115,
+                x,
+                y,
                 280,
                 20,
                 ScreenTexts.EMPTY,
@@ -303,50 +342,72 @@ public class MarkerEditScreen extends Screen
                 activationRange = MathHelper.floor(MathHelper.clampedLerp(0.0, 100.0, this.value));
             }
         });
+    }
 
+    private void buildDisplayAboveBlocksCheckbox(int x, int y)
+    {
         this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 1, currentY += 30)
+                .setPosition(x, y)
                 .setSize(15, 15)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.display_trail_above_blocks"))
                 .setChecked(displayAboveBlocks)
                 .setOnChange(checked -> displayAboveBlocks = checked)
                 .build()
         );
+    }
 
+    private void buildDoneButton(int x, int y){
         this.addDrawableChild(new ButtonWidget(
-                centerX + 15,
-                currentY -= 2,
+                x,
+                y,
                 60,
                 20,
                 Text.translatable("ardapaths.generic.done"),
                 button -> {
-                    charRevealSpeed = Integer.parseInt(charRevealInput.getText());
-                    fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
-                    fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
-                    fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
-                    minOpacity = Integer.parseInt(minOpacityInput.getText());
 
-                    close();
+                    if (validateForm()) {
+
+                        charRevealSpeed = Integer.parseInt(charRevealInput.getText());
+                        fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
+                        fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
+                        fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
+                        minOpacity = Integer.parseInt(minOpacityInput.getText());
+
+                        close();
+                    } else {
+
+                        ArdaPaths.LOGGER.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
+                    }
                 },
                 Supplier::get
         ));
+    }
 
+    private void buildSaveButton(int x, int y)
+    {
         this.addDrawableChild(new ButtonWidget(
-                centerX + 80,
-                currentY,
+                x,
+                y,
                 60,
                 20,
                 Text.translatable("ardapaths.generic.save"),
                 button ->
                 {
-                    charRevealSpeed = Integer.parseInt(charRevealInput.getText());
-                    fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
-                    fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
-                    fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
-                    minOpacity = Integer.parseInt(minOpacityInput.getText());
+                    if (validateForm()) {
 
-                    save();
-                    this.clearAndInit();
+                        charRevealSpeed = Integer.parseInt(charRevealInput.getText());
+                        fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
+                        fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
+                        fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
+                        minOpacity = Integer.parseInt(minOpacityInput.getText());
+
+                        save();
+                        this.clearAndInit();
+
+                    } else {
+
+                        ArdaPaths.LOGGER.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
+                    }
                 },
                 Supplier::get
         ));
@@ -358,10 +419,12 @@ public class MarkerEditScreen extends Screen
         this.renderBackground(context);
 
         int centerX = this.width / 2;
-        int currentY = 60;
-        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 93, 0xFFFFFF);
+        int currentY = 87;
 
-        int sideY = 170;
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.path_colors"), centerX - 140, currentY, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 108, 0xFFFFFF);
+
+        int sideY = 215;
 
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.rspeed"), centerX + 49, sideY, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fdelay"), centerX + 52, sideY += 20, 0xFFFFFF);
@@ -417,6 +480,35 @@ public class MarkerEditScreen extends Screen
         {
             ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, selectedChapterId);
             PacketRegistry.CHAPTER_START_REMOVE.send(packet);
+        }
+
+        // Update path colors if changed
+        if (pathSelectionDropdown.getSelected() != null) {
+
+            Color initialPathPrimaryColor = pathSelectionDropdown.getSelected().getPrimaryColor();
+            Color initialPathSecondaryColor = pathSelectionDropdown.getSelected().getSecondaryColor();
+            Color initialPathTertiaryColor = pathSelectionDropdown.getSelected().getTertiaryColor();
+
+            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getText());
+            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getText());
+            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getText());
+
+            if (inputPrimaryColor.asHex() != initialPathPrimaryColor.asHex() ||
+                inputSecondaryColor.asHex() != initialPathSecondaryColor.asHex() ||
+                inputTertiaryColor.asHex() != initialPathTertiaryColor.asHex()) {
+
+                pathSelectionDropdown.getSelected().setPrimaryColor(inputPrimaryColor);
+                pathSelectionDropdown.getSelected().setSecondaryColor(inputSecondaryColor);
+                pathSelectionDropdown.getSelected().setTertiaryColor(inputTertiaryColor);
+
+                PathDataUpdatePacket pathDataUpdatePacket = new PathDataUpdatePacket(pathSelectionDropdown.getSelected().getId(),
+                        pathSelectionDropdown.getSelected().getName(),
+                        inputPrimaryColor.asHex(),
+                        inputSecondaryColor.asHex(),
+                        inputTertiaryColor.asHex());
+
+                PacketRegistry.PATH_DATA_UPDATE_REQUEST.send(pathDataUpdatePacket);
+            }
         }
 
         PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());

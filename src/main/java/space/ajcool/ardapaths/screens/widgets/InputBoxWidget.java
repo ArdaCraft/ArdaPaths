@@ -3,11 +3,11 @@ package space.ajcool.ardapaths.screens.widgets;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.Client;
@@ -19,10 +19,11 @@ public class InputBoxWidget extends EditBoxWidget
     private final TextValidator validator;
     private String errorMessage;
     private boolean hasValidatedOnce;
+    private int backgroundColor = Integer.MIN_VALUE;
 
     public InputBoxWidget(int x, int y, int width, int height, Text title, Text placeholder, TextValidator validator, boolean enabled)
     {
-        super(Client.mc().textRenderer, x, y, width, height, placeholder, title);
+        super(Client.mc().textRenderer, x, y, width, height, placeholder, title != null ? title : Text.empty());
         this.validator = validator;
         this.errorMessage = null;
         this.hasValidatedOnce = false;
@@ -116,6 +117,31 @@ public class InputBoxWidget extends EditBoxWidget
             return;
         }
 
+        if (backgroundColor != Integer.MIN_VALUE) {
+
+            // 1. Draw your colored text *on top of* the textbox
+            String raw = this.getText();
+
+            // Convert raw text → colored styled text (you define this)
+            Text colored = Text.literal(this.getText()).fillStyle(Style.EMPTY.withColor(backgroundColor));;
+
+            // Coordinates for drawing inside the box
+            int textX = this.getX() + 4;
+            int textY = this.getY() + (this.height - 8) / 2;
+
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 5); // ensure it's above box text
+            context.drawText(
+                    Client.mc().textRenderer,
+                    colored,
+                    textX,
+                    textY,
+                    0xFFFFFFFF, // ignored for literal() because color is inside the style
+                    false
+            );
+            context.getMatrices().pop();
+        }
+
         if (errorMessage != null && !errorMessage.isEmpty())
         {
             int errorX = this.getX();
@@ -195,5 +221,13 @@ public class InputBoxWidget extends EditBoxWidget
     {
         setText(text);
         resetValidation();
+    }
+
+    public int getBackgroundColor() {
+        return backgroundColor;
+    }
+
+    public void setTextColor(int backgroundColor) {
+        this.backgroundColor = backgroundColor;
     }
 }
