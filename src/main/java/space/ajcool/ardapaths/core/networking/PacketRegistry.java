@@ -16,6 +16,7 @@ public class PacketRegistry
     public static final PathMarkerUpdateHandler PATH_MARKER_UPDATE = register(new PathMarkerUpdateHandler());
     public static final PathDataRequestHandler PATH_DATA_REQUEST = register(new PathDataRequestHandler());
     public static final ChapterUpdateHandler CHAPTER_UPDATE = register(new ChapterUpdateHandler());
+    public static final ChapterDeleteHandler CHAPTER_DELETE = register(new ChapterDeleteHandler());
     public static final ChapterStartUpdateHandler CHAPTER_START_UPDATE = register(new ChapterStartUpdateHandler());
     public static final ChapterStartRemoveHandler CHAPTER_START_REMOVE = register(new ChapterStartRemoveHandler());
     public static final ChapterPlayerTeleportHandler CHAPTER_PLAYER_TELEPORT = register(new ChapterPlayerTeleportHandler());

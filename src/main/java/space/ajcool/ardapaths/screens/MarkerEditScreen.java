@@ -4,6 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
@@ -57,7 +58,7 @@ public class MarkerEditScreen extends Screen
         selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
 
-        ArdaPaths.LOGGER.info("" + marker.toNbt().toString());
+        ArdaPaths.LOGGER.info("Editing Marker NBT[{}]",marker.toNbt().toString());
 
         PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId);
 
@@ -103,18 +104,18 @@ public class MarkerEditScreen extends Screen
         this.addDrawableChild(TextBuilder.create()
                 .setPosition(centerX - 140, currentY)
                 .setSize(280, 20)
-                .setText(Text.literal("Edit Path Marker"))
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_marker"))
                 .build()
         );
 
         this.addDrawableChild(DropdownBuilder.<PathData>create()
                 .setPosition(centerX - 140, currentY += 40)
                 .setSize(280, 20)
-                .setTitle(Text.literal("Edit Data for Path:"))
+                .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_data"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(item ->
                 {
-                    if (item == null) return Text.literal("No Path");
+                    if (item == null) return Text.translatable("ardapaths.client.marker.configuration.screens.no_path");
                     return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
                 })
                 .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId))
@@ -130,10 +131,10 @@ public class MarkerEditScreen extends Screen
         this.addDrawableChild(DropdownBuilder.<ChapterData>create()
                 .setPosition(centerX - 140, currentY += 40)
                 .setSize(175, 20)
-                .setTitle(Text.literal("Chapter:"))
+                .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.chapter"))
                 .setOptionDisplay(item ->
                 {
-                    if (item == null) return Text.literal("No Chapter");
+                    if (item == null) return Text.translatable("ardapaths.client.marker.configuration.screens.no_chapter");
                     return Text.literal(item.getName());
                 })
                 .setOptions(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapters())
@@ -151,15 +152,15 @@ public class MarkerEditScreen extends Screen
                 currentY,
                 100,
                 20,
-                Text.literal("Edit Chapters"),
+                Text.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"),
                 button -> this.client.setScreen(new ChapterEditScreen(this)),
                 Supplier::get
         ));
 
         this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 45, currentY += 30)
+                .setPosition(centerX - 49, currentY += 30)
                 .setSize(15, 15)
-                .setText(Text.literal("Is chapter start :"))
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
                 .setChecked(isChapterStart)
                 .setOnChange(checked -> isChapterStart = checked)
                 .build()
@@ -171,7 +172,7 @@ public class MarkerEditScreen extends Screen
                 currentY += 40,
                 180,
                 100,
-                Text.literal("Add your message here..."),
+                Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message_placeholder"),
                 Text.empty()
         ));
 
@@ -188,11 +189,12 @@ public class MarkerEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
+        charRevealInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.rspeed_tooltip")));
 
         var fadeDelayOffsetInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX + 100, sideY += 20)
@@ -205,11 +207,12 @@ public class MarkerEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
+        fadeDelayOffsetInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.ffactor_tooltip")));
 
         var fadeDelayFactorInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX + 100, sideY+= 20)
@@ -222,11 +225,12 @@ public class MarkerEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
+        fadeDelayFactorInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fdelay_tooltip")));
 
         var fadeSpeedInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX + 100, sideY+= 20)
@@ -239,11 +243,12 @@ public class MarkerEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
+        fadeSpeedInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.fspeed_tooltip")));
 
         var minOpacityInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX + 100, sideY+= 20)
@@ -256,11 +261,12 @@ public class MarkerEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
+        minOpacityInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.opacity_tooltip")));
 
         charRevealInput.setText(String.valueOf(charRevealSpeed));
         fadeDelayOffsetInput.setText(String.valueOf(fadeDelayOffset));
@@ -288,7 +294,7 @@ public class MarkerEditScreen extends Screen
             @Override
             protected void updateMessage()
             {
-                this.setMessage(Text.literal("Activation Range: " + activationRange));
+                this.setMessage(Text.translatable("ardapaths.client.marker.configuration.screens.activation_range", activationRange));
             }
 
             @Override
@@ -299,9 +305,9 @@ public class MarkerEditScreen extends Screen
         });
 
         this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(centerX - 2, currentY += 30)
+                .setPosition(centerX - 1, currentY += 30)
                 .setSize(15, 15)
-                .setText(Text.literal("Display trail above blocks:"))
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.display_trail_above_blocks"))
                 .setChecked(displayAboveBlocks)
                 .setOnChange(checked -> displayAboveBlocks = checked)
                 .build()
@@ -312,7 +318,7 @@ public class MarkerEditScreen extends Screen
                 currentY -= 2,
                 60,
                 20,
-                Text.literal("Done"),
+                Text.translatable("ardapaths.generic.done"),
                 button -> {
                     charRevealSpeed = Integer.parseInt(charRevealInput.getText());
                     fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
@@ -330,7 +336,7 @@ public class MarkerEditScreen extends Screen
                 currentY,
                 60,
                 20,
-                Text.literal("Save"),
+                Text.translatable("ardapaths.generic.save"),
                 button ->
                 {
                     charRevealSpeed = Integer.parseInt(charRevealInput.getText());
@@ -353,15 +359,15 @@ public class MarkerEditScreen extends Screen
 
         int centerX = this.width / 2;
         int currentY = 60;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Proximity Message:"), centerX - 140, currentY + 93, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 93, 0xFFFFFF);
 
         int sideY = 170;
 
-        context.drawTextWithShadow(this.textRenderer, Text.literal("R Speed:"), centerX + 49, sideY, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("F Delay:"), centerX + 52, sideY += 20, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("F Factor:"), centerX + 45, sideY += 20, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("F Speed:"), centerX + 49, sideY += 20, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Opacity:"), centerX + 53, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.rspeed"), centerX + 49, sideY, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fdelay"), centerX + 52, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.ffactor"), centerX + 45, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fspeed"), centerX + 49, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.opacity"), centerX + 53, sideY += 20, 0xFFFFFF);
 
         super.render(context, mouseX, mouseY, delta);
     }

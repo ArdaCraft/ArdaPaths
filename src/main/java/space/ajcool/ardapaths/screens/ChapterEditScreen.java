@@ -1,11 +1,14 @@
 package space.ajcool.ardapaths.screens;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -17,14 +20,25 @@ import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 public class ChapterEditScreen extends Screen
 {
     private final Screen parent;
     private boolean creatingNew;
+    private DropdownWidget<ChapterData> chapterDropdown;
+    private InputBoxWidget idInput;
+    private InputBoxWidget nameInput;
+    private InputBoxWidget dateInput;
+    private InputBoxWidget indexInput;
+    private InputBoxWidget warpInput;
+    private DropdownWidget<PathData> pathDropdown;
 
     protected ChapterEditScreen(Screen parent)
     {
-        super(Text.literal("Chapter Edit Screen"));
+        super(Text.translatable("ardapaths.client.chapter.configuration.screens.chapter_edit_title"));
         this.parent = parent;
         this.creatingNew = false;
     }
@@ -38,39 +52,43 @@ public class ChapterEditScreen extends Screen
         this.addDrawableChild(TextBuilder.create()
                 .setPosition(centerX - 70, y)
                 .setSize(140, 20)
-                .setText(Text.literal("Edit Chapters"))
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"))
                 .build()
         );
 
-        DropdownWidget<PathData> pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
+        PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
+        pathDropdown = this.addDrawableChild(DropdownBuilder.<PathData>create()
                 .setPosition(centerX - 140, y += 40)
                 .setSize(280, 20)
-                .setTitle(Text.literal("Select Path:"))
+                .setTitle(Text.translatable("ardapaths.client.chapter.configuration.screens.select_path"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(path ->
                 {
-                    if (path == null) return Text.literal("No Path Selected");
+                    if (path == null) return Text.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected");
                     return Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex()));
                 })
-                .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
+                .setSelected(selectedPath)
                 .build()
         );
 
-        DropdownWidget<ChapterData> chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+        List<ChapterData> chapters = selectedPath != null ? new ArrayList<>(selectedPath.getChapters()) : new ArrayList<>();
+        chapters.sort(Comparator.comparingInt(ChapterData::getIndex));
+
+        chapterDropdown = this.addDrawableChild(DropdownBuilder.<ChapterData>create()
                 .setPosition(centerX - 140, y += 35)
-                .setSize(258, 20)
+                .setSize(238, 20)
                 .setTitle(Text.literal("Select Chapter to Edit:"))
-                .setOptions(ArdaPathsClient.CONFIG.getSelectedPath().getChapters())
+                .setOptions(chapters)
                 .setOptionDisplay(chapter ->
                 {
-                    if (chapter == null) return Text.literal("No Chapter Selected");
+                    if (chapter == null) return Text.translatable("ardapaths.generic.validation.chapter.screens.no_chapter_selected");
                     return Text.literal(chapter.getName());
                 })
                 .build()
         );
         int addButtonY = y;
 
-        InputBoxWidget idInput = this.addDrawableChild(InputBoxBuilder.create()
+        idInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX - 75, y += 40)
                 .setSize(150, 20)
                 .setPlaceholder(Text.literal("Id..."))
@@ -78,25 +96,25 @@ public class ChapterEditScreen extends Screen
                 {
                     if (text.length() < 3)
                     {
-                        throw new TextValidationError("Must be at least 3 characters long.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.string.three_char_long").getString());
                     }
                     else if (text.length() > 32)
                     {
-                        throw new TextValidationError("Cannot be more than 32 characters long.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.string.too_long_32").getString());
                     }
                     else if (creatingNew)
                     {
                         PathData path = pathDropdown.getSelected();
                         if (path == null)
                         {
-                            throw new TextValidationError("No path selected.");
+                            throw new TextValidationError(Text.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected").getString());
                         }
                         else if (path.getChapters() != null && !path.getChapters().isEmpty())
                         {
                             ChapterData chapter = path.getChapters().stream().filter(ch -> ch.getId().equalsIgnoreCase(text)).findFirst().orElse(null);
                             if (chapter != null)
                             {
-                                throw new TextValidationError("This ID is already in use.");
+                                throw new TextValidationError(Text.translatable("ardapaths.generic.validation.chapter.screens.id_in_use").getString());
                             }
                         }
                     }
@@ -104,24 +122,24 @@ public class ChapterEditScreen extends Screen
                 .build()
         );
 
-        InputBoxWidget nameInput = this.addDrawableChild(InputBoxBuilder.create()
+        nameInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX - 75, y += 30)
                 .setSize(150, 20)
-                .setPlaceholder(Text.literal("Name..."))
+                .setPlaceholder(Text.translatable("ardapaths.client.chapter.configuration.screens.name"))
                 .build()
         );
 
-        InputBoxWidget dateInput = this.addDrawableChild(InputBoxBuilder.create()
+        dateInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX - 75, y += 30)
                 .setSize(150, 20)
-                .setPlaceholder(Text.literal("Date..."))
+                .setPlaceholder(Text.translatable("ardapaths.client.chapter.configuration.screens.date"))
                 .build()
         );
 
-        InputBoxWidget indexInput = this.addDrawableChild(InputBoxBuilder.create()
+        indexInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX - 75, y += 30)
                 .setSize(150, 20)
-                .setPlaceholder(Text.literal("Index..."))
+                .setPlaceholder(Text.translatable("ardapaths.client.chapter.configuration.screens.index"))
                 .setValidator(text ->
                 {
                     try
@@ -130,16 +148,16 @@ public class ChapterEditScreen extends Screen
                     }
                     catch (NumberFormatException e)
                     {
-                        throw new TextValidationError("Must be an integer.");
+                        throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
                 .build()
         );
 
-        InputBoxWidget warpInput = this.addDrawableChild(InputBoxBuilder.create()
+        warpInput = this.addDrawableChild(InputBoxBuilder.create()
                 .setPosition(centerX - 75, y += 30)
                 .setSize(150, 20)
-                .setPlaceholder(Text.literal("Warp Location..."))
+                .setPlaceholder(Text.translatable("ardapaths.client.chapter.configuration.screens.warp_location"))
                 .build()
         );
 
@@ -147,33 +165,30 @@ public class ChapterEditScreen extends Screen
                         Text.literal("＋"),
                         button ->
                         {
-                            creatingNew = true;
-                            chapterDropdown.setSelected(null);
-                            idInput.enable();
-                            idInput.reset();
-                            nameInput.reset();
-                            dateInput.reset();
+                            resetFields();
                             indexInput.reset(String.valueOf(chapterDropdown.getOptions().size() + 1));
-                            warpInput.reset();
                         })
-                .position(centerX + 120, addButtonY)
+                .position(centerX + 100, addButtonY)
                 .size(20, 20)
-                .tooltip(Tooltip.of(Text.literal("Create a new chapter")))
+                .tooltip(Tooltip.of(Text.translatable("ardapaths.client.chapter.configuration.screens.create_chapter")))
                 .build()
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Clear"),
+                        Text.literal("-"),
+                        button -> { deleteChapter(); })
+                .position(centerX + 120, addButtonY)
+                .size(20, 20)
+                .tooltip(Tooltip.of(Text.translatable("ardapaths.client.chapter.configuration.screens.delete_chapter")))
+                .build()
+        );
+
+        this.addDrawableChild(ButtonWidget.builder(
+                        Text.translatable("ardapaths.generic.clear"),
                         button ->
                         {
+                            resetFields();
                             creatingNew = false;
-                            chapterDropdown.setSelected(null);
-                            idInput.enable();
-                            idInput.reset();
-                            nameInput.reset();
-                            dateInput.reset();
-                            indexInput.reset();
-                            warpInput.reset();
                         })
                 .position(centerX - 152, y += 40)
                 .size(150, 20)
@@ -181,7 +196,7 @@ public class ChapterEditScreen extends Screen
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Save"),
+                        Text.translatable("ardapaths.generic.save"),
                         button ->
                         {
                             if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText())
@@ -199,15 +214,9 @@ public class ChapterEditScreen extends Screen
                             );
                             Paths.updateChapter(path.getId(), chapter);
 
-                            creatingNew = false;
                             chapterDropdown.setOptions(path.getChapters());
-                            chapterDropdown.setSelected(null);
-                            idInput.enable();
-                            idInput.reset();
-                            nameInput.reset();
-                            dateInput.reset();
-                            indexInput.reset();
-                            warpInput.reset();
+                            resetFields();
+                            creatingNew = false;
                         })
                 .position(centerX + 2, y)
                 .size(150, 20)
@@ -218,13 +227,9 @@ public class ChapterEditScreen extends Screen
         {
             if (path == null) return;
             chapterDropdown.setOptions(path.getChapters());
-            chapterDropdown.setSelected(null);
-            idInput.enable();
-            idInput.reset();
-            nameInput.reset();
-            dateInput.reset();
-            indexInput.reset();
-            warpInput.reset();
+            boolean isCreatingNew = creatingNew;
+            resetFields();
+            creatingNew = isCreatingNew;
         });
 
         chapterDropdown.setOnSelect(chapter ->
@@ -237,6 +242,50 @@ public class ChapterEditScreen extends Screen
             indexInput.setText(String.valueOf(chapter.getIndex()));
             warpInput.setText(chapter.getWarp());
         });
+    }
+
+    private void deleteChapter() {
+
+        assert client != null;
+
+        PathData path = pathDropdown.getSelected();
+        if (path == null) return;
+
+        ChapterData chapter = chapterDropdown.getSelected();
+        if (chapter == null) return;
+
+        if (chapter.getName().equalsIgnoreCase("default")) {
+            ArdaPaths.LOGGER.warn("Attempted to delete default chapter, action blocked.");
+
+            var message = Text.empty().append(Text.translatable("ardapaths.client.chapter.configuration.screens.error.delete_default_chapter").formatted(Formatting.RED));
+            MinecraftClient.getInstance().player.sendMessage(message);
+
+            return;
+        }
+
+        client.setScreen(new ConfirmationPopup(
+                Text.translatable("ardapaths.client.marker.configuration.screens.chapter_delete_popup_text", chapter.getName()),
+                // Popup closed / confirm
+                () -> {
+
+                    Paths.deleteChapter(path.getId(), chapter);
+                    resetFields();
+                },
+                // Popup closed / decline
+                () -> { ArdaPaths.LOGGER.info("Canceled chapter deletion."); },
+                this
+        ));
+    }
+
+    private void resetFields() {
+        creatingNew = true;
+        chapterDropdown.setSelected(null);
+        idInput.enable();
+        idInput.reset();
+        nameInput.reset();
+        dateInput.reset();
+        indexInput.reset();
+        warpInput.reset();
     }
 
     @Override

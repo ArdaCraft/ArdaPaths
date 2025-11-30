@@ -62,8 +62,8 @@ public class ArdaPathsClient implements ClientModInitializer
                 PathMarkerBlock.selectedBlockPosition = null;
 
                 var message = Text.empty()
-                        .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                        .append(Text.literal("Deselected origin block.").formatted(Formatting.RED));
+                        .append(Text.translatable("ardapaths.client.message.ardaptaths").formatted(Formatting.DARK_AQUA))
+                        .append(Text.translatable("ardapaths.client.message.deselected_origin_block").formatted(Formatting.RED));
 
                 MinecraftClient.getInstance().player.sendMessage(message);
 
@@ -93,13 +93,13 @@ public class ArdaPathsClient implements ClientModInitializer
                         return;
                     } else {
                         var message = Text.empty()
-                                .append(Text.literal("Last visited trail does not belong to the current chapter. Teleporting to chapter start instead...").formatted(Formatting.DARK_AQUA));
+                                .append(Text.translatable("ardapaths.client.message.trail_does_not_belong_to_chapter").formatted(Formatting.DARK_AQUA));
                         MinecraftClient.getInstance().player.sendMessage(message);
                     }
                 } else {
 
                     var message = Text.empty()
-                            .append(Text.literal("No last visited trail node data found, teleporting to chapter start instead...").formatted(Formatting.DARK_AQUA));
+                            .append(Text.translatable("ardapaths.client.message.no_trail_data").formatted(Formatting.DARK_AQUA));
                     MinecraftClient.getInstance().player.sendMessage(message);
                     ArdaPaths.LOGGER.info("");
                 }
@@ -109,7 +109,7 @@ public class ArdaPathsClient implements ClientModInitializer
                 else {
 
                     var message = Text.empty()
-                            .append(Text.literal("No chapter selected, cannot teleport.").formatted(Formatting.DARK_AQUA));
+                            .append(Text.translatable("ardapaths.client.message.no_chapter_selected").formatted(Formatting.DARK_AQUA));
                     MinecraftClient.getInstance().player.sendMessage(message);
                 }
 
