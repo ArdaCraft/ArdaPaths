@@ -6,6 +6,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
@@ -53,6 +54,7 @@ public class TrailRenderer
         {
             clearTrails();
             ProximityMessageRenderer.clearMessage();
+            ProximityTitleRenderer.clearMessage();
             return;
         }
 
@@ -83,11 +85,19 @@ public class TrailRenderer
 
                 if (currentChapterData != null)
                 {
-                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && !currentChapterData.getProximityMessage().isEmpty() && renderMessages)
+                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && renderMessages)
                     {
-                        var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
+                        if (!currentChapterData.getProximityMessage().isEmpty() ) {
 
-                        ProximityMessageRenderer.setMessage(animatedMessage);
+                            var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
+                            ProximityMessageRenderer.setMessage(animatedMessage);
+                        }
+
+                        ChapterData currentChapterInfo =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(currentChapterData.getChapterId());
+                        if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail()){
+
+                            ProximityTitleRenderer.setTitle(currentChapterInfo.getIndex(), currentChapterInfo.getName(), currentPathColors[0], currentPathColors[1]);
+                        }
                     }
 
                     if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance)
@@ -127,7 +137,16 @@ public class TrailRenderer
                                 .map(ChapterData::getId)
                                 .orElse(otherChapterId);
                     }
+/*
+                    if(!otherChapterId.equals(ArdaPathsClient.CONFIG.getCurrentChapterId())){
 
+                        ArdaPaths.LOGGER.info("Auto-switching to chapter: {}", otherChapterId);
+                        ChapterData newChapter =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
+
+                        //if (newChapter != null && otherChapterData.isDisplayChapterTitleOnTrail())
+                          //  ProximityTitleRenderer.setTitle(newChapter.getIndex(), newChapter.getName(), currentPathColors[0], currentPathColors[1]);
+                    }
+*/
                     ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
                     ArdaPathsClient.CONFIG_MANAGER.save();
                 }

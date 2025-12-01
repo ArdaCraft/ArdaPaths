@@ -29,6 +29,7 @@ import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
@@ -43,6 +44,7 @@ public class MarkerEditScreen extends Screen
     private String selectedPathId;
     private String selectedChapterId;
     private boolean isChapterStart;
+    private boolean showChapterStartTitle;
     private String proximityMessage;
     private int activationRange;
     private boolean displayAboveBlocks;
@@ -56,6 +58,7 @@ public class MarkerEditScreen extends Screen
     private InputBoxWidget pathColorPrimary;
     private InputBoxWidget pathColorSecondary;
     private InputBoxWidget pathColorTertiary;
+    private CheckboxWidget displayChapterTitleOnTrail;
 
     private int charRevealSpeed;
     private int fadeDelayOffset;
@@ -76,6 +79,7 @@ public class MarkerEditScreen extends Screen
         PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId);
 
         this.isChapterStart = data.isChapterStart();
+        this.showChapterStartTitle = data.isDisplayChapterTitleOnTrail();
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
         this.displayAboveBlocks = data.displayAboveBlocks();
@@ -131,6 +135,7 @@ public class MarkerEditScreen extends Screen
         this.buildChapterSelectionDropdown(centerX - 140, currentY += 40);
         this.buildEditChaptersButton(centerX + 40, currentY);
         this.buildChapterStartCheckbox(centerX - 49, currentY += 30);
+        displayChapterTitleOnTrail = this.buildChapterStartHideTitleCheckbox(centerX + 125, currentY);
         this.buildMultilineEditBox(centerX - 140,currentY += 40);
 
         var sideY = currentY;
@@ -276,7 +281,23 @@ public class MarkerEditScreen extends Screen
                 .setSize(15, 15)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
                 .setChecked(isChapterStart)
-                .setOnChange(checked -> isChapterStart = checked)
+                .setOnChange(checked -> {
+                    isChapterStart = checked;
+                    displayChapterTitleOnTrail.setEnabled(isChapterStart);
+                })
+                .build()
+        );
+    }
+
+    private CheckboxWidget buildChapterStartHideTitleCheckbox(int x, int y)
+    {
+        return addDrawableChild(CheckboxBuilder.create()
+                .setPosition(x,y)
+                .setSize(15, 15)
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.show_title_on_trail"))
+                .setChecked(showChapterStartTitle)
+                .setEnabled(isChapterStart)
+                .setOnChange(checked -> showChapterStartTitle = checked)
                 .build()
         );
     }
@@ -465,6 +486,7 @@ public class MarkerEditScreen extends Screen
         data.setProximityMessage(proximityMessage);
         data.setActivationRange(activationRange);
         data.setChapterStart(isChapterStart);
+        data.setDisplayChapterTitleOnTrail(isChapterStart && showChapterStartTitle);
         data.setDisplayAboveBlocks(displayAboveBlocks);
 
         var packedData = BitPacker.packFive(charRevealSpeed, fadeDelayOffset, fadeDelayFactor, fadeSpeed, minOpacity);

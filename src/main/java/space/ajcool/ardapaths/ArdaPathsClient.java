@@ -24,6 +24,7 @@ import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
+import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class ArdaPathsClient implements ClientModInitializer
         ModParticles.initClient();
 
         HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
+        HudRenderCallback.EVENT.register(ProximityTitleRenderer::render);
 
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
 

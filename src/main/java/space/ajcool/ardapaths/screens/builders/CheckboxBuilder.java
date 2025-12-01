@@ -13,6 +13,7 @@ public class CheckboxBuilder
     private int height;
     private Text text;
     private boolean checked = false;
+    private boolean enabled = true;
     private Consumer<Boolean> onChange = null;
 
     public static CheckboxBuilder create()
@@ -46,6 +47,12 @@ public class CheckboxBuilder
         return this;
     }
 
+    public CheckboxBuilder setEnabled(boolean enabled)
+    {
+        this.enabled = enabled;
+        return this;
+    }
+
     public CheckboxBuilder setOnChange(Consumer<Boolean> onChange)
     {
         this.onChange = onChange;
@@ -54,6 +61,6 @@ public class CheckboxBuilder
 
     public CheckboxWidget build()
     {
-        return new CheckboxWidget(x, y, width, height, text, checked, onChange);
+        return new CheckboxWidget(x, y, width, height, text, checked, enabled, onChange);
     }
 }

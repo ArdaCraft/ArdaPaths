@@ -252,12 +252,13 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         private BlockPos target;
         private String chapterId;
         private boolean isChapterStart;
+        private boolean isDisplayChapterTitleOnTrail;
         private boolean displayAboveBlocks;
         private long packedMessageData;
 
         private ChapterNbtData(NbtCompound nbt)
         {
-            this("", 0, null, "", false, true, 360727776182960136L);
+            this("", 0, null, "", false, false, true, 360727776182960136L);
             this.applyNbt(nbt);
         }
 
@@ -267,6 +268,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
                 BlockPos target,
                 String chapterId,
                 boolean isChapterStart,
+                boolean isDisplayChapterTitleOnTrail,
                 boolean displayAboveBlocks,
                 long packedMessageData
         )
@@ -276,6 +278,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             this.target = target;
             this.chapterId = chapterId;
             this.isChapterStart = isChapterStart;
+            this.isDisplayChapterTitleOnTrail = isDisplayChapterTitleOnTrail;
             this.displayAboveBlocks = displayAboveBlocks;
             this.packedMessageData = packedMessageData;
         }
@@ -295,7 +298,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
          */
         public static ChapterNbtData empty(String chapterId)
         {
-            return new ChapterNbtData("", 0, null, chapterId, false, true, 360727776182960136L);
+            return new ChapterNbtData("", 0, null, chapterId, false, false, true, 360727776182960136L);
         }
 
         /**
@@ -394,6 +397,15 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             isChapterStart = chapterStart;
         }
 
+        public void setDisplayChapterTitleOnTrail(boolean displayChapterTitleOnTrail)
+        {
+            isDisplayChapterTitleOnTrail = displayChapterTitleOnTrail;
+        }
+
+        public boolean isDisplayChapterTitleOnTrail() {
+            return isDisplayChapterTitleOnTrail;
+        }
+
         /**
          * @return Whether the path marker should display above blocks
          */
@@ -443,6 +455,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             if (!proximityMessage.isEmpty()) return false;
             if (activationRange != 0) return false;
             if (isChapterStart) return false;
+            if (isDisplayChapterTitleOnTrail) return false;
             if (!displayAboveBlocks) return false;
             if (packedMessageData == 360727776182960136L) return false;
 
@@ -462,6 +475,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             this.activationRange = nbt.getInt("activation_range");
             this.chapterId = nbt.getString("chapter");
             this.isChapterStart = nbt.getBoolean("chapter_start");
+            this.isDisplayChapterTitleOnTrail = nbt.getBoolean("display_chapter_title_on_trail");
             this.displayAboveBlocks = !nbt.contains("display_above_blocks") || nbt.getBoolean("display_above_blocks");
             this.packedMessageData = nbt.contains("packed_message_data") ? nbt.getLong("packed_message_data") : 360727776182960136L;
         }
@@ -481,6 +495,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
             if (activationRange != 0) nbt.putInt("activation_range", activationRange);
             if (!chapterId.isEmpty()) nbt.putString("chapter", chapterId);
             if (isChapterStart) nbt.putBoolean("chapter_start", true);
+            if (isDisplayChapterTitleOnTrail) nbt.putBoolean("display_chapter_title_on_trail", true);
             if (!displayAboveBlocks) nbt.putBoolean("display_above_blocks", false);
             if (packedMessageData != 360727776182960136L && packedMessageData != 0) nbt.putLong("packed_message_data", packedMessageData);
 

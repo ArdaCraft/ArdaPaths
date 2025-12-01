@@ -119,7 +119,7 @@ public class InputBoxWidget extends EditBoxWidget
 
         if (backgroundColor != Integer.MIN_VALUE) {
 
-            // 1. Draw your colored text *on top of* the textbox
+            // Draw colored text on top of the textbox
             String raw = this.getText();
 
             // Convert raw text → colored styled text (you define this)

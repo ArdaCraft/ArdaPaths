@@ -2,6 +2,7 @@ package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -103,22 +104,25 @@ public class AnimatedMessage
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
+        renderAnimatedMessage(drawContext, elapsedMillis, font, width, height);
+
+        RenderSystem.disableBlend();
+    }
+
+    private void renderAnimatedMessage(DrawContext drawContext, long elapsedMillis, TextRenderer font, int width, int height) {
+
         int textLength = message.length() + 1;
-        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min((int)(elapsedMillis / charRevealSpeed), textLength), 1);
+        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min((int) (elapsedMillis / charRevealSpeed), textLength), 1);
 
         var splitMessage = message.split("\n");
         int numCharsLeft = numChars;
 
         var lines = new ArrayList<Text>();
-        for (String line : splitMessage)
-        {
-            if (line.length() < numCharsLeft)
-            {
+        for (String line : splitMessage) {
+            if (line.length() < numCharsLeft) {
                 lines.add(Text.literal(line));
                 numCharsLeft -= line.length();
-            }
-            else
-            {
+            } else {
                 var partialLine = Text.empty()
                         .append(Text.literal(line.substring(0, numCharsLeft - 1))) // fully visible
                         .append(Text.literal(line.substring(numCharsLeft - 1, numCharsLeft))
@@ -131,19 +135,16 @@ public class AnimatedMessage
 
         int opacity = 255;
         int fadeDelay = fadeDelayOffset + (textLength * fadeDelayFactor);
-        if (elapsedMillis > fadeDelay)
-        {
-            opacity = 255 - (int)((elapsedMillis - fadeDelay) / fadeSpeed);
+        if (elapsedMillis > fadeDelay) {
+            opacity = 255 - (int) ((elapsedMillis - fadeDelay) / fadeSpeed);
         }
 
-        if (opacity <= minOpacity)
-        {
+        if (opacity <= minOpacity) {
             showing = false;
             done = true;
         }
 
-        for (int i = 0; i < lines.size(); i++)
-        {
+        for (int i = 0; i < lines.size(); i++) {
             drawContext.drawCenteredTextWithShadow(
                     font,
                     lines.get(i),
@@ -152,8 +153,6 @@ public class AnimatedMessage
                     ColorHelper.Argb.getArgb(opacity, 255, 255, 255)
             );
         }
-
-        RenderSystem.disableBlend();
     }
 
     public String getMessage ()

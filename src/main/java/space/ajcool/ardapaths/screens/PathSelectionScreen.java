@@ -18,6 +18,7 @@ import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
+import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
@@ -169,6 +170,7 @@ public class PathSelectionScreen extends Screen
                     this.close();
                     if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty())
                     {
+                        ProximityTitleRenderer.clearMessage();
                         Paths.gotoChapter(selectedChapterId);
                     }
                 },
@@ -191,6 +193,7 @@ public class PathSelectionScreen extends Screen
                     showProximityMessages = !showProximityMessages;
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityMessageRenderer.clearMessage();
+                    ProximityTitleRenderer.clearMessage();
                     button.setMessage(Text.translatable("ardapaths.client.configuration.screens.marker_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
                 },
                 Supplier::get

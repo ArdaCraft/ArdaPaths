@@ -58,6 +58,7 @@
   "ardapaths.client.marker.configuration.screens.proximity_message": "Proximity Message:",
   "ardapaths.client.marker.configuration.screens.proximity_message_placeholder": "Add your message here...",
   "ardapaths.client.marker.configuration.screens.is_chapter_start": "Is Chapter Start:",
+  "ardapaths.client.marker.configuration.screens.show_title_on_trail": "Show title on trail:",
   "ardapaths.client.marker.configuration.screens.edit_chapters": "Edit Chapters",
   "ardapaths.client.marker.configuration.screens.edit_data_for_path": "Edit Data for Path: %s",
   "ardapaths.client.chapter.configuration.screens.delete_chapter": "Delete a chapter",
