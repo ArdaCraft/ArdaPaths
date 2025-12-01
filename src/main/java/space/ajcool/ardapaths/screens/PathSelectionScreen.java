@@ -25,6 +25,8 @@ import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -34,6 +36,7 @@ public class PathSelectionScreen extends Screen
     private String selectedPathId;
     private String selectedChapterId;
     private boolean showProximityMessages;
+    private boolean showChapterTitles;
     private final double proximityTextSpeedMultiplier;
 
     public PathSelectionScreen()
@@ -42,6 +45,7 @@ public class PathSelectionScreen extends Screen
         this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         this.selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
         this.showProximityMessages = ArdaPathsClient.CONFIG.showProximityMessages();
+        this.showChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
         this.proximityTextSpeedMultiplier = ArdaPathsClient.CONFIG.getProximityTextSpeedMultiplier();
     }
 
@@ -71,7 +75,8 @@ public class PathSelectionScreen extends Screen
         this.addDrawableChild(initializeReturnToPathButton(center - 65,y += 30));
         this.addDrawableChild(initializeReturnToChapterStartButton(center - 65,y += 30));
         this.addDrawableChild(initializeProximityTextToggle(center - 65,y += 30));
-        this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center - 65, y + 30));
+        this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center - 65, y += 30));
+        this.addDrawableChild(initializeChapterTitleDisplayToggle(center - 65,y + 30));
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
@@ -112,7 +117,8 @@ public class PathSelectionScreen extends Screen
 
     private @NotNull DropdownWidget<ChapterData> initializeChapterSelectionDropDown(int center, int y, PathData currentPath, ChapterData currentChapter) {
 
-        List<ChapterData> chapterData = currentPath != null ? currentPath.getChapters() : List.of();
+        List<ChapterData> chapterData = currentPath != null ? new ArrayList<>(currentPath.getChapters()) : new ArrayList<>();
+        chapterData.sort(Comparator.comparingInt(ChapterData::getIndex));
 
         return DropdownBuilder.<ChapterData>create()
                 .setPosition(center, y)
@@ -181,6 +187,28 @@ public class PathSelectionScreen extends Screen
         return returnChapterStartButton;
     }
 
+    private @NotNull ButtonWidget initializeChapterTitleDisplayToggle(int center, int y) {
+
+        ButtonWidget chapterTitleDisplayToggle = new ButtonWidget(
+                center, y,
+                130,
+                20,
+                Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))),
+                button ->
+                {
+                    showChapterTitles = !showChapterTitles;
+                    Paths.showChapterTitles(showChapterTitles);
+                    ProximityMessageRenderer.clearMessage();
+                    ProximityTitleRenderer.clearMessage();
+                    button.setMessage(Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
+                },
+                Supplier::get
+        );
+        chapterTitleDisplayToggle.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.chapter_titles_tooltip")));
+
+        return chapterTitleDisplayToggle;
+    }
+
     private @NotNull ButtonWidget initializeProximityTextToggle(int center, int y) {
 
         ButtonWidget proximityTextToggle = new ButtonWidget(
@@ -194,7 +222,7 @@ public class PathSelectionScreen extends Screen
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityMessageRenderer.clearMessage();
                     ProximityTitleRenderer.clearMessage();
-                    button.setMessage(Text.translatable("ardapaths.client.configuration.screens.marker_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
+                    button.setMessage(Text.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
                 },
                 Supplier::get
         );

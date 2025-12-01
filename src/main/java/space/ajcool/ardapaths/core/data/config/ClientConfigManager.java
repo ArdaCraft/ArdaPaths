@@ -31,6 +31,7 @@ public class ClientConfigManager extends ConfigManager<ClientConfig>
     {
         ClientConfig config = new ClientConfig();
         config.showProximityMessages(true);
+        config.showChapterTitles(false);
         return config;
     }
 

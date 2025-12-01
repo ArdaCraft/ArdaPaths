@@ -11,7 +11,10 @@ import net.minecraft.util.Formatting;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
@@ -34,6 +37,10 @@ public class ChapterEditScreen extends Screen
     private InputBoxWidget dateInput;
     private InputBoxWidget indexInput;
     private InputBoxWidget warpInput;
+    private InputBoxWidget pathColorPrimary;
+    private InputBoxWidget pathColorSecondary;
+    private InputBoxWidget pathColorTertiary;
+    private ButtonWidget applyColorChangesButton;
     private DropdownWidget<PathData> pathDropdown;
 
     protected ChapterEditScreen(Screen parent)
@@ -70,6 +77,26 @@ public class ChapterEditScreen extends Screen
                 .setSelected(selectedPath)
                 .build()
         );
+
+        var defaultTextColor = new Color(255, 255, 255);
+
+        pathColorPrimary = buildColorInputBox(centerX - 140, y += 42, pathDropdown.getSelected() != null ? pathDropdown.getSelected().getPrimaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_primary_color");
+        pathColorSecondary = buildColorInputBox(centerX - 70, y, pathDropdown.getSelected() != null ? pathDropdown.getSelected().getSecondaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_secondary_color");
+        pathColorTertiary = buildColorInputBox(centerX, y, pathDropdown.getSelected() != null ? pathDropdown.getSelected().getTertiaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_tertiary_color");
+
+        this.addDrawableChild(pathColorPrimary);
+        this.addDrawableChild(pathColorSecondary);
+        this.addDrawableChild(pathColorTertiary);
+
+        applyColorChangesButton = ButtonWidget.builder(
+                        Text.translatable("ardapaths.generic.apply"),
+                                button -> { saveColorsToPath(); })
+                        .position(centerX + 90, y)
+                        .size(50, 20)
+                        .tooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors_apppy_tooltip")))
+                        .build();
+        applyColorChangesButton.active = hasPathColorChanges();
+        addDrawableChild(applyColorChangesButton);
 
         List<ChapterData> chapters = selectedPath != null ? new ArrayList<>(selectedPath.getChapters()) : new ArrayList<>();
         chapters.sort(Comparator.comparingInt(ChapterData::getIndex));
@@ -214,6 +241,8 @@ public class ChapterEditScreen extends Screen
                             );
                             Paths.updateChapter(path.getId(), chapter);
 
+                            saveColorsToPath();
+
                             chapterDropdown.setOptions(path.getChapters());
                             resetFields();
                             creatingNew = false;
@@ -242,6 +271,59 @@ public class ChapterEditScreen extends Screen
             indexInput.setText(String.valueOf(chapter.getIndex()));
             warpInput.setText(chapter.getWarp());
         });
+    }
+
+    private void saveColorsToPath() {
+        // Update path colors if changed
+        if (hasPathColorChanges()) {
+
+            assert pathDropdown.getSelected() != null;
+
+            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getText());
+            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getText());
+            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getText());
+
+            pathDropdown.getSelected().setPrimaryColor(inputPrimaryColor);
+            pathDropdown.getSelected().setSecondaryColor(inputSecondaryColor);
+            pathDropdown.getSelected().setTertiaryColor(inputTertiaryColor);
+
+            PathDataUpdatePacket pathDataUpdatePacket = new PathDataUpdatePacket(pathDropdown.getSelected().getId(),
+                    pathDropdown.getSelected().getName(),
+                    inputPrimaryColor.asHex(),
+                    inputSecondaryColor.asHex(),
+                    inputTertiaryColor.asHex());
+
+            PacketRegistry.PATH_DATA_UPDATE_REQUEST.send(pathDataUpdatePacket);
+        }
+    }
+
+    private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder)
+    {
+        InputBoxWidget colorInputBox = InputBoxBuilder.create()
+                .setPosition(x, y)
+                .setSize(60, 17)
+                .setValidator(text ->
+                {
+                    if (!text.matches("^#([a-fA-F0-9]{6})$"))
+                        throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors.validation.error").getString());
+
+                    applyColorChangesButton.active = hasPathColorChanges();
+                })
+                .setPlaceholder(Text.translatable(placeholder))
+                .build();
+
+        colorInputBox.setText(textColor.asHexString());
+        colorInputBox.setTextColor(textColor.asHex());
+
+        colorInputBox.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors_tooltip")));
+
+        colorInputBox.setChangeListener(input ->{
+            colorInputBox.validateText();
+            Color color = Color.fromHexString(input);
+            colorInputBox.setTextColor(color.asHex());
+        });
+
+        return colorInputBox;
     }
 
     private void deleteChapter() {
@@ -277,6 +359,25 @@ public class ChapterEditScreen extends Screen
         ));
     }
 
+    private boolean hasPathColorChanges(){
+
+        if (pathDropdown.getSelected() != null) {
+            Color initialPathPrimaryColor = pathDropdown.getSelected().getPrimaryColor();
+            Color initialPathSecondaryColor = pathDropdown.getSelected().getSecondaryColor();
+            Color initialPathTertiaryColor = pathDropdown.getSelected().getTertiaryColor();
+
+            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getText());
+            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getText());
+            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getText());
+
+            return inputPrimaryColor.asHex() != initialPathPrimaryColor.asHex() ||
+                    inputSecondaryColor.asHex() != initialPathSecondaryColor.asHex() ||
+                    inputTertiaryColor.asHex() != initialPathTertiaryColor.asHex();
+        }
+
+        return false;
+    }
+
     private void resetFields() {
         creatingNew = true;
         chapterDropdown.setSelected(null);
@@ -293,6 +394,11 @@ public class ChapterEditScreen extends Screen
     {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
+
+        int centerX = this.width / 2;
+        int y = 85;
+
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.path_colors"), centerX - 139, y, 0xFFFFFF);
     }
 
     @Override

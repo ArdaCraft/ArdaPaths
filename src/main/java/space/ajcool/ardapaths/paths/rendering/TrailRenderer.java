@@ -42,6 +42,7 @@ public class TrailRenderer
         if (player == null) return;
 
         boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
+        boolean renderChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
 
         PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
         if (selectedPath == null) return;
@@ -85,16 +86,16 @@ public class TrailRenderer
 
                 if (currentChapterData != null)
                 {
-                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()) && renderMessages)
+                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()))
                     {
-                        if (!currentChapterData.getProximityMessage().isEmpty() ) {
+                        if (!currentChapterData.getProximityMessage().isEmpty() && renderMessages) {
 
                             var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
                             ProximityMessageRenderer.setMessage(animatedMessage);
                         }
 
                         ChapterData currentChapterInfo =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(currentChapterData.getChapterId());
-                        if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail()){
+                        if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail() && renderChapterTitles){
 
                             ProximityTitleRenderer.setTitle(currentChapterInfo.getIndex(), currentChapterInfo.getName(), currentPathColors[0], currentPathColors[1]);
                         }
@@ -137,16 +138,7 @@ public class TrailRenderer
                                 .map(ChapterData::getId)
                                 .orElse(otherChapterId);
                     }
-/*
-                    if(!otherChapterId.equals(ArdaPathsClient.CONFIG.getCurrentChapterId())){
 
-                        ArdaPaths.LOGGER.info("Auto-switching to chapter: {}", otherChapterId);
-                        ChapterData newChapter =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
-
-                        //if (newChapter != null && otherChapterData.isDisplayChapterTitleOnTrail())
-                          //  ProximityTitleRenderer.setTitle(newChapter.getIndex(), newChapter.getName(), currentPathColors[0], currentPathColors[1]);
-                    }
-*/
                     ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
                     ArdaPathsClient.CONFIG_MANAGER.save();
                 }

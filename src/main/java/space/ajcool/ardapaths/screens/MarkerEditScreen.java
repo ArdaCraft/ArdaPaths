@@ -34,6 +34,9 @@ import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
@@ -55,9 +58,6 @@ public class MarkerEditScreen extends Screen
     private InputBoxWidget fadeDelayFactorInput;
     private InputBoxWidget fadeSpeedInput;
     private InputBoxWidget minOpacityInput;
-    private InputBoxWidget pathColorPrimary;
-    private InputBoxWidget pathColorSecondary;
-    private InputBoxWidget pathColorTertiary;
     private CheckboxWidget displayChapterTitleOnTrail;
 
     private int charRevealSpeed;
@@ -122,16 +122,6 @@ public class MarkerEditScreen extends Screen
 
         pathSelectionDropdown = this.buildPathSelectionDropdown(centerX - 140, currentY += 40);
 
-        var defaultTextColor = new Color(255, 255, 255);
-
-        pathColorPrimary = buildColorInputBox(centerX - 140, currentY += 42, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getPrimaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_primary_color");
-        pathColorSecondary = buildColorInputBox(centerX - 46, currentY, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getSecondaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_secondary_color");
-        pathColorTertiary = buildColorInputBox(centerX + 49, currentY, pathSelectionDropdown.getSelected() != null ? pathSelectionDropdown.getSelected().getTertiaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_tertiary_color");
-
-        this.addDrawableChild(pathColorPrimary);
-        this.addDrawableChild(pathColorSecondary);
-        this.addDrawableChild(pathColorTertiary);
-
         this.buildChapterSelectionDropdown(centerX - 140, currentY += 40);
         this.buildEditChaptersButton(centerX + 40, currentY);
         this.buildChapterStartCheckbox(centerX - 49, currentY += 30);
@@ -177,39 +167,9 @@ public class MarkerEditScreen extends Screen
         );
     }
 
-    private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder)
-    {
-        InputBoxWidget colorInputBox = InputBoxBuilder.create()
-                .setPosition(x, y)
-                .setSize(90, 17)
-                .setValidator(text ->
-                {
-                    if (!text.matches("^#([a-fA-F0-9]{6})$"))
-                        throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors.validation.error").getString());
-                })
-                .setPlaceholder(Text.translatable(placeholder))
-                .build();
-
-        colorInputBox.setText(textColor.asHexString());
-        colorInputBox.setTextColor(textColor.asHex());
-
-        colorInputBox.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors_tooltip")));
-
-        colorInputBox.setChangeListener(input ->{
-            colorInputBox.validateText();
-            Color color = Color.fromHexString(input);
-            colorInputBox.setTextColor(color.asHex());
-        });
-
-        return colorInputBox;
-    }
-
     private boolean validateForm()
     {
-        return pathColorPrimary.validateText() &&
-                pathColorSecondary.validateText() &&
-                pathColorTertiary.validateText() &&
-                charRevealInput.validateText() &&
+        return charRevealInput.validateText() &&
                 fadeDelayOffsetInput.validateText() &&
                 fadeDelayFactorInput.validateText() &&
                 fadeSpeedInput.validateText() &&
@@ -241,6 +201,11 @@ public class MarkerEditScreen extends Screen
 
     private void buildChapterSelectionDropdown(int x, int y)
     {
+        PathData selectedPath = ArdaPathsClient.CONFIG.getPath(selectedPathId);
+
+        List<ChapterData> chapters = selectedPath != null ? new ArrayList<>(selectedPath.getChapters()) : new ArrayList<>();
+        chapters.sort(Comparator.comparingInt(ChapterData::getIndex));
+
         this.addDrawableChild(DropdownBuilder.<ChapterData>create()
                 .setPosition(x,y)
                 .setSize(175, 20)
@@ -250,7 +215,7 @@ public class MarkerEditScreen extends Screen
                     if (item == null) return Text.translatable("ardapaths.client.marker.configuration.screens.no_chapter");
                     return Text.literal(item.getName());
                 })
-                .setOptions(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapters())
+                .setOptions(chapters)
                 .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(selectedChapterId))
                 .setOnSelect(chapter ->
                 {
@@ -442,10 +407,9 @@ public class MarkerEditScreen extends Screen
         int centerX = this.width / 2;
         int currentY = 87;
 
-        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.path_colors"), centerX - 140, currentY, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 108, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 65, 0xFFFFFF);
 
-        int sideY = 215;
+        int sideY = 173;
 
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.rspeed"), centerX + 49, sideY, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fdelay"), centerX + 52, sideY += 20, 0xFFFFFF);
@@ -502,35 +466,6 @@ public class MarkerEditScreen extends Screen
         {
             ChapterStartRemovePacket packet = new ChapterStartRemovePacket(selectedPathId, selectedChapterId);
             PacketRegistry.CHAPTER_START_REMOVE.send(packet);
-        }
-
-        // Update path colors if changed
-        if (pathSelectionDropdown.getSelected() != null) {
-
-            Color initialPathPrimaryColor = pathSelectionDropdown.getSelected().getPrimaryColor();
-            Color initialPathSecondaryColor = pathSelectionDropdown.getSelected().getSecondaryColor();
-            Color initialPathTertiaryColor = pathSelectionDropdown.getSelected().getTertiaryColor();
-
-            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getText());
-            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getText());
-            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getText());
-
-            if (inputPrimaryColor.asHex() != initialPathPrimaryColor.asHex() ||
-                inputSecondaryColor.asHex() != initialPathSecondaryColor.asHex() ||
-                inputTertiaryColor.asHex() != initialPathTertiaryColor.asHex()) {
-
-                pathSelectionDropdown.getSelected().setPrimaryColor(inputPrimaryColor);
-                pathSelectionDropdown.getSelected().setSecondaryColor(inputSecondaryColor);
-                pathSelectionDropdown.getSelected().setTertiaryColor(inputTertiaryColor);
-
-                PathDataUpdatePacket pathDataUpdatePacket = new PathDataUpdatePacket(pathSelectionDropdown.getSelected().getId(),
-                        pathSelectionDropdown.getSelected().getName(),
-                        inputPrimaryColor.asHex(),
-                        inputSecondaryColor.asHex(),
-                        inputTertiaryColor.asHex());
-
-                PacketRegistry.PATH_DATA_UPDATE_REQUEST.send(pathDataUpdatePacket);
-            }
         }
 
         PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());

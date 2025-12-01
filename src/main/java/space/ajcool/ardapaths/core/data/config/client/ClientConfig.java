@@ -17,6 +17,9 @@ public class ClientConfig
     @SerializedName("proximity_messages")
     private boolean proximityMessages;
 
+    @SerializedName("chapter_titles")
+    private boolean chapterTitles;
+
     @SerializedName("proximity_text_speed_multiplier")
     private Double proximityTextSpeedMultiplier;
 
@@ -44,6 +47,16 @@ public class ClientConfig
     public void showProximityMessages(boolean proximityMessages)
     {
         this.proximityMessages = proximityMessages;
+    }
+
+    public boolean showChapterTitles()
+    {
+        return chapterTitles;
+    }
+
+    public void showChapterTitles(boolean chapterTitles)
+    {
+        this.chapterTitles = chapterTitles;
     }
 
     /**

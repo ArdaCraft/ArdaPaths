@@ -68,7 +68,7 @@ public class AnimatedTitle
         int opacity;
 
         float fadeInSpeed = 500;
-        float fadeDelay = 1000;
+        float fadeDelay = 2000;
         float fadeOutSpeed = 500;
 
         float fadeHoldEnd = fadeInSpeed + fadeDelay;
@@ -89,7 +89,7 @@ public class AnimatedTitle
 
         var scale = 2.5f;
         int x = (int)(((float) width / 2) / scale);
-        int y = (int)(((float) height / 2) / scale);
+        int y = 20;
 
         if (elapsedMillis > (fadeInSpeed + fadeDelay) && opacity <= 15) {
             showing = false;

@@ -50,6 +50,12 @@ public class Paths
         TrailRenderer.clearTrails();
     }
 
+    public static void showChapterTitles(final boolean show)
+    {
+        config.showChapterTitles(show);
+        configManager.save();
+    }
+
     public static void showProximityMessages(final boolean show)
     {
         config.showProximityMessages(show);
