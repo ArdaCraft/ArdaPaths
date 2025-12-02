@@ -56,3 +56,9 @@ New paths can be added to the `arda-paths/server.json` file with the following f
 
 ***Credit to Monsterfish_ for the pathfinder texture.***
 ***Credit to Ajcool for developing the mod.***
+
+## License
+
+This work is licensed under the CC-BY 4 License
+
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
