@@ -15,16 +15,14 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
+import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
 {
@@ -451,15 +449,13 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
          */
         public boolean isEmpty()
         {
-            if (target != null) return false;
-            if (!proximityMessage.isEmpty()) return false;
-            if (activationRange != 0) return false;
-            if (isChapterStart) return false;
-            if (isDisplayChapterTitleOnTrail) return false;
-            if (!displayAboveBlocks) return false;
-            if (packedMessageData == 360727776182960136L) return false;
-
-            return true;
+            return target == null
+                    && proximityMessage.isEmpty()
+                    && activationRange == 0
+                    && !isChapterStart
+                    && !isDisplayChapterTitleOnTrail
+                    && displayAboveBlocks
+                    && packedMessageData == 360727776182960136L; // Default packed value [5,100,5,2,8]
         }
 
         /**
@@ -501,5 +497,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
 
             return nbt;
         }
+    }
+
+    public Map<String, Map<String, ChapterNbtData>> getPathData() {
+        return pathData;
     }
 }

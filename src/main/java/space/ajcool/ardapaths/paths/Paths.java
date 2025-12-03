@@ -62,6 +62,13 @@ public class Paths
         configManager.save();
     }
 
+    public static void setChapterTitleDisplaySpeed(final Float miliseconds)
+    {
+        config.setChapterTitleDisplaySpeed(miliseconds);
+        configManager.save();
+    }
+
+
     public static void setProximityMessagesSpeedMultiplier(final Double factor)
     {
         config.setProximityTextSpeedMultiplier(factor);

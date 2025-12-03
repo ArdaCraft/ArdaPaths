@@ -97,7 +97,7 @@ public class TrailRenderer
                         ChapterData currentChapterInfo =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(currentChapterData.getChapterId());
                         if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail() && renderChapterTitles){
 
-                            ProximityTitleRenderer.setTitle(currentChapterInfo.getIndex(), currentChapterInfo.getName(), currentPathColors[0], currentPathColors[1]);
+                            ProximityTitleRenderer.setTitle(currentChapterInfo.getName(), currentPathColors[0]);
                         }
                     }
 

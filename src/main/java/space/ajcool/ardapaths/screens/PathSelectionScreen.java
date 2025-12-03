@@ -21,6 +21,7 @@ import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
@@ -38,6 +39,7 @@ public class PathSelectionScreen extends Screen
     private boolean showProximityMessages;
     private boolean showChapterTitles;
     private final double proximityTextSpeedMultiplier;
+    private final float titleDisplaySpeed;
 
     public PathSelectionScreen()
     {
@@ -47,6 +49,7 @@ public class PathSelectionScreen extends Screen
         this.showProximityMessages = ArdaPathsClient.CONFIG.showProximityMessages();
         this.showChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
         this.proximityTextSpeedMultiplier = ArdaPathsClient.CONFIG.getProximityTextSpeedMultiplier();
+        this.titleDisplaySpeed = ArdaPathsClient.CONFIG.getChapterTitleDisplaySpeed();
     }
 
     @Override
@@ -76,7 +79,8 @@ public class PathSelectionScreen extends Screen
         this.addDrawableChild(initializeReturnToChapterStartButton(center - 65,y += 30));
         this.addDrawableChild(initializeProximityTextToggle(center - 65,y += 30));
         this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center - 65, y += 30));
-        this.addDrawableChild(initializeChapterTitleDisplayToggle(center - 65,y + 30));
+        this.addDrawableChild(initializeChapterTitleDisplayToggle(center - 65,y += 30));
+        this.addDrawableChild(initializeTitleDisplaySpeedSlider(center - 65, y += 30));
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
@@ -258,6 +262,37 @@ public class PathSelectionScreen extends Screen
         };
 
         sliderWidget.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.proximity_text_speed_multiplier_tooltip")));
+        return sliderWidget;
+    }
+
+    private @NotNull SliderWidget initializeTitleDisplaySpeedSlider(int center, int y) {
+
+        double titleFadeDelaySeconds = titleDisplaySpeed / 1000;
+        double titleFadeDelayClamped = MathHelper.clamp((titleFadeDelaySeconds - 1.0) / 4.0, 0.0, 1.0);
+
+        SliderWidget sliderWidget = new SliderWidget(
+                center, y,
+                130,
+                20,
+                Text.literal(Text.translatable("ardapaths.client.configuration.screens.chapter_title_speed_delay").getString()),
+                titleFadeDelayClamped
+        ) {
+
+            @Override
+            protected void updateMessage() {
+                var seconds = (int)(1.0 + this.value * 4.0);
+                this.setMessage(Text.literal(seconds + "s"));
+            }
+
+            @Override
+            protected void applyValue() {
+
+                float seconds = (float)(1.0 + this.value * 4.0);
+                Paths.setChapterTitleDisplaySpeed(seconds * 1000);
+            }
+        };
+
+        sliderWidget.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.chapter_title_speed_delay_tooltip")));
         return sliderWidget;
     }
 

@@ -15,12 +15,19 @@ public class ConfirmationPopup extends Screen {
     private Text confirmButtonText = Text.translatable("ardapaths.generic.yes");
     private Text cancelButtonText = Text.translatable("ardapaths.generic.no");
 
+    private boolean closeOnValidate;
+
     public ConfirmationPopup(Text message, Runnable onConfirm, Runnable onCancel, Screen parentScreen) {
+        this(message, onConfirm, onCancel, parentScreen, false);
+    }
+
+    public ConfirmationPopup(Text message, Runnable onConfirm, Runnable onCancel, Screen parentScreen, boolean closeOnValidate) {
         super(Text.literal("Confirm"));
         this.message = message;
         this.onConfirm = onConfirm;
         this.onCancel = onCancel;
         this.parentScreen = parentScreen;
+        this.closeOnValidate = closeOnValidate;
     }
 
     @Override
@@ -57,6 +64,11 @@ public class ConfirmationPopup extends Screen {
 
     @Override
     public void close() {
+        if (closeOnValidate) {
+            super.close();
+            return;
+        }
+
         client.setScreen(parentScreen);
     }
 

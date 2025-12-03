@@ -6,6 +6,7 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +23,9 @@ public class ClientConfig
 
     @SerializedName("proximity_text_speed_multiplier")
     private Double proximityTextSpeedMultiplier;
+
+    @SerializedName("chapter_title_display_speed")
+    private Float chapterTitleDisplaySpeed;
 
     @SerializedName("selected_paths")
     private Map<String, SelectedPathData> selectedPaths = new HashMap<>();
@@ -57,6 +61,14 @@ public class ClientConfig
     public void showChapterTitles(boolean chapterTitles)
     {
         this.chapterTitles = chapterTitles;
+    }
+
+    public Float getChapterTitleDisplaySpeed(){
+        return chapterTitleDisplaySpeed != null ? chapterTitleDisplaySpeed : AnimatedTitle.DEFAULT_CHAPTER_TITLE_DISPLAY_SPEED;
+    }
+
+    public void setChapterTitleDisplaySpeed(Float chapterTitleDisplaySpeed){
+        this.chapterTitleDisplaySpeed = chapterTitleDisplaySpeed;
     }
 
     /**

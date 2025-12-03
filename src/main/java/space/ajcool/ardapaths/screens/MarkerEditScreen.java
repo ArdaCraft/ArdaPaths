@@ -17,12 +17,10 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
-import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
@@ -37,6 +35,7 @@ import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
@@ -51,7 +50,6 @@ public class MarkerEditScreen extends Screen
     private String proximityMessage;
     private int activationRange;
     private boolean displayAboveBlocks;
-    private DropdownWidget<PathData> pathSelectionDropdown;
     private EditBoxWidget multiLineEditBox;
     private InputBoxWidget charRevealInput;
     private InputBoxWidget fadeDelayOffsetInput;
@@ -65,6 +63,8 @@ public class MarkerEditScreen extends Screen
     private int fadeDelayFactor;
     private int fadeSpeed;
     private int minOpacity;
+
+    private int formHash;
 
     public MarkerEditScreen(PathMarkerBlockEntity marker)
     {
@@ -119,12 +119,13 @@ public class MarkerEditScreen extends Screen
         int currentY = 20;
 
         this.buildTitle(centerX - 140, currentY);
-
-        pathSelectionDropdown = this.buildPathSelectionDropdown(centerX - 140, currentY += 40);
+        this.buildSubtitle(centerX - 179, currentY+=25);
+        this.buildMarkerEditLinksButton(centerX+80, currentY);
+        this.buildPathSelectionDropdown(centerX - 140, currentY += 40);
 
         this.buildChapterSelectionDropdown(centerX - 140, currentY += 40);
         this.buildEditChaptersButton(centerX + 40, currentY);
-        this.buildChapterStartCheckbox(centerX - 49, currentY += 30);
+        this.buildChapterStartCheckbox(centerX - 69, currentY += 30);
         displayChapterTitleOnTrail = this.buildChapterStartHideTitleCheckbox(centerX + 125, currentY);
         this.buildMultilineEditBox(centerX - 140,currentY += 40);
 
@@ -153,9 +154,11 @@ public class MarkerEditScreen extends Screen
         this.multiLineEditBox.setText(proximityMessage);
 
         this.buildActivationRangeSlider(centerX - 140, currentY += 115);
-        this.buildDisplayAboveBlocksCheckbox(centerX - 1, currentY += 30);
-        this.buildDoneButton(centerX + 15, currentY -=2);
+        this.buildDisplayAboveBlocksCheckbox(centerX - 26, currentY += 30);
+        this.buildCloseButton(centerX + 15, currentY -=2);
         this.buildSaveButton(centerX + 80, currentY);
+
+        formHash = calculateFormHash();
     }
 
     private void buildTitle(int x, int y){
@@ -163,6 +166,26 @@ public class MarkerEditScreen extends Screen
                 .setPosition(x, y)
                 .setSize(280, 20)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_marker"))
+                .build()
+        );
+    }
+
+    private void buildSubtitle(int x, int y){
+
+        var linkedChapters = 0;
+        var linkedPaths = 0;
+
+        if (MARKER.getPathData() != null){
+            for (var pathEntry : MARKER.getPathData().keySet()){
+                linkedPaths++;
+                linkedChapters += MARKER.getPathData().get(pathEntry).size();
+            }
+        }
+
+        this.addDrawableChild(TextBuilder.create()
+                .setPosition(x, y)
+                .setSize(280, 20)
+                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.linked_chapters_and_paths", linkedPaths, linkedChapters))
                 .build()
         );
     }
@@ -224,6 +247,19 @@ public class MarkerEditScreen extends Screen
                 })
                 .build()
         );
+    }
+
+    private void buildMarkerEditLinksButton(int x, int y)
+    {
+        this.addDrawableChild(new ButtonWidget(
+                x,
+                y,
+                60,
+                20,
+                Text.translatable("ardapaths.client.marker.configuration.screens.edit_links"),
+                button -> this.client.setScreen(new MarkerLinksEditScreen(this, MARKER)),
+                Supplier::get
+        ));
     }
 
     private void buildEditChaptersButton(int x, int y)
@@ -342,31 +378,21 @@ public class MarkerEditScreen extends Screen
         );
     }
 
-    private void buildDoneButton(int x, int y){
-        this.addDrawableChild(new ButtonWidget(
+    private void buildCloseButton(int x, int y){
+
+        var doneButton = new ButtonWidget(
                 x,
                 y,
                 60,
                 20,
-                Text.translatable("ardapaths.generic.done"),
-                button -> {
-
-                    if (validateForm()) {
-
-                        charRevealSpeed = Integer.parseInt(charRevealInput.getText());
-                        fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
-                        fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
-                        fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
-                        minOpacity = Integer.parseInt(minOpacityInput.getText());
-
-                        close();
-                    } else {
-
-                        ArdaPaths.LOGGER.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
-                    }
-                },
+                Text.translatable("ardapaths.generic.close"),
+                button -> {this.close();},
                 Supplier::get
-        ));
+        );
+
+
+
+        this.addDrawableChild(doneButton);
     }
 
     private void buildSaveButton(int x, int y)
@@ -405,11 +431,11 @@ public class MarkerEditScreen extends Screen
         this.renderBackground(context);
 
         int centerX = this.width / 2;
-        int currentY = 87;
+        int currentY = 112;
 
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.proximity_message"), centerX - 140, currentY + 65, 0xFFFFFF);
 
-        int sideY = 173;
+        int sideY = currentY+86;
 
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.rspeed"), centerX + 49, sideY, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fdelay"), centerX + 52, sideY += 20, 0xFFFFFF);
@@ -433,12 +459,35 @@ public class MarkerEditScreen extends Screen
         super.tick();
     }
 
+    public void saveAndClose()
+    {
+        charRevealSpeed = Integer.parseInt(charRevealInput.getText());
+        fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
+        fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
+        fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
+        minOpacity = Integer.parseInt(minOpacityInput.getText());
+
+        this.close();
+        save();
+    }
+
     @Override
     public void close()
     {
-        super.close();
+        if (calculateFormHash() != formHash)
+        {
+            ConfirmationPopup popup = new ConfirmationPopup(
+                    Text.translatable("ardapaths.client.marker.configuration.screens.form.has_changes"),
+                    this::saveAndClose,
+                    super::close,
+                    this,
+                    true
+            );
+            this.client.setScreen(popup);
+            return;
+        }
 
-        save();
+        super.close();
     }
 
     private void save()
@@ -471,5 +520,30 @@ public class MarkerEditScreen extends Screen
         PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getPos(), MARKER.toNbt());
         PacketRegistry.PATH_MARKER_UPDATE.send(packet);
         MARKER.markUpdated();
+    }
+
+    private int calculateFormHash(){
+
+        if (selectedPathId.isEmpty())
+            return 1;
+
+        var setCharRevealSpeed = charRevealInput.getText() != null ? Integer.parseInt(charRevealInput.getText()) : "";
+        var setFadeDelayOffset = fadeDelayOffsetInput.getText() != null ? Integer.parseInt(fadeDelayOffsetInput.getText()) : "";
+        var setFadeDelayFactor = fadeDelayFactorInput.getText() != null ? Integer.parseInt(fadeDelayFactorInput.getText()) : "";
+        var setFadeSpeed = fadeSpeedInput.getText() != null ? Integer.parseInt(fadeSpeedInput.getText()) : "";
+        var setMinOpacity = minOpacityInput.getText() != null ? Integer.parseInt(minOpacityInput.getText()) : "";
+
+        return Objects.hash(
+                proximityMessage,
+                activationRange,
+                displayAboveBlocks,
+                isChapterStart,
+                showChapterStartTitle,
+                setCharRevealSpeed,
+                setFadeDelayOffset,
+                setFadeDelayFactor,
+                setFadeSpeed,
+                setMinOpacity
+        );
     }
 }

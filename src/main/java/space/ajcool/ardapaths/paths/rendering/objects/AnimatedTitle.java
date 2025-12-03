@@ -6,30 +6,31 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.ColorHelper;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 
 public class AnimatedTitle
 {
-    public static final double DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER = 0.125d;
+    public static final float DEFAULT_CHAPTER_TITLE_DISPLAY_SPEED = 2000;
 
-    private final String index;
     private final String title;
     private final Color primaryColor;
-    private final Color secondaryColor;
 
     private boolean showing;
     private boolean done;
 
+    private final float fadeDelay;
+
     private long startTime = -1;
 
-    public AnimatedTitle(int index, String title, Color primaryColor, Color secondaryColor)
+    public AnimatedTitle(String title, Color primaryColor)
     {
-        this.index = "Chapter " + index;
+        this.fadeDelay = ArdaPathsClient.CONFIG_MANAGER.getConfig().getChapterTitleDisplaySpeed();
+
         this.title = title;
         this.primaryColor = primaryColor;
-        this.secondaryColor = secondaryColor;
 
         this.showing = true;
         this.done = false;
@@ -68,7 +69,6 @@ public class AnimatedTitle
         int opacity;
 
         float fadeInSpeed = 500;
-        float fadeDelay = 2000;
         float fadeOutSpeed = 500;
 
         float fadeHoldEnd = fadeInSpeed + fadeDelay;

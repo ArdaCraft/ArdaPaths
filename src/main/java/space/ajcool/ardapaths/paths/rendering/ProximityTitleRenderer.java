@@ -25,15 +25,13 @@ public class ProximityTitleRenderer
      * Set the current proximity message. If a message is already set,
      * it will not be overwritten.
      *
-     * @param nIndex    The index of the title
      * @param nTitle The new message to render
      * @param nPrimaryColor The color of the chapter
-     * @param nSecondaryColor The color of the chapter title
      */
-    public static void setTitle(int nIndex, String nTitle, Color nPrimaryColor, Color nSecondaryColor)
+    public static void setTitle(String nTitle, Color nPrimaryColor)
     {
 
-        AnimatedTitle newTitle = new AnimatedTitle(nIndex, nTitle, nPrimaryColor, nSecondaryColor);
+        AnimatedTitle newTitle = new AnimatedTitle(nTitle, nPrimaryColor);
 
         if (newTitle.equals(title)) return;
 
