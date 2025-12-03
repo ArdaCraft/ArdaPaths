@@ -28,7 +28,8 @@ Accessed by Ctrl + Use on a placed Path Marker block.
 
 The configuration screen allows editing of the marker properties. By default the current selected chapter on the Pathfinder is used to determine which chapter's marker properties are being edited. The path and chapter can be changed using the `Edit Data for Path` and `Chapter` dropdowns at the top of the screen.
 
-A marker is configured as follows:
+<img align="left" width="280" src="https://github.com/user-attachments/assets/90e8b6a0-28f9-46ca-9170-7625fca536c2">
+
 - `Chapter Start` indicate if this marker is the start of the chapter.
 - `Show title on trail` indicate if the chapter title should be displayed on the trail when the chapter becomes active.
 - `Proximity messaage` the message displayed to players when they are within range of the marker
@@ -38,6 +39,7 @@ A marker is configured as follows:
 - `F Factor` Additional delay applied per character. Longer text results in a longer total fade delay.
 - `Opacity` the minimum opacity of the text before the message disappear completely
 
+
 #### Marker links screen
 
 A marker can belong to multiple paths and chapters. The `Edit Links` button on the marker configuration screen allows breaking these links.
@@ -46,12 +48,15 @@ A marker can belong to multiple paths and chapters. The `Edit Links` button on t
 
 Accessed through the marker configuration screen by clicking the `Edit Chapters` button.
 
-A chapter is configured as follows:
+<img align="left" width="280" src="https://github.com/user-attachments/assets/1ce9b230-9dfe-4772-8dc8-f74100370acf">
+
 - `id` a unique identifier for the chapter
 - `name` the name of the chapter. Will be displayed on chapter changed on a trail when using the Pathfinder if the user enabled the chapter titles display
 - `date` the date associated with this message / event (display purposes only)
 - `index` the index of the chapter : this will determine its position in the chapter selection dropdowns and is used in dertermining which chapter to switch to when changing chapters.
 - `warp` the warp location for this chapter (this fuctionnality uses HuskHomes warp command). This is the teleport location when the user clicks `Return to Chapter Start` on his pathfinder. Acceptable values for this field are either a warp location or a set of coordinates (x y z) such as `-56 16 12`
+
+<br/><br/><br/>
 
 ##### Notes
 
@@ -63,6 +68,8 @@ A chapter is configured as follows:
 ### Pathfinder
 
 The pathfinder is an item that allows players to select and follow paths. When used, the pathfinder opens the following configuration screen.
+
+<img align="left" width="280" src="https://github.com/user-attachments/assets/46c50ff2-9468-4bad-ac23-b291f2142336">
 
 - `Select a Path to Follow` dropdown allows selecting a character's path to follow
 - `Select a Chapter` dropdown allows selecting a chapter from the book within the selected path
