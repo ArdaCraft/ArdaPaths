@@ -28,7 +28,7 @@ public class ClientConfig
     private Float chapterTitleDisplaySpeed;
 
     @SerializedName("selected_paths")
-    private Map<String, SelectedPathData> selectedPaths = new HashMap<>();
+    private final Map<String, SelectedPathData> selectedPaths = new HashMap<>();
 
     @SerializedName("paths")
     private List<PathData> clientPaths = new ArrayList<>();

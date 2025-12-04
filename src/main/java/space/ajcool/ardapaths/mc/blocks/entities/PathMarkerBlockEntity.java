@@ -15,14 +15,16 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
-import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
 {

@@ -118,11 +118,12 @@ public class TrailRenderer
                                 .filter(data -> squaredDistance <= MathHelper.square(data.getActivationRange()))
                                 .toList();
 
+                ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
+
                 for (var otherChapterData : filteredChapters)
                 {
                     String otherChapterId = otherChapterData.getChapterId();
 
-                    ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
                     ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
 
                     if (currentChapter == null || chapter == null) continue;

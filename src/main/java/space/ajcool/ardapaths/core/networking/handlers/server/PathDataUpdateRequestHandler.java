@@ -4,17 +4,10 @@ import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.ArdaPaths;
-import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
-import space.ajcool.ardapaths.core.data.Json;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
-import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
-import space.ajcool.ardapaths.core.networking.packets.client.PathDataResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 
 /**

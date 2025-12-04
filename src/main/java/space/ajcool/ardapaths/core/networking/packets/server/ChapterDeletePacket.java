@@ -12,12 +12,6 @@ public record ChapterDeletePacket(
 ) implements IPacket
 {
 
-    public ChapterDeletePacket(String pathId, String chapterId)
-    {
-        this.pathId = pathId;
-        this.chapterId = chapterId;
-    }
-
     @Override
     public PacketByteBuf build()
     {

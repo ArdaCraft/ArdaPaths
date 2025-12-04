@@ -9,6 +9,7 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.EditBoxWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.screen.ScreenTexts;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
@@ -32,10 +33,7 @@ import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Supplier;
 
 @Environment(value = EnvType.CLIENT)
@@ -66,33 +64,26 @@ public class MarkerEditScreen extends Screen
 
     private int formHash;
 
+    private final Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData;
+
     public MarkerEditScreen(PathMarkerBlockEntity marker)
+    {
+        this(marker, null);
+    }
+
+    public MarkerEditScreen(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData)
     {
         super(Text.literal("Path Marker Edit Screen"));
         MARKER = marker;
+        this.originalPathAndChapterData = originalPathAndChapterData != null ? originalPathAndChapterData : trackInitialPathAndChapterData();
 
         selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
 
-        ArdaPaths.LOGGER.info("Editing Marker NBT[{}]",marker.toNbt().toString());
+        PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId, true);
+        assert data != null;
 
-        PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(selectedPathId, selectedChapterId);
-
-        this.isChapterStart = data.isChapterStart();
-        this.showChapterStartTitle = data.isDisplayChapterTitleOnTrail();
-        this.proximityMessage = data.getProximityMessage();
-        this.activationRange = data.getActivationRange();
-        this.displayAboveBlocks = data.displayAboveBlocks();
-
-        ArdaPaths.LOGGER.info("" + data.getPackedMessageData());
-
-        var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
-
-        charRevealSpeed = unpackedMessageData[0];
-        fadeDelayOffset = unpackedMessageData[1];
-        fadeDelayFactor = unpackedMessageData[2];
-        fadeSpeed = unpackedMessageData[3];
-        minOpacity = unpackedMessageData[4];
+        initFormFields(data);
     }
 
     @Override
@@ -100,27 +91,16 @@ public class MarkerEditScreen extends Screen
     {
         super.init();
 
-        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId);
+        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId, true);
+        assert data != null;
 
-        this.isChapterStart = data.isChapterStart();
-        this.proximityMessage = data.getProximityMessage();
-        this.activationRange = data.getActivationRange();
-        this.displayAboveBlocks = data.displayAboveBlocks();
-
-        var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
-
-        charRevealSpeed = unpackedMessageData[0];
-        fadeDelayOffset = unpackedMessageData[1];
-        fadeDelayFactor = unpackedMessageData[2];
-        fadeSpeed = unpackedMessageData[3];
-        minOpacity = unpackedMessageData[4];
+        initFormFields(data);
 
         int centerX = this.width / 2;
         int currentY = 20;
 
         this.buildTitle(centerX - 140, currentY);
         this.buildSubtitle(centerX - 179, currentY+=25);
-        this.buildMarkerEditLinksButton(centerX+80, currentY);
         this.buildPathSelectionDropdown(centerX - 140, currentY += 40);
 
         this.buildChapterSelectionDropdown(centerX - 140, currentY += 40);
@@ -161,6 +141,23 @@ public class MarkerEditScreen extends Screen
         formHash = calculateFormHash();
     }
 
+    private void initFormFields(PathMarkerBlockEntity.ChapterNbtData data) {
+
+        this.isChapterStart = data.isChapterStart();
+        this.showChapterStartTitle = data.isDisplayChapterTitleOnTrail();
+        this.proximityMessage = data.getProximityMessage();
+        this.activationRange = data.getActivationRange();
+        this.displayAboveBlocks = data.displayAboveBlocks();
+
+        var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
+
+        charRevealSpeed = unpackedMessageData[0];
+        fadeDelayOffset = unpackedMessageData[1];
+        fadeDelayFactor = unpackedMessageData[2];
+        fadeSpeed = unpackedMessageData[3];
+        minOpacity = unpackedMessageData[4];
+    }
+
     private void buildTitle(int x, int y){
         this.addDrawableChild(TextBuilder.create()
                 .setPosition(x, y)
@@ -176,18 +173,45 @@ public class MarkerEditScreen extends Screen
         var linkedPaths = 0;
 
         if (MARKER.getPathData() != null){
+
             for (var pathEntry : MARKER.getPathData().keySet()){
-                linkedPaths++;
-                linkedChapters += MARKER.getPathData().get(pathEntry).size();
+
+                var linkedChaptersForPath = 0;
+                var chapters = MARKER.getPathData().get(pathEntry);
+
+                for (String chapter : chapters.keySet()) {
+
+                    var chapterNbtData = MARKER.getChapterData(pathEntry, chapter, false);
+                    if (chapterNbtData != null && !chapterNbtData.isEmpty())
+                        linkedChaptersForPath++;
+                }
+
+                if (linkedChaptersForPath > 0) {
+                    linkedPaths++;
+                    linkedChapters += linkedChaptersForPath;
+                }
             }
         }
 
-        this.addDrawableChild(TextBuilder.create()
-                .setPosition(x, y)
-                .setSize(280, 20)
-                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.linked_chapters_and_paths", linkedPaths, linkedChapters))
-                .build()
-        );
+        if (linkedPaths >= 1 || linkedChapters >= 1) {
+
+            this.addDrawableChild(TextBuilder.create()
+                    .setPosition(x, y)
+                    .setSize(280, 20)
+                    .setText(Text.translatable("ardapaths.client.marker.configuration.screens.linked_chapters_and_paths", linkedPaths, linkedChapters))
+                    .build()
+            );
+
+            if ((linkedPaths == 1 && linkedChapters > 1) || (linkedPaths > 1 && linkedChapters >= 1))
+                this.buildMarkerEditLinksButton(x+260, y);
+        } else {
+            this.addDrawableChild(TextBuilder.create()
+                    .setPosition(x + 35, y)
+                    .setSize(280, 20)
+                    .setText(Text.translatable("ardapaths.client.marker.configuration.screens.no_linked_chapters_and_paths"))
+                    .build()
+            );
+        }
     }
 
     private boolean validateForm()
@@ -209,7 +233,12 @@ public class MarkerEditScreen extends Screen
                 .setOptionDisplay(item ->
                 {
                     if (item == null) return Text.translatable("ardapaths.client.marker.configuration.screens.no_path");
-                    return Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
+
+                    MutableText label = Text.literal(item.getName()).fillStyle(Style.EMPTY.withColor(item.getPrimaryColor().asHex()));
+
+                    if (isPathAndChapterLinked(item.getId(), selectedChapterId)) label.append(" •");
+
+                    return label;
                 })
                 .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId))
                 .setOnSelect(path ->
@@ -236,7 +265,11 @@ public class MarkerEditScreen extends Screen
                 .setOptionDisplay(item ->
                 {
                     if (item == null) return Text.translatable("ardapaths.client.marker.configuration.screens.no_chapter");
-                    return Text.literal(item.getName());
+                    MutableText label = Text.literal(item.getName());
+
+                    if (isPathAndChapterLinked(selectedPathId, item.getId())) label.append(" •");
+
+                    return label;
                 })
                 .setOptions(chapters)
                 .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(selectedChapterId))
@@ -257,7 +290,7 @@ public class MarkerEditScreen extends Screen
                 60,
                 20,
                 Text.translatable("ardapaths.client.marker.configuration.screens.edit_links"),
-                button -> this.client.setScreen(new MarkerLinksEditScreen(this, MARKER)),
+                button -> this.client.setScreen(new MarkerLinksEditScreen(MARKER, originalPathAndChapterData)),
                 Supplier::get
         ));
     }
@@ -474,17 +507,50 @@ public class MarkerEditScreen extends Screen
     @Override
     public void close()
     {
-        if (calculateFormHash() != formHash)
+        Text validationWarning = Text.empty();
+        var modifiedPathAndChapterData = listModifiedPathAndChapterData();
+        Runnable popupOutcome = super::close;
+
+        // Form was modified and chapter or path data was added
+        if (wasFormModified() && !modifiedPathAndChapterData.equals(Text.empty())){
+
+            validationWarning = Text.translatable("ardapaths.client.marker.configuration.screens.form.has_changes_added_path_and_chapter")
+                    .append(modifiedPathAndChapterData)
+                    .append(Text.translatable("ardapaths.generic.save_changes"));
+            popupOutcome = () -> {
+                discardChapterAndPathDataChanges();
+                super.close();
+            };
+
+        // Form was modified
+        } else if (wasFormModified()){
+
+            validationWarning = Text.translatable("ardapaths.client.marker.configuration.screens.form.has_changes");
+
+        // Path or chapter data  was added
+        } else if (!modifiedPathAndChapterData.equals(Text.empty())){
+
+            validationWarning = Text.translatable("ardapaths.client.marker.configuration.screens.form.added_path_and_chapter")
+                    .append(modifiedPathAndChapterData)
+                    .append(Text.translatable("ardapaths.generic.save_changes"));
+            popupOutcome = () -> {
+                discardChapterAndPathDataChanges();
+                super.close();
+            };
+        }
+
+        if (!validationWarning.equals(Text.empty()))
         {
             ConfirmationPopup popup = new ConfirmationPopup(
-                    Text.translatable("ardapaths.client.marker.configuration.screens.form.has_changes"),
+                    validationWarning,
                     this::saveAndClose,
-                    super::close,
+                    popupOutcome,
                     this,
                     true
             );
             this.client.setScreen(popup);
             return;
+
         }
 
         super.close();
@@ -494,8 +560,9 @@ public class MarkerEditScreen extends Screen
     {
         if (selectedPathId.isEmpty()) return;
 
-        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId);
+        PathMarkerBlockEntity.ChapterNbtData data = MARKER.getChapterData(selectedPathId, selectedChapterId, true);
 
+        assert data != null;
         data.setProximityMessage(proximityMessage);
         data.setActivationRange(activationRange);
         data.setChapterStart(isChapterStart);
@@ -545,5 +612,87 @@ public class MarkerEditScreen extends Screen
                 setFadeSpeed,
                 setMinOpacity
         );
+    }
+
+    private boolean wasFormModified(){
+
+        return calculateFormHash() != formHash;
+    }
+
+    private void discardChapterAndPathDataChanges(){
+
+        var pathData = MARKER.getPathData();
+
+        for (var pathEntryKey : pathData.keySet()) {
+            var chapters = pathData.get(pathEntryKey);
+            var iterator = chapters.keySet().iterator();
+
+            while (iterator.hasNext()) {
+                var chapterEntryKey = iterator.next();
+                var comparedEntry = new AbstractMap.SimpleEntry<>(pathEntryKey, chapterEntryKey);
+
+                if (!originalPathAndChapterData.contains(comparedEntry)) {
+                    iterator.remove();
+                }
+            }
+        }
+        MARKER.markUpdated();
+    }
+
+    private Text listModifiedPathAndChapterData(){
+
+        MutableText modifiedEntries = Text.empty();
+
+        if (!originalPathAndChapterData.isEmpty()) {
+
+            var pathData = MARKER.getPathData();
+
+            for (var pathEntryKey : pathData.keySet()) {
+
+                for (var chapterEntryKey : pathData.get(pathEntryKey).keySet()) {
+
+                    var comparedEntry = new AbstractMap.SimpleEntry<>(pathEntryKey, chapterEntryKey);
+                    var chapterData = MARKER.getChapterData(pathEntryKey, chapterEntryKey);
+
+                    var isSelectedPathAndChapter = pathEntryKey.equals(selectedPathId) && chapterEntryKey.equals(selectedChapterId) && wasFormModified();
+
+                    if (!isSelectedPathAndChapter && chapterData.isEmpty()) continue;
+
+                    if (!originalPathAndChapterData.contains(comparedEntry)) {
+
+                        var configuredPath = ArdaPathsClient.CONFIG.getPath(pathEntryKey);
+                        modifiedEntries.append(Text.literal(configuredPath.getName()).styled(style -> style.withColor(configuredPath.getPrimaryColor().asHex())))
+                                .append(Text.literal(" - "))
+                                .append(Text.literal(configuredPath.getChapter(chapterEntryKey).getName()).styled(style -> style.withColor(configuredPath.getSecondaryColor().asHex())))
+                                .append(Text.literal(" "));
+                    }
+                }
+            }
+        }
+
+        return modifiedEntries;
+    }
+
+    private boolean isPathAndChapterLinked(String pathId, String chapterId) {
+
+        return originalPathAndChapterData.contains(new AbstractMap.SimpleEntry<>(pathId, chapterId));
+    }
+
+    private Set<AbstractMap.SimpleEntry<String, String>> trackInitialPathAndChapterData(){
+
+        Set<AbstractMap.SimpleEntry<String, String>> pathAndChapterData = new HashSet<>();
+
+        var pathData = MARKER.getPathData();
+
+        for (var pathEntryKey : pathData.keySet()) {
+
+            for (var chapterEntryKey : pathData.get(pathEntryKey).keySet()) {
+
+                boolean isDefault = MARKER.getPathData().get(pathEntryKey).get(chapterEntryKey) == null || MARKER.getPathData().get(pathEntryKey).get(chapterEntryKey).isEmpty();
+                if (!isDefault) pathAndChapterData.add(new AbstractMap.SimpleEntry<>(pathEntryKey, chapterEntryKey));
+            }
+        }
+
+        return pathAndChapterData;
     }
 }
