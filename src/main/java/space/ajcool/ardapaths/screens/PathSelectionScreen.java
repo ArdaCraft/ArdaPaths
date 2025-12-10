@@ -21,9 +21,10 @@ import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
-import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
+import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
 import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 
 import java.util.ArrayList;
@@ -34,12 +35,22 @@ import java.util.function.Supplier;
 @Environment(value = EnvType.CLIENT)
 public class PathSelectionScreen extends Screen
 {
+    private static final int COLUMNS_SPACING = 10;
+    private static final int UI_ELEMENT_SPACING = 10;
+    private static final int UI_ELEMENT_WIDTH = 155;
+    private static final int UI_ELEMENT_HEIGHT = 20;
+    private static final int UI_SEPARATOR_SPACING = 10;;
+    private static final int TITLE_SPACING = 20;
+
     private String selectedPathId;
     private String selectedChapterId;
     private boolean showProximityMessages;
     private boolean showChapterTitles;
     private final double proximityTextSpeedMultiplier;
     private final float titleDisplaySpeed;
+
+    private SliderWidget proximityTextSpeedSlider;
+    private SliderWidget titleDisplaySpeedSlider;
 
     public PathSelectionScreen()
     {
@@ -55,8 +66,10 @@ public class PathSelectionScreen extends Screen
     @Override
     protected void init()
     {
+        var totalUiHeight = (UI_ELEMENT_HEIGHT * 6) + (UI_ELEMENT_SPACING * 5) + UI_SEPARATOR_SPACING + TITLE_SPACING;
+
         int center = width / 2;
-        int y = 35;
+        int y = (height / 2) - (totalUiHeight / 2);
 
         PathData currentPath = ArdaPathsClient.CONFIG.getPath(selectedPathId);
         ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
@@ -73,20 +86,26 @@ public class PathSelectionScreen extends Screen
                 .build()
         );
 
-        this.addDrawableChild(initializePathSelectionDropDown(center - 75, y += 40));
-        this.addDrawableChild(this.initializeChapterSelectionDropDown(center - 75, y+= 40, currentPath, currentChapter));
-        this.addDrawableChild(initializeReturnToPathButton(center - 65,y += 30));
-        this.addDrawableChild(initializeReturnToChapterStartButton(center - 65,y += 30));
-        this.addDrawableChild(initializeProximityTextToggle(center - 65,y += 30));
-        this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center - 65, y += 30));
-        this.addDrawableChild(initializeChapterTitleDisplayToggle(center - 65,y += 30));
-        this.addDrawableChild(initializeTitleDisplaySpeedSlider(center - 65, y += 30));
+        var horizontalHalfCenterGap = COLUMNS_SPACING /2;
+        var uiElementVerticalGap = UI_ELEMENT_HEIGHT + UI_ELEMENT_SPACING;
+
+        this.addDrawableChild(initializePathSelectionDropDown(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap + TITLE_SPACING));
+        this.addDrawableChild(this.initializeChapterSelectionDropDown(center + horizontalHalfCenterGap, y, currentPath, currentChapter));
+        this.addDrawableChild(initializeReturnToChapterStartButton(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y+= uiElementVerticalGap));
+        this.addDrawableChild(initializeReturnToPathButton(center + horizontalHalfCenterGap,y));
+
+        // Horizontal Gap
+
+        this.addDrawableChild(initializeProximityTextToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap + UI_SEPARATOR_SPACING));
+        proximityTextSpeedSlider = this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center + horizontalHalfCenterGap, y));
+        this.addDrawableChild(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap));
+        titleDisplaySpeedSlider = this.addDrawableChild(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
         DropdownWidget<PathData> pathSelectionDropdown = DropdownBuilder.<PathData>create()
                 .setPosition(center,y)
-                .setSize(150, 20)
+                .setSize(UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
                 .setTitle(Text.translatable( "ardapaths.client.configuration.screens.select_path_follow"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(item ->
@@ -126,7 +145,7 @@ public class PathSelectionScreen extends Screen
 
         return DropdownBuilder.<ChapterData>create()
                 .setPosition(center, y)
-                .setSize(150, 20)
+                .setSize(UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
                 .setTitle(Text.translatable("ardapaths.client.configuration.screens.select_chapter"))
                 .setOptions(chapterData)
                 .setOptionDisplay(item ->
@@ -152,8 +171,8 @@ public class PathSelectionScreen extends Screen
     private @NotNull ButtonWidget initializeReturnToPathButton(int center, int y) {
         ButtonWidget returnToPathButton = new ButtonWidget(
                 center, y,
-                130,
-                20,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
                 Text.literal(Text.translatable("ardapaths.client.configuration.screens.return_path").getString()),
                 button ->
                 {
@@ -172,8 +191,8 @@ public class PathSelectionScreen extends Screen
 
         ButtonWidget returnChapterStartButton = new ButtonWidget(
                 center, y,
-                130,
-                20,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
                 Text.literal(Text.translatable("ardapaths.client.configuration.screens.return_chapter_start").getString()),
                 button ->
                 {
@@ -191,45 +210,43 @@ public class PathSelectionScreen extends Screen
         return returnChapterStartButton;
     }
 
-    private @NotNull ButtonWidget initializeChapterTitleDisplayToggle(int center, int y) {
+    private @NotNull CheckboxWidget initializeChapterTitleDisplayToggle(int center, int y) {
 
-        ButtonWidget chapterTitleDisplayToggle = new ButtonWidget(
-                center, y,
-                130,
-                20,
-                Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))),
-                button ->
-                {
-                    showChapterTitles = !showChapterTitles;
+        CheckboxWidget chapterTitleDisplayToggle = CheckboxBuilder.create()
+                .setPosition(center,y)
+                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+                .setText(Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
+                .setChecked(showChapterTitles)
+                .setOnChange(checked -> {
+                    showChapterTitles = checked;
+                    titleDisplaySpeedSlider.active = checked;
                     Paths.showChapterTitles(showChapterTitles);
                     ProximityMessageRenderer.clearMessage();
                     ProximityTitleRenderer.clearMessage();
-                    button.setMessage(Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
-                },
-                Supplier::get
-        );
+                })
+                .build();
+
         chapterTitleDisplayToggle.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.chapter_titles_tooltip")));
 
         return chapterTitleDisplayToggle;
     }
 
-    private @NotNull ButtonWidget initializeProximityTextToggle(int center, int y) {
+    private @NotNull CheckboxWidget initializeProximityTextToggle(int center, int y) {
 
-        ButtonWidget proximityTextToggle = new ButtonWidget(
-                center, y,
-                130,
-                20,
-                Text.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))),
-                button ->
-                {
-                    showProximityMessages = !showProximityMessages;
+        CheckboxWidget proximityTextToggle = CheckboxBuilder.create()
+                .setPosition(center,y)
+                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+                .setText(Text.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
+                .setChecked(showProximityMessages)
+                .setOnChange(checked -> {
+                    showProximityMessages = checked;
+                    proximityTextSpeedSlider.active = checked;
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityMessageRenderer.clearMessage();
                     ProximityTitleRenderer.clearMessage();
-                    button.setMessage(Text.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))));
-                },
-                Supplier::get
-        );
+                })
+                .build();
+
         proximityTextToggle.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.proximity_text_tooltip")));
 
         return proximityTextToggle;
@@ -242,8 +259,8 @@ public class PathSelectionScreen extends Screen
 
         SliderWidget sliderWidget = new SliderWidget(
                 center, y,
-                130,
-                20,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
                 Text.literal(Text.translatable("ardapaths.client.configuration.screens.proximity_text_speed_multiplier").getString()),
                 proximityTextSpeedMultiplierClamped
         ) {
@@ -260,7 +277,7 @@ public class PathSelectionScreen extends Screen
                 Paths.setProximityMessagesSpeedMultiplier(AnimatedMessage.DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER * (percent / 100.0));
             }
         };
-
+        sliderWidget.active = showProximityMessages;
         sliderWidget.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.proximity_text_speed_multiplier_tooltip")));
         return sliderWidget;
     }
@@ -272,8 +289,8 @@ public class PathSelectionScreen extends Screen
 
         SliderWidget sliderWidget = new SliderWidget(
                 center, y,
-                130,
-                20,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
                 Text.literal(Text.translatable("ardapaths.client.configuration.screens.chapter_title_speed_delay").getString()),
                 titleFadeDelayClamped
         ) {
@@ -292,6 +309,7 @@ public class PathSelectionScreen extends Screen
             }
         };
 
+        sliderWidget.active = showChapterTitles;
         sliderWidget.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.chapter_title_speed_delay_tooltip")));
         return sliderWidget;
     }
@@ -299,7 +317,9 @@ public class PathSelectionScreen extends Screen
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta)
     {
+
         this.renderBackground(context);
+
         super.render(context, mouseX, mouseY, delta);
     }
 }
