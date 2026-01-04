@@ -48,7 +48,7 @@ public class ArdaPaths implements ModInitializer
         {
             var blockEntity = world.getBlockEntity(hitResult.getBlockPos().offset(hitResult.getSide()));
 
-            if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4))
+            if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !Permissions.check(player, "ardapaths.edit", false))
                 return ActionResult.FAIL;
 
             return ActionResult.PASS;
@@ -58,7 +58,7 @@ public class ArdaPaths implements ModInitializer
         {
             var itemsStack = player.getStackInHand(hand);
 
-            if (itemsStack.isOf(ModBlocks.PATH_MARKER.asItem()) && !Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4))
+            if (itemsStack.isOf(ModBlocks.PATH_MARKER.asItem()) && !Permissions.check(player, "ardapaths.edit", false))
                 return TypedActionResult.fail(itemsStack);
 
             return TypedActionResult.pass(itemsStack);
@@ -66,7 +66,7 @@ public class ArdaPaths implements ModInitializer
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
         {
-            if (blockEntity instanceof PathMarkerBlockEntity && !Permissions.check(player, "ardapaths.edit", false) && !player.hasPermissionLevel(4))
+            if (blockEntity instanceof PathMarkerBlockEntity && !Permissions.check(player, "ardapaths.edit", false))
                 return false;
 
             return true;
