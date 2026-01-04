@@ -13,6 +13,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -100,6 +101,8 @@ public class PathSelectionScreen extends Screen
         proximityTextSpeedSlider = this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center + horizontalHalfCenterGap, y));
         this.addDrawableChild(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap));
         titleDisplaySpeedSlider = this.addDrawableChild(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
+
+        this.addDrawableChild(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap + UI_SEPARATOR_SPACING));
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
@@ -208,6 +211,26 @@ public class PathSelectionScreen extends Screen
         returnChapterStartButton.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.return_chapter_start_tooltip")));
 
         return returnChapterStartButton;
+    }
+
+    private @NotNull ButtonWidget initializeJournalButton(int x, int y) {
+
+        ButtonWidget journalButton = new ButtonWidget(
+                x, y,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
+                Text.literal(Text.translatable("ardapaths.client.journal.screen.title").getString()),
+                button ->
+                {
+                    this.close();
+                    this.client.setScreen(new JournalScreen());
+                },
+                Supplier::get
+        );
+        journalButton.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.journal.screen.title.tooltip")));
+        journalButton.active = !Journal.getEntries().isEmpty();
+
+        return journalButton;
     }
 
     private @NotNull CheckboxWidget initializeChapterTitleDisplayToggle(int center, int y) {
@@ -319,7 +342,6 @@ public class PathSelectionScreen extends Screen
     {
 
         this.renderBackground(context);
-
         super.render(context, mouseX, mouseY, delta);
     }
 }

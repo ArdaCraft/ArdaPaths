@@ -6,13 +6,15 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import space.ajcool.ardapaths.ArdaPaths;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
@@ -40,9 +42,6 @@ public class TrailRenderer
     {
         ClientPlayerEntity player = Client.player();
         if (player == null) return;
-
-        boolean renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
-        boolean renderChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
 
         PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
         if (selectedPath == null) return;
@@ -86,20 +85,7 @@ public class TrailRenderer
 
                 if (currentChapterData != null)
                 {
-                    if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()))
-                    {
-                        if (!currentChapterData.getProximityMessage().isEmpty() && renderMessages) {
-
-                            var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
-                            ProximityMessageRenderer.setMessage(animatedMessage);
-                        }
-
-                        ChapterData currentChapterInfo =ArdaPathsClient.CONFIG.getSelectedPath().getChapter(currentChapterData.getChapterId());
-                        if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail() && renderChapterTitles){
-
-                            ProximityTitleRenderer.setTitle(currentChapterInfo.getName(), currentPathColors[0]);
-                        }
-                    }
+                    displayAnimatedText(squaredDistance, currentChapterData, player, playerPos, currentPathColors);
 
                     if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance)
                     {
@@ -120,29 +106,7 @@ public class TrailRenderer
 
                 ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
 
-                for (var otherChapterData : filteredChapters)
-                {
-                    String otherChapterId = otherChapterData.getChapterId();
-
-                    ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
-
-                    if (currentChapter == null || chapter == null) continue;
-
-                    if (!"default".equalsIgnoreCase(currentChapter.getName())) {
-                        if (chapter.getIndex() <= currentChapter.getIndex()) continue;
-                        if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
-                    } else {
-
-                        otherChapterId = filteredChapters.stream()
-                                .map(otherChapterIdentifier -> ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterIdentifier.getChapterId()))
-                                .min(Comparator.comparingInt(chapterData -> chapterData != null ? chapterData.getIndex() : 0))
-                                .map(ChapterData::getId)
-                                .orElse(otherChapterId);
-                    }
-
-                    ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
-                    ArdaPathsClient.CONFIG_MANAGER.save();
-                }
+                shouldSwitchToNewChapter(filteredChapters, currentChapter);
             }
 
             if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100)
@@ -154,38 +118,142 @@ public class TrailRenderer
 
         for (AnimatedTrail trail : List.copyOf(trails))
         {
-
-            var playerPosition = player.getPos();
-            var distanceToTrail = playerPosition.squaredDistanceTo(trail.getCurrentPos());
-
-            if (distanceToTrail > (player.isHolding(ModItems.PATH_REVEALER) ? 225 : 10000))
-            {
-                removeTrail(trail);
-                continue;
-            }
-
-            if (trail.isAtEnd())
-            {
-                if (player.isHolding(ModItems.PATH_REVEALER))
-                {
-                    var stopPos = BlockPos.ofFloored(trail.getCurrentPos());
-                    var optionalMarkerAtPos = level.getBlockEntity(stopPos, ModBlockEntities.PATH_MARKER);
-
-                    if (optionalMarkerAtPos.isPresent())
-                    {
-                        var marker = optionalMarkerAtPos.get();
-                        marker.createTrail(selectedPath.getId(), currentChapterId, selectedPath.getColors());
-                    }
-                }
-
-                removeTrail(trail);
-                continue;
-            }
-
-            trail.render(level);
+            renderTrail(level, trail, player, selectedPath, currentChapterId);
         }
     }
 
+    /**
+     * Display animated text based on the player's proximity to a path marker.
+     *
+     * @param squaredDistance     The squared distance between the player and the path marker
+     * @param currentChapterData  The chapter data of the path marker
+     * @param player              The player entity
+     * @param playerPos           The position of the player
+     * @param currentPathColors   The colors of the current path
+     */
+    private static void displayAnimatedText(double squaredDistance,
+                                            PathMarkerBlockEntity.ChapterNbtData currentChapterData,
+                                            ClientPlayerEntity player,
+                                            BlockPos playerPos,
+                                            Color[] currentPathColors) {
+
+        var renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
+        var renderChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
+        var selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
+
+        if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange()))
+        {
+            if (!currentChapterData.getProximityMessage().isEmpty() && renderMessages) {
+
+                var animatedMessage = AnimatedMessage.getAnimatedMessage(currentChapterData);
+                Journal.addProximityMessage(currentChapterData.getProximityMessage(), getPlayerTeleportPacket(player, playerPos));
+                ProximityMessageRenderer.setMessage(animatedMessage);
+            }
+
+            if (selectedPath != null) {
+
+                ChapterData currentChapterInfo = selectedPath.getChapter(currentChapterData.getChapterId());
+                if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail() && renderChapterTitles) {
+
+                    Journal.addChapterStart(currentChapterInfo.getName(), getPlayerTeleportPacket(player, playerPos));
+                    ProximityTitleRenderer.setTitle(currentChapterInfo.getName(), currentPathColors[0]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine if the current chapter should be switched to a new chapter based on proximity to path markers.
+     *
+     * @param filteredChapters List of chapter data from nearby path markers
+     * @param currentChapter   The current chapter data
+     */
+    private static void shouldSwitchToNewChapter(List<PathMarkerBlockEntity.ChapterNbtData> filteredChapters, ChapterData currentChapter) {
+
+        for (var otherChapterData : filteredChapters)
+        {
+            String otherChapterId = otherChapterData.getChapterId();
+
+            ChapterData chapter = ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterId);
+
+            if (currentChapter == null || chapter == null) continue;
+
+            if (!"default".equalsIgnoreCase(currentChapter.getName())) {
+                if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+                if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
+            } else {
+
+                otherChapterId = filteredChapters.stream()
+                        .map(otherChapterIdentifier -> ArdaPathsClient.CONFIG.getSelectedPath().getChapter(otherChapterIdentifier.getChapterId()))
+                        .min(Comparator.comparingInt(chapterData -> chapterData != null ? chapterData.getIndex() : 0))
+                        .map(ChapterData::getId)
+                        .orElse(otherChapterId);
+            }
+
+            ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
+            ArdaPathsClient.CONFIG_MANAGER.save();
+        }
+    }
+
+    /**
+     * Render a single trail. Remove it if the player is too far away or if it has reached the end of the trail.
+     *
+     * @param level           The client world
+     * @param trail           The trail to render
+     * @param player          The player entity
+     * @param selectedPath   The selected path data
+     * @param currentChapterId The current chapter ID
+     */
+    private static void renderTrail(ClientWorld level, AnimatedTrail trail, ClientPlayerEntity player, PathData selectedPath, String currentChapterId) {
+
+        var playerPosition = player.getPos();
+        var distanceToTrail = playerPosition.squaredDistanceTo(trail.getCurrentPos());
+
+        if (distanceToTrail > (player.isHolding(ModItems.PATH_REVEALER) ? 225 : 10000))
+        {
+            removeTrail(trail);
+            return;
+        }
+
+        if (trail.isAtEnd())
+        {
+            if (player.isHolding(ModItems.PATH_REVEALER))
+            {
+                var stopPos = BlockPos.ofFloored(trail.getCurrentPos());
+                var optionalMarkerAtPos = level.getBlockEntity(stopPos, ModBlockEntities.PATH_MARKER);
+
+                optionalMarkerAtPos.ifPresent(marker -> marker.createTrail(selectedPath.getId(), currentChapterId, selectedPath.getColors()));
+            }
+
+            removeTrail(trail);
+            return;
+        }
+
+        trail.render(level);
+    }
+
+    /**
+     * Create a PlayerTeleportPacket for the given player and position.
+     *
+     * @param player    The player to teleport
+     * @param playerPos The position to teleport to
+     * @return A PlayerTeleportPacket for the given player and position
+     */
+    private static @NotNull PlayerTeleportPacket getPlayerTeleportPacket(ClientPlayerEntity player, BlockPos playerPos) {
+
+        var worldId = player.getWorld()
+                .getRegistryKey()
+                .getValue();
+
+        return new PlayerTeleportPacket(playerPos.getX(), playerPos.getY(), playerPos.getZ(), worldId);
+    }
+
+    /**
+     * Update the last visited trail node data.
+     *
+     * @param currentChapterId     The current chapter ID
+     * @param closestValidMarker   The closest valid path marker
+     */
     private static void updateLastVisitedTrailNode(String currentChapterId, PathMarkerBlockEntity closestValidMarker){
 
         Identifier worldId = null;

@@ -4,22 +4,18 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
@@ -67,7 +63,7 @@ public class ArdaPathsClient implements ClientModInitializer
                 PathMarkerBlock.selectedBlockPosition = null;
 
                 var message = Text.empty()
-                        .append(Text.translatable("ardapaths.client.message.ardaptaths").formatted(Formatting.DARK_AQUA))
+                        .append(Text.translatable("ardapaths.client.message.ardapaths").formatted(Formatting.DARK_AQUA))
                         .append(Text.translatable("ardapaths.client.message.deselected_origin_block").formatted(Formatting.RED));
 
                 MinecraftClient.getInstance().player.sendMessage(message);
@@ -88,11 +84,11 @@ public class ArdaPathsClient implements ClientModInitializer
 
                 if(lastVisitedTrailNodeData != null) {
 
-                    String lastVisitedNodeChapterId = lastVisitedTrailNodeData.getSelectedChapterId() != null ? lastVisitedTrailNodeData.getSelectedChapterId() : "";
+                    String lastVisitedNodeChapterId = lastVisitedTrailNodeData.selectedChapterId() != null ? lastVisitedTrailNodeData.selectedChapterId() : "";
 
                     if (!currentSelectedChapterId.isBlank() && currentSelectedChapterId.equals(lastVisitedNodeChapterId)) {
 
-                        PlayerTeleportPacket packet = new PlayerTeleportPacket(lastVisitedTrailNodeData.getPosX() + 0.5, lastVisitedTrailNodeData.getPosY(), lastVisitedTrailNodeData.getPosZ() + 0.5, lastVisitedTrailNodeData.getWorldId());
+                        PlayerTeleportPacket packet = new PlayerTeleportPacket(lastVisitedTrailNodeData.posX() + 0.5, lastVisitedTrailNodeData.posY(), lastVisitedTrailNodeData.posZ() + 0.5, lastVisitedTrailNodeData.worldId());
                         PacketRegistry.PLAYER_TELEPORT.send(packet);
                         callingForTeleport = false;
                         return;
