@@ -16,6 +16,7 @@ import java.util.List;
  */
 public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<JournalListEntry> {
 
+    private final int color;
     private final Text heading;
     private final Text description;
     private final ButtonWidget teleportButton;
@@ -30,13 +31,15 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
      * @param heading        The heading of the journal entry
      * @param description The description text of the journal entry
      * @param buttonText  The text for the teleport button (empty for no button)
+     * @param color        The color of the entry
      * @param onPress     The action to perform when the button is pressed
      */
-    public JournalListEntry(Text heading, Text description, Text buttonText, ButtonWidget.PressAction onPress) {
+    public JournalListEntry(Text heading, Text description, Text buttonText, int color, ButtonWidget.PressAction onPress) {
 
         this.client = MinecraftClient.getInstance();
         this.heading = heading;
         this.description = description;
+        this.color = color;
 
         if (!buttonText.equals(Text.empty())) {
 
@@ -119,7 +122,7 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
             int lineY = y + 14;
             int lineHeight = textRenderer.fontHeight + 2;
             for (OrderedText line : wrappedDescription) {
-                context.drawText(textRenderer, line, x + 5, lineY, 0xAAAAAA, false);
+                context.drawText(textRenderer, line, x + 5, lineY, color, false);
                 lineY += lineHeight;
             }
         }

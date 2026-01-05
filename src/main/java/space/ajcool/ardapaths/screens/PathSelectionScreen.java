@@ -102,7 +102,7 @@ public class PathSelectionScreen extends Screen
         this.addDrawableChild(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap));
         titleDisplaySpeedSlider = this.addDrawableChild(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
 
-        this.addDrawableChild(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap + UI_SEPARATOR_SPACING));
+        this.addDrawableChild(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap));
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {

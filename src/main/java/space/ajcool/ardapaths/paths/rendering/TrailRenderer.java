@@ -155,7 +155,7 @@ public class TrailRenderer
                 ChapterData currentChapterInfo = selectedPath.getChapter(currentChapterData.getChapterId());
                 if (currentChapterInfo != null && currentChapterData.isChapterStart() && currentChapterData.isDisplayChapterTitleOnTrail() && renderChapterTitles) {
 
-                    Journal.addChapterStart(currentChapterInfo.getName(), getPlayerTeleportPacket(player, playerPos));
+                    Journal.addChapterStart(currentChapterInfo.getName(), getPlayerTeleportPacket(player, playerPos), currentPathColors[0].asHex());
                     ProximityTitleRenderer.setTitle(currentChapterInfo.getName(), currentPathColors[0]);
                 }
             }

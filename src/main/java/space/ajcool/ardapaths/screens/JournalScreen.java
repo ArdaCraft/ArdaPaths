@@ -53,24 +53,26 @@ public class JournalScreen extends Screen {
                         Text.translatable("ardapaths.client.journal.screen.entry.type.chapter"),
                         Text.literal(entry.text()),
                         Text.translatable("ardapaths.client.journal.screen.teleport"),
+                        entry.color(),
                         button -> teleportPlayer(entry.teleportPacket())
                 ));
                 case PROXIMITY_MESSAGE -> entries.add(new JournalListEntry(
-                        Text.translatable("ardapaths.client.journal.screen.entry.type.note"),
+                        Text.translatable("ardapaths.client.journal.screen.entry.type.entry"),
                         Text.literal(entry.text()),
                         Text.translatable("ardapaths.client.journal.screen.teleport"),
+                        entry.color(),
                         button -> teleportPlayer(entry.teleportPacket())
                 ));
               }
         }
 
-        int rowWidth = totalUiWidth - 40; // matches getRowWidth()
+        int rowWidth = totalUiWidth - 40;
         int totalContentHeight = 0;
         for (JournalListEntry entry : entries) {
             totalContentHeight += entry.getHeight(rowWidth);
         }
         // Clamp list height to screen bounds
-        int maxListHeight = height - 80;
+        int maxListHeight = height - 120;
         int listHeight = Math.min(totalContentHeight + 8, maxListHeight);
 
         // Center vertically

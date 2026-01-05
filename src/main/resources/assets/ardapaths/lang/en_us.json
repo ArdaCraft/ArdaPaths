@@ -28,7 +28,7 @@
   "ardapaths.client.journal.screen.title": "Journal",
   "ardapaths.client.journal.screen.title.tooltip": "Display the last journal entries",
   "ardapaths.client.journal.screen.entry.type.chapter": "Chapter",
-  "ardapaths.client.journal.screen.entry.type.note": "Note",
+  "ardapaths.client.journal.screen.entry.type.entry": "Entry",
   "ardapaths.client.journal.screen.teleport": "Teleport",
   "ardapaths.generic.on": "On",
   "ardapaths.generic.off": "Off",
