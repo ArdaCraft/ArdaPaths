@@ -21,9 +21,9 @@ public class Journal {
      * @param text            The proximity message text
      * @param teleportPacket  The teleport packet associated with the message
      */
-    public static void addProximityMessage(String text, PlayerTeleportPacket teleportPacket) {
+    public static void addProximityMessage(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket) {
         rotateJournal();
-        LOG.add(new Entry(text, teleportPacket,EntryType.PROXIMITY_MESSAGE));
+        LOG.add(new Entry(pathId, chapterId, text, teleportPacket,EntryType.PROXIMITY_MESSAGE));
     }
 
     /**
@@ -33,9 +33,9 @@ public class Journal {
      * @param teleportPacket  The teleport packet associated with the chapter start
      * @param color           The color associated with the chapter start
      */
-    public static void addChapterStart(String text, PlayerTeleportPacket teleportPacket, int color) {
+    public static void addChapterStart(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket, int color) {
         rotateJournal();
-        LOG.add(new Entry(text, teleportPacket, EntryType.CHAPTER_START, color));
+        LOG.add(new Entry(pathId, chapterId, text, teleportPacket, EntryType.CHAPTER_START, color));
     }
 
     /**
@@ -71,10 +71,10 @@ public class Journal {
      * @param type            The type of the entry
      * @param color           The color associated with the entry
      */
-    public record Entry(String text, PlayerTeleportPacket teleportPacket, EntryType type, int color) {
+    public record Entry(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket, EntryType type, int color) {
 
-        public Entry(String text, PlayerTeleportPacket teleportPacket, EntryType type) {
-            this(text, teleportPacket, type, 0xDDDDDD);
+        public Entry(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket, EntryType type) {
+            this(pathId, chapterId, text, teleportPacket, type, 0xDDDDDD);
         }
 
         /**
@@ -91,7 +91,10 @@ public class Journal {
 
             Entry entry = (Entry) obj;
 
-            return Objects.equals(text, entry.text) && type == entry.type;
+            return Objects.equals(pathId, entry.pathId) &&
+                   Objects.equals(chapterId, entry.chapterId) &&
+                   Objects.equals(text, entry.text) &&
+                   type == entry.type;
         }
 
         /**

@@ -65,12 +65,7 @@ public class ArdaPaths implements ModInitializer
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
-        {
-            if (blockEntity instanceof PathMarkerBlockEntity && !Permissions.check(player, "ardapaths.edit", false))
-                return false;
-
-            return true;
-        });
+                !(blockEntity instanceof PathMarkerBlockEntity) || Permissions.check(player, "ardapaths.edit", false));
     }
 
     public static boolean amITheServer()

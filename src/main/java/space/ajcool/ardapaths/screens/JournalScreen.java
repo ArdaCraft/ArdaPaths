@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
@@ -54,14 +55,14 @@ public class JournalScreen extends Screen {
                         Text.literal(entry.text()),
                         Text.translatable("ardapaths.client.journal.screen.teleport"),
                         entry.color(),
-                        button -> teleportPlayer(entry.teleportPacket())
+                        button -> handleTeleportRequest(entry.pathId(), entry.chapterId(), entry.teleportPacket())
                 ));
                 case PROXIMITY_MESSAGE -> entries.add(new JournalListEntry(
                         Text.translatable("ardapaths.client.journal.screen.entry.type.entry"),
                         Text.literal(entry.text()),
                         Text.translatable("ardapaths.client.journal.screen.teleport"),
                         entry.color(),
-                        button -> teleportPlayer(entry.teleportPacket())
+                        button -> handleTeleportRequest(entry.pathId(), entry.chapterId(), entry.teleportPacket())
                 ));
               }
         }
@@ -104,11 +105,19 @@ public class JournalScreen extends Screen {
     }
 
     /**
-     * Teleport the player using the provided teleport packet.
+     * Teleport the player using the provided teleport packet. Also sets the selected path and chapter if provided.
      *
+     * @param pathId         The ID of the path
+     * @param chapterId      The ID of the chapter
      * @param teleportPacket The teleport packet containing teleportation data
      */
-    private void teleportPlayer(PlayerTeleportPacket teleportPacket) {
+    private void handleTeleportRequest(String pathId, String chapterId, PlayerTeleportPacket teleportPacket) {
+
+        if (pathId != null && chapterId != null) {
+
+            ArdaPathsClient.CONFIG.setSelectedPath(pathId);
+            ArdaPathsClient.CONFIG.setCurrentChapter(chapterId);
+        }
 
         if (teleportPacket != null) {
 
