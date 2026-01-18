@@ -8,8 +8,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.ColorHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
-import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
-import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
 
 public class AnimatedTitle
 {
@@ -150,5 +148,9 @@ public class AnimatedTitle
         if (!(obj instanceof AnimatedTitle other)) return super.equals(obj);
 
         return title.equals(other.title);
+    }
+
+    public boolean isFinished() {
+        return done && !showing;
     }
 }

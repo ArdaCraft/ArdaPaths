@@ -3,9 +3,14 @@ package space.ajcool.ardapaths.paths.rendering;
 import net.minecraft.client.gui.DrawContext;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 
+import java.util.ArrayDeque;
+import java.util.Queue;
+
 public class ProximityMessageRenderer
 {
-    private static AnimatedMessage message;
+    private static final Queue<AnimatedMessage> messageDeque = new ArrayDeque<>();
+
+    private static AnimatedMessage currentDisplayedMessage;
 
     /**
      * Render the current proximity message.
@@ -15,9 +20,16 @@ public class ProximityMessageRenderer
      */
     public static void render(DrawContext context, float delta)
     {
-        if (message == null) return;
+        if (currentDisplayedMessage == null || currentDisplayedMessage.isFinished()) {
 
-        message.render(context, delta);
+            if (messageDeque.isEmpty()) return;
+
+            currentDisplayedMessage = messageDeque.poll();
+
+            if (currentDisplayedMessage == null) return;
+        };
+
+        currentDisplayedMessage.render(context, delta);
     }
 
     /**
@@ -28,17 +40,21 @@ public class ProximityMessageRenderer
      */
     public static void setMessage(String newMessage)
     {
-        if (message != null && message.getMessage().equals(newMessage)) return;
+        var newAnimatedMessage = new AnimatedMessage(newMessage);
 
-        message = new AnimatedMessage(newMessage);
+        if (messageDeque.contains(newAnimatedMessage)) return;
+        if (currentDisplayedMessage != null && currentDisplayedMessage.equals(newAnimatedMessage)) return;
+
+        messageDeque.add(newAnimatedMessage);
     }
 
     public static void setMessage(AnimatedMessage newMessage)
     {
-        if (newMessage.equals(message)) return;
+        if (messageDeque.contains(newMessage)) return;
+        if (currentDisplayedMessage != null && currentDisplayedMessage.equals(newMessage)) return;
 
-        message = newMessage;
-        message.reset();
+        newMessage.reset();
+        messageDeque.add(newMessage);
     }
 
     /**
@@ -46,6 +62,7 @@ public class ProximityMessageRenderer
      */
     public static void clearMessage()
     {
-        ProximityMessageRenderer.message = null;
+        currentDisplayedMessage = null;
+        messageDeque.clear();
     }
 }

@@ -4,9 +4,14 @@ import net.minecraft.client.gui.DrawContext;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
 
+import java.util.ArrayDeque;
+import java.util.Queue;
+
 public class ProximityTitleRenderer
 {
-    private static AnimatedTitle title;
+    private static final Queue<AnimatedTitle> titleDeque = new ArrayDeque<>();
+
+    private static AnimatedTitle currentDisplayedTitle;
 
     /**
      * Render the current proximity message.
@@ -16,9 +21,16 @@ public class ProximityTitleRenderer
      */
     public static void render(DrawContext context, float delta)
     {
-        if (title == null) return;
+        if (currentDisplayedTitle ==  null || currentDisplayedTitle.isFinished()) {
 
-        title.render(context);
+            if (titleDeque.isEmpty()) return;
+
+            currentDisplayedTitle = titleDeque.poll();
+
+            if (currentDisplayedTitle == null) return;
+        }
+
+        currentDisplayedTitle.render(context);
     }
 
     /**
@@ -33,10 +45,10 @@ public class ProximityTitleRenderer
 
         AnimatedTitle newTitle = new AnimatedTitle(nTitle, nPrimaryColor);
 
-        if (newTitle.equals(title)) return;
-
-        title = newTitle;
-        title.reset();
+        if (titleDeque.contains(newTitle)) return;
+        if (currentDisplayedTitle != null && currentDisplayedTitle.equals(newTitle)) return;
+        newTitle.reset();
+        titleDeque.add(newTitle);
     }
 
     /**
@@ -44,6 +56,7 @@ public class ProximityTitleRenderer
      */
     public static void clearMessage()
     {
-        ProximityTitleRenderer.title = null;
+        currentDisplayedTitle = null;
+        titleDeque.clear();
     }
 }

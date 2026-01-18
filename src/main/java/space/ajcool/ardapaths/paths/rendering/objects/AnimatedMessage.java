@@ -10,7 +10,6 @@ import net.minecraft.util.math.ColorHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.BitPacker;
-import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.ArrayList;
@@ -189,5 +188,10 @@ public class AnimatedMessage
         if (!(obj instanceof AnimatedMessage other)) return super.equals(obj);
 
         return message.equals(other.message);
+    }
+
+    public boolean isFinished() {
+
+        return done && !showing;
     }
 }
