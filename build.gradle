@@ -30,8 +30,14 @@ dependencies {
         exclude group: "net.fabricmc.fabric-api"
     })
 
+
+    // Server only dependencies
+
     // Warp  commands api - HuskHomes (fabric v4.7 [1.20.1])
     compileOnly("curse.maven:huskhomes-849217:5468607")
+
+    // Arda regions
+    modApi(files("build/libs/arda-regions-0.0.3.jar"))
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
 }
@@ -42,7 +48,13 @@ loom {
     runs {
         client {
             property("devauth.configDir", getRootProject().file(".devauth").absolutePath)
+            runDir = "run"
             client()
+        }
+
+        server {
+            runDir = "runServer"
+            server()
         }
     }
 }

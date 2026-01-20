@@ -9,6 +9,7 @@ import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
+import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import space.ajcool.ardapaths.screens.widgets.JournalListEntry;
 import space.ajcool.ardapaths.screens.widgets.JournalListWidget;
@@ -121,6 +122,7 @@ public class JournalScreen extends Screen {
 
         if (teleportPacket != null) {
 
+            ProximityRenderer.clear();
             PacketRegistry.PLAYER_TELEPORT.send(teleportPacket);
         }
     }

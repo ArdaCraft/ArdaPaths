@@ -20,6 +20,9 @@
     ],
     "main": [
       "space.ajcool.ardapaths.ArdaPaths"
+    ],
+    "arda-regions:api": [
+      "space.ajcool.ardapaths.core.consumers.ArdaRegionsConsumer"
     ]
   },
   "mixins": [
@@ -30,6 +33,10 @@
     "fabricloader": ">=${loader_version}",
     "fabric": "*",
     "minecraft": "${minecraft_version}",
-    "fabric-permissions-api-v0": "*"
+    "fabric-permissions-api-v0": "*",
+    "arda-regions": "*"
+  },
+  "depends_server": {
+    "huskhomes": "*"
   }
 }

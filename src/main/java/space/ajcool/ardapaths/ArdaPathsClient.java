@@ -19,8 +19,7 @@ import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
-import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
+import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
 import java.util.ArrayList;
@@ -46,8 +45,7 @@ public class ArdaPathsClient implements ClientModInitializer
 
         ModParticles.initClient();
 
-        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
-        HudRenderCallback.EVENT.register(ProximityTitleRenderer::render);
+        HudRenderCallback.EVENT.register(ProximityRenderer::render);
 
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
 
@@ -87,7 +85,7 @@ public class ArdaPathsClient implements ClientModInitializer
                     String lastVisitedNodeChapterId = lastVisitedTrailNodeData.selectedChapterId() != null ? lastVisitedTrailNodeData.selectedChapterId() : "";
 
                     if (!currentSelectedChapterId.isBlank() && currentSelectedChapterId.equals(lastVisitedNodeChapterId)) {
-
+                        ProximityRenderer.clear();
                         PlayerTeleportPacket packet = new PlayerTeleportPacket(lastVisitedTrailNodeData.posX() + 0.5, lastVisitedTrailNodeData.posY(), lastVisitedTrailNodeData.posZ() + 0.5, lastVisitedTrailNodeData.worldId());
                         PacketRegistry.PLAYER_TELEPORT.send(packet);
                         callingForTeleport = false;
@@ -102,12 +100,12 @@ public class ArdaPathsClient implements ClientModInitializer
                     var message = Text.empty()
                             .append(Text.translatable("ardapaths.client.message.no_trail_data").formatted(Formatting.DARK_AQUA));
                     MinecraftClient.getInstance().player.sendMessage(message);
-                    ArdaPaths.LOGGER.info("");
                 }
 
-                if (!currentSelectedChapterId.isBlank())
+                if (!currentSelectedChapterId.isBlank()) {
+                    ProximityRenderer.clear();
                     Paths.gotoChapter(currentSelectedChapterId, true);
-                else {
+                } else {
 
                     var message = Text.empty()
                             .append(Text.translatable("ardapaths.client.message.no_chapter_selected").formatted(Formatting.DARK_AQUA));

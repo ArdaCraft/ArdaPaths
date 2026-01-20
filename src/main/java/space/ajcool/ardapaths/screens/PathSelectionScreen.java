@@ -18,8 +18,7 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
-import space.ajcool.ardapaths.paths.rendering.ProximityTitleRenderer;
+import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
@@ -202,7 +201,7 @@ public class PathSelectionScreen extends Screen
                     this.close();
                     if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty())
                     {
-                        ProximityTitleRenderer.clearMessage();
+                        ProximityRenderer.clear();
                         Paths.gotoChapter(selectedChapterId);
                     }
                 },
@@ -244,8 +243,7 @@ public class PathSelectionScreen extends Screen
                     showChapterTitles = checked;
                     titleDisplaySpeedSlider.active = checked;
                     Paths.showChapterTitles(showChapterTitles);
-                    ProximityMessageRenderer.clearMessage();
-                    ProximityTitleRenderer.clearMessage();
+                    ProximityRenderer.clear();
                 })
                 .build();
 
@@ -265,8 +263,7 @@ public class PathSelectionScreen extends Screen
                     showProximityMessages = checked;
                     proximityTextSpeedSlider.active = checked;
                     Paths.showProximityMessages(showProximityMessages);
-                    ProximityMessageRenderer.clearMessage();
-                    ProximityTitleRenderer.clearMessage();
+                    ProximityRenderer.clear();
                 })
                 .build();
 

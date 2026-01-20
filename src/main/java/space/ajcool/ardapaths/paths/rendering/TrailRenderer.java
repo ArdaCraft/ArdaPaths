@@ -56,8 +56,7 @@ public class TrailRenderer {
         if (!isHoldingRevealer && !isHoldingMarker) {
 
             clearTrails();
-            ProximityMessageRenderer.clearMessage();
-            ProximityTitleRenderer.clearMessage();
+            ProximityRenderer.clear();
 
         // Else, render trails based on the held item
         } else {
@@ -262,7 +261,7 @@ public class TrailRenderer {
                         currentChapterData.getProximityMessage(),
                         getPlayerTeleportPacket(player, playerPos));
 
-                ProximityMessageRenderer.setMessage(AnimatedMessage.getAnimatedMessage(currentChapterData));
+                ProximityRenderer.addMessage(AnimatedMessage.getAnimatedMessage(currentChapterData));
             }
 
             // Render chapter title
@@ -277,7 +276,7 @@ public class TrailRenderer {
                         currentPathColors[0].asHex());
 
                 if (renderChapterTitles)
-                    ProximityTitleRenderer.setTitle(currentChapterInfo.getName(), currentPathColors[0]);
+                    ProximityRenderer.addTitle(currentChapterInfo.getName(), currentPathColors[0]);
 
             }
         }
