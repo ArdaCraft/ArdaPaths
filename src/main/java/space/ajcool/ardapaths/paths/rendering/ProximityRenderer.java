@@ -5,7 +5,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Hand;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
-import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
@@ -93,21 +92,6 @@ public class ProximityRenderer {
      */
     private void renderNextItem(DrawContext context, float delta) {
 
-        // Skip loop if region data is displaying
-        if (ArdaRegionsState.isDisplaying()) {
-
-            regionWasDisplaying = true;
-            return;
-
-        } else if (!ArdaRegionsState.isDisplaying() && regionWasDisplaying) {
-
-            // Reset messages to clean state after region display ends
-            regionWasDisplaying = false;
-
-            if (currentDisplayedMessage != null) currentDisplayedMessage.reset();
-            if (currentDisplayedTitle   != null) currentDisplayedTitle.reset();
-        }
-
         var nextItem = renderQueue.peek();
 
         if (nextItem instanceof AnimatedTitle) {
@@ -190,6 +174,7 @@ public class ProximityRenderer {
      * After calling this method, no renderables will be shown until new items are added.
      */
     public static void clear() {
+        INSTANCE.currentDisplayedTitle = null;
         INSTANCE.currentDisplayedMessage = null;
         INSTANCE.renderQueue.clear();
     }

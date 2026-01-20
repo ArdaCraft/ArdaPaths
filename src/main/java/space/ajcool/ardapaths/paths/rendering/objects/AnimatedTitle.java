@@ -7,6 +7,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.ColorHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
 
@@ -149,7 +150,11 @@ public class AnimatedTitle extends TextRenderable {
             done = true;
         }
 
-        drawTitleText(title, primaryColor, drawContext, font, x, TITLE_Y_OFFSET, opacity, scale, -font.fontHeight / 2);
+        int y = TITLE_Y_OFFSET;
+
+        if (ArdaRegionsState.isDisplaying()) y = (int) ((height / 2f) / scale);
+
+        drawTitleText(title, primaryColor, drawContext, font, x, y, opacity, scale, -font.fontHeight / 2);
     }
 
     /**

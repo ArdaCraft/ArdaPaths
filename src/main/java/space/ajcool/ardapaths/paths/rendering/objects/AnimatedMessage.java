@@ -9,6 +9,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ColorHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
@@ -207,12 +208,15 @@ public class AnimatedMessage extends TextRenderable {
         }
 
         // Adjust for title offset if a title is being displayed
-        var titleOffset = ProximityRenderer.isDisplayingTitle() ? AnimatedTitle.TITLE_Y_OFFSET : 0;
+        var titleOffset = ProximityRenderer.isDisplayingTitle() ? AnimatedTitle.TITLE_Y_OFFSET / 2.5f : 0;
 
         // Render each line centered on screen
         for (int i = 0; i < lines.size(); i++) {
 
-            int y = ((height - titleOffset)/ 5) + (10 * i) + titleOffset;
+            int y = (int) ((10 * i) + titleOffset);
+
+            if (ArdaRegionsState.isDisplaying()) y += (int) ((height / 2f) + titleOffset);
+            else y += (int) ((height - titleOffset)/ 5);
 
             drawContext.drawCenteredTextWithShadow(
                     font,
