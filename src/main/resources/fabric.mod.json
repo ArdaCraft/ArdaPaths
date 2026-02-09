@@ -35,8 +35,5 @@
     "minecraft": "${minecraft_version}",
     "fabric-permissions-api-v0": "*",
     "arda-regions": "*"
-  },
-  "depends_server": {
-    "huskhomes": "*"
   }
 }

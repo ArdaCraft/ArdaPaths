@@ -10,6 +10,7 @@ import net.minecraft.item.Item;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
@@ -52,6 +53,7 @@ public class ArdaPathsClient implements ClientModInitializer
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
             CONFIG_MANAGER.updatePathData();
+            PermissionHelper.hasEditPermission(client.player);
         });
 
         ClientTickEvents.START_WORLD_TICK.register(level ->

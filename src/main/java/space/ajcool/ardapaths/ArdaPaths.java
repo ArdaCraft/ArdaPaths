@@ -1,20 +1,23 @@
 package space.ajcool.ardapaths;
 
-import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -27,6 +30,7 @@ public class ArdaPaths implements ModInitializer
 {
     public static final String MOD_ID = "ardapaths";
     public static final Logger LOGGER = LoggerFactory.getLogger("ardapaths");
+    public static final String MOD_EDIT_PERMISSION = String.format("%s.edit", MOD_ID);
     public static ServerConfigManager CONFIG_MANAGER;
     public static ServerConfig CONFIG;
 
@@ -48,7 +52,7 @@ public class ArdaPaths implements ModInitializer
         {
             var blockEntity = world.getBlockEntity(hitResult.getBlockPos().offset(hitResult.getSide()));
 
-            if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !Permissions.check(player, "ardapaths.edit", false))
+            if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !PermissionHelper.hasEditPermission(player))
                 return ActionResult.FAIL;
 
             return ActionResult.PASS;
@@ -58,18 +62,23 @@ public class ArdaPaths implements ModInitializer
         {
             var itemsStack = player.getStackInHand(hand);
 
-            if (itemsStack.isOf(ModBlocks.PATH_MARKER.asItem()) && !Permissions.check(player, "ardapaths.edit", false))
+            if (itemsStack.isOf(ModBlocks.PATH_MARKER.asItem()) && !PermissionHelper.hasEditPermission(player))
                 return TypedActionResult.fail(itemsStack);
 
             return TypedActionResult.pass(itemsStack);
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
-                !(blockEntity instanceof PathMarkerBlockEntity) || Permissions.check(player, "ardapaths.edit", false));
+        {
+            if (blockEntity instanceof PathMarkerBlockEntity && !PermissionHelper.hasEditPermission(player))
+                return false;
+
+            return true;
+        });
     }
 
-    public static boolean amITheServer()
-    {
+    public static boolean amITheServer() {
+
         var serverEnv = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
 
         if (!serverEnv) return Client.isInSinglePlayer();

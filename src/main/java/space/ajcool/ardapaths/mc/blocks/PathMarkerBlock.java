@@ -1,10 +1,10 @@
 package space.ajcool.ardapaths.mc.blocks;
 
-import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
@@ -22,6 +22,7 @@ import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -40,32 +41,27 @@ public class PathMarkerBlock extends BlockWithEntity
 
     public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult)
     {
-        if (!Permissions.check(player, "ardapaths.edit", 4))
-        {
-            return ActionResult.CONSUME;
-        }
-
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
-        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
-        {
-            return ActionResult.PASS;
-        }
-        if (!level.isClient())
-        {
-            return ActionResult.CONSUME;
-        }
+        if (selectedBlockEntity == null) return ActionResult.PASS;
+        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity)) return ActionResult.PASS;
+        if (!level.isClient()) return ActionResult.CONSUME;
 
-        if (Client.isCtrlDown())
-        {
-            Screens.openEditorScreen(pathMarkerBlockEntity);
-            return ActionResult.CONSUME;
-        }
+        PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(),response -> {
+            if (response.hasPermission()) this.validateOnUse(level, blockPos, pathMarkerBlockEntity, player);
+        });
 
-        if (selectedBlockPosition == null)
-        {
-            if (selectedBlockEntity instanceof PathMarkerBlockEntity)
-            {
+        return ActionResult.CONSUME;
+    }
+
+    public void validateOnUse(World level, BlockPos blockPos, PathMarkerBlockEntity pathMarkerBlockEntity, PlayerEntity player){
+        MinecraftClient.getInstance().execute(() -> {
+            if (Client.isCtrlDown()) {
+                Screens.openEditorScreen(pathMarkerBlockEntity);
+                return;
+            }
+
+            if (selectedBlockPosition == null) {
                 selectedBlockPosition = blockPos;
 
                 var message = Text.empty()
@@ -73,45 +69,39 @@ public class PathMarkerBlock extends BlockWithEntity
                         .append(Text.literal("Selected origin block.").formatted(Formatting.BLUE));
 
                 player.sendMessage(message);
-            }
-        }
-        else
-        {
-            BlockEntity blockEntity = level.getBlockEntity(selectedBlockPosition);
 
-            if (blockEntity instanceof PathMarkerBlockEntity pathMarker)
-            {
-                MutableText message;
+            } else {
 
-                if (selectedBlockPosition.equals(blockPos))
-                {
-                    message = Text.empty()
-                            .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                            .append(Text.literal("Target block removed.").formatted(Formatting.RED));
+                BlockEntity blockEntity = level.getBlockEntity(selectedBlockPosition);
 
-                    PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
-                    data.removeTarget();
+                if (blockEntity instanceof PathMarkerBlockEntity pathMarker) {
+                    MutableText message;
+
+                    if (selectedBlockPosition.equals(blockPos)) {
+                        message = Text.empty()
+                                .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
+                                .append(Text.literal("Target block removed.").formatted(Formatting.RED));
+
+                        PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
+                        data.removeTarget();
+                    } else {
+                        message = Text.empty()
+                                .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
+                                .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
+
+                        PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
+                        data.setTarget(blockPos.subtract(selectedBlockPosition));
+                    }
+
+                    PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getPos(), pathMarker.createNbt());
+                    PacketRegistry.PATH_MARKER_UPDATE.send(packet);
+                    player.sendMessage(message);
+                    ArdaPaths.LOGGER.info("Sending Update Packet");
                 }
-                else
-                {
-                    message = Text.empty()
-                            .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                            .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
 
-                    PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
-                    data.setTarget(blockPos.subtract(selectedBlockPosition));
-                }
-
-                PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getPos(), pathMarker.createNbt());
-                PacketRegistry.PATH_MARKER_UPDATE.send(packet);
-                player.sendMessage(message);
-                ArdaPaths.LOGGER.info("Sending Update Packet");
+                selectedBlockPosition = null;
             }
-
-            selectedBlockPosition = null;
-        }
-
-        return ActionResult.CONSUME;
+        });
     }
 
     public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos)
