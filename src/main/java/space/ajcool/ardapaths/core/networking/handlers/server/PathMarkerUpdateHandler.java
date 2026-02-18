@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -23,7 +24,7 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
     {
         BlockPos blockPos = packet.position();
         NbtCompound nbt = packet.data();
-
+        ArdaPaths.LOGGER.info("Received NBT : [{}]", nbt.toString());
         server.execute(() ->
         {
             BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);

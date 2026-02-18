@@ -1,9 +1,11 @@
 package space.ajcool.ardapaths.screens.widgets;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.core.Client;
@@ -15,14 +17,16 @@ public class CheckboxWidget extends PressableWidget
     private static final Identifier TEXTURE = new Identifier("textures/gui/checkbox.png");
     private final Text text;
     private boolean checked;
+    private boolean enabled;
     private Consumer<Boolean> onChange;
 
-    public CheckboxWidget(int x, int y, int width, int height, Text text, boolean checked, Consumer<Boolean> onChange)
+    public CheckboxWidget(int x, int y, int width, int height, Text text, boolean checked, boolean enabled, Consumer<Boolean> onChange)
     {
         super(x, y, width, height, null);
         this.text = text;
         this.checked = checked;
         this.onChange = onChange;
+        this.enabled = enabled;
     }
 
     @Override
@@ -30,6 +34,24 @@ public class CheckboxWidget extends PressableWidget
     {
         int x = this.getX();
         int y = this.getY();
+        TextRenderer textRenderer = Client.mc().textRenderer;
+
+        if (!enabled)
+        {
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            matrices.translate(0, 0, 2);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.7f);
+            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0xFF48494A);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            matrices.pop();
+
+            int textX = x - width - textRenderer.getWidth(text) + 10;
+            int textY = y + (height - textRenderer.fontHeight) / 2;
+            context.drawTextWithShadow(textRenderer, text, textX, textY, 0xFF48494A);
+
+            return;
+        }
 
         if (this.isHovered())
         {
@@ -54,8 +76,8 @@ public class CheckboxWidget extends PressableWidget
             }
         }
 
-        TextRenderer textRenderer = Client.mc().textRenderer;
-        int textX = x + width + 5;
+
+        int textX = x - width - textRenderer.getWidth(text) + 10;
         int textY = y + (height - textRenderer.fontHeight) / 2;
         context.drawTextWithShadow(textRenderer, text, textX, textY, 0xFFFFFF);
     }
@@ -88,6 +110,14 @@ public class CheckboxWidget extends PressableWidget
         {
             onChange.accept(checked);
         }
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public void setOnChange(Consumer<Boolean> onChange)

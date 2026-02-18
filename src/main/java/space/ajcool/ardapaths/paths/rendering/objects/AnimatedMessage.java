@@ -2,37 +2,92 @@ package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ColorHelper;
 import org.jetbrains.annotations.NotNull;
+import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
+import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
+import space.ajcool.ardapaths.paths.rendering.TextRenderable;
 
 import java.util.ArrayList;
 
-public class AnimatedMessage
-{
+/**
+ * An animated text message that reveals characters progressively and fades out over time.
+ * <p>
+ * This class handles the rendering of multi-line text with customizable reveal and fade animations.
+ * Characters appear one by one, and after full reveal, the message gradually fades to transparency.
+ */
+public class AnimatedMessage extends TextRenderable {
+
+    /**
+     * Default speed multiplier for proximity-based text animation
+     */
+    public static final double DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER = 0.125d;
+
+    /**
+     * The text content to display
+     */
     private final String message;
 
+    /**
+     * Milliseconds per character reveal (0 for instant reveal)
+     */
     private final int charRevealSpeed;
+
+    /**
+     * Base delay before fade starts (milliseconds)
+     */
     private final int fadeDelayOffset;
+
+    /**
+     * Additional fade delay per character (milliseconds)
+     */
     private final int fadeDelayFactor;
+
+    /**
+     * Milliseconds per opacity point decrease during fade
+     */
     private final int fadeSpeed;
+
+    /**
+     * Minimum opacity value (0-255) before message is considered done
+     */
     private final int minOpacity;
 
-    private int timeAlive;
-    private boolean showing;
-    private boolean done;
+    /**
+     * Speed multiplier for proximity-triggered animations
+     */
+    private final double proximitySpeedMultiplier;
 
-    public AnimatedMessage(String message)
-    {
+    /**
+     * Creates an animated message with default animation parameters.
+     *
+     * @param message the text to display
+     */
+    public AnimatedMessage(String message) {
         this(message, 5, 100, 5, 2, 8);
     }
 
-    public AnimatedMessage(String message, int charRevealSpeed, int fadeDelayOffset, int fadeDelayFactor, int fadeSpeed, int minOpacity)
-    {
+    /**
+     * Creates an animated message with custom animation parameters.
+     *
+     * @param message         the text to display
+     * @param charRevealSpeed milliseconds per character reveal (0 for instant)
+     * @param fadeDelayOffset base delay before fade begins (milliseconds)
+     * @param fadeDelayFactor additional fade delay per character (milliseconds)
+     * @param fadeSpeed       milliseconds per opacity point decrease
+     * @param minOpacity      minimum opacity before marking as done (0-255)
+     */
+    public AnimatedMessage(String message, int charRevealSpeed, int fadeDelayOffset, int fadeDelayFactor, int fadeSpeed, int minOpacity) {
+        super();
+
+        this.proximitySpeedMultiplier = ArdaPathsClient.CONFIG_MANAGER.getConfig().getProximityTextSpeedMultiplier();
         this.message = message;
 
         this.charRevealSpeed = charRevealSpeed;
@@ -40,10 +95,6 @@ public class AnimatedMessage
         this.fadeDelayFactor = fadeDelayFactor;
         this.fadeSpeed = fadeSpeed;
         this.minOpacity = minOpacity;
-
-        this.timeAlive = 0;
-        this.showing = true;
-        this.done = false;
     }
 
     /**
@@ -56,8 +107,7 @@ public class AnimatedMessage
      * @param currentChapterData the chapter data containing the packed message data and proximity message
      * @return a fully constructed {@link AnimatedMessage} based on the chapter data
      */
-    public static @NotNull AnimatedMessage getAnimatedMessage(PathMarkerBlockEntity.ChapterNbtData currentChapterData)
-    {
+    public static @NotNull AnimatedMessage getAnimatedMessage(PathMarkerBlockEntity.ChapterNbtData currentChapterData) {
         var packedMessageData = currentChapterData.getPackedMessageData();
         var unpackedMessageData = BitPacker.unpackFive(packedMessageData);
 
@@ -74,16 +124,26 @@ public class AnimatedMessage
     }
 
     /**
-     * Renders the partially revealed (and possibly fading) text onto the screen.
+     * Renders the animated message with progressive character reveal and fade effects.
+     * <p>
+     * Animation timing is independent of FPS and adjusted by the proximity speed multiplier.
+     * Characters reveal sequentially, with the boundary character shown in gray. Once fully
+     * revealed, the entire message fades to transparency.
      *
-     * @param drawContext The draw context
-     * @param tickDelta   The partial tick
+     * @param drawContext the drawing context used for rendering
      */
-    public void render(DrawContext drawContext, float tickDelta)
-    {
+    @Override
+    public void render(DrawContext drawContext) {
         if (!showing) return;
 
-        this.timeAlive++;
+        // Initialize start time on first render
+        if (startTime == -1) {
+            startTime = System.currentTimeMillis();
+        }
+
+        // Calculate elapsed time with proximity speed multiplier applied
+        long elapsedMillis = (long) ((System.currentTimeMillis() - startTime) * proximitySpeedMultiplier);
+
         var client = MinecraftClient.getInstance();
         var font = client.inGameHud.getTextRenderer();
         var width = client.getWindow().getScaledWidth();
@@ -92,22 +152,38 @@ public class AnimatedMessage
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int textLength = message.length() + 1;
-        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min(timeAlive / charRevealSpeed, textLength), 1);
+        renderAnimatedMessage(drawContext, elapsedMillis, font, width, height);
 
+        RenderSystem.disableBlend();
+    }
+
+    /**
+     * Internal rendering logic that handles character reveal, multi-line splitting, and fade calculation.
+     *
+     * @param drawContext   the drawing context
+     * @param elapsedMillis time elapsed since animation start (with speed multiplier applied)
+     * @param font          the text renderer to use
+     * @param width         screen width in scaled pixels
+     * @param height        screen height in scaled pixels
+     */
+    private void renderAnimatedMessage(DrawContext drawContext, long elapsedMillis, TextRenderer font, int width, int height) {
+
+        // Calculate number of characters to reveal
+        int textLength = message.length() + 1;
+        int numChars = charRevealSpeed == 0 ? textLength : Math.max(Math.min((int) (elapsedMillis / charRevealSpeed), textLength), 1);
+
+        // Split message into lines and build partially revealed text
         var splitMessage = message.split("\n");
         int numCharsLeft = numChars;
 
         var lines = new ArrayList<Text>();
-        for (String line : splitMessage)
-        {
-            if (line.length() < numCharsLeft)
-            {
+        for (String line : splitMessage) {
+            if (line.length() < numCharsLeft) {
+                // Entire line is revealed
                 lines.add(Text.literal(line));
                 numCharsLeft -= line.length();
-            }
-            else
-            {
+            } else {
+                // Partial line with gray boundary character
                 var partialLine = Text.empty()
                         .append(Text.literal(line.substring(0, numCharsLeft - 1))) // fully visible
                         .append(Text.literal(line.substring(numCharsLeft - 1, numCharsLeft))
@@ -118,64 +194,66 @@ public class AnimatedMessage
             if (numCharsLeft <= 0) break;
         }
 
+        // Calculate fade opacity
         int opacity = 255;
         int fadeDelay = fadeDelayOffset + (textLength * fadeDelayFactor);
-        if (timeAlive > fadeDelay)
-        {
-            opacity = 255 - ((timeAlive - fadeDelay) * fadeSpeed);
+        if (elapsedMillis > fadeDelay) {
+            opacity = 255 - (int) ((elapsedMillis - fadeDelay) / fadeSpeed);
         }
 
-        if (opacity <= minOpacity)
-        {
+        // Mark as done when opacity drops below minimum threshold
+        if (opacity <= minOpacity) {
             showing = false;
             done = true;
         }
 
-        for (int i = 0; i < lines.size(); i++)
-        {
+        // Adjust for title offset if a title is being displayed
+        var titleOffset = ProximityRenderer.isDisplayingTitle() ? AnimatedTitle.TITLE_Y_OFFSET / 2.5f : 0;
+
+        // Render each line centered on screen
+        for (int i = 0; i < lines.size(); i++) {
+
+            int y = (int) ((10 * i) + titleOffset);
+
+            if (ArdaRegionsState.isDisplaying()) y += (int) ((height / 2f) + titleOffset);
+            else y += (int) ((height - titleOffset)/ 5);
+
             drawContext.drawCenteredTextWithShadow(
                     font,
                     lines.get(i),
                     width / 2,
-                    (height / 5) + (10 * i),
+                    y,
                     ColorHelper.Argb.getArgb(opacity, 255, 255, 255)
             );
         }
-
-        RenderSystem.disableBlend();
     }
 
-    public String getMessage ()
-    {
+    /**
+     * Checks if the animation has completed and is no longer visible.
+     *
+     * @return true if the message has finished animating and fading out
+     */
+    @Override
+    public boolean isFinished() {
+
+        return done && !showing;
+    }
+
+    /**
+     * @return the text content of this message
+     */
+    public String getMessage() {
         return message;
     }
 
-    public boolean isShowing()
-    {
-        return showing;
-    }
-
-    public boolean isDone()
-    {
-        return done;
-    }
-
-    public void stop()
-    {
-        showing = false;
-        done = true;
-    }
-
-    public void reset()
-    {
-        this.timeAlive = 0;
-        this.showing = true;
-        this.done = false;
-    }
-
+    /**
+     * Compares this message with another object for equality based on message content.
+     *
+     * @param obj the object to compare
+     * @return true if obj is an AnimatedMessage with the same message text
+     */
     @Override
-    public boolean equals(Object obj)
-    {
+    public boolean equals(Object obj) {
         if (!(obj instanceof AnimatedMessage other)) return super.equals(obj);
 
         return message.equals(other.message);

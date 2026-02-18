@@ -10,17 +10,17 @@ import net.minecraft.item.Item;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.math.Vec3d;
+import space.ajcool.ardapaths.core.PermissionHelper;
+import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
-import space.ajcool.ardapaths.paths.rendering.ProximityMessageRenderer;
+import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
 import java.util.ArrayList;
@@ -32,6 +32,7 @@ public class ArdaPathsClient implements ClientModInitializer
     public static ClientConfigManager CONFIG_MANAGER;
     public static ClientConfig CONFIG;
     public static boolean callingForTeleport = false;
+    public static LastVisitedTrailNodeData lastVisitedTrailNodeData;
 
     @Override
     public void onInitializeClient()
@@ -45,12 +46,14 @@ public class ArdaPathsClient implements ClientModInitializer
 
         ModParticles.initClient();
 
-        HudRenderCallback.EVENT.register(ProximityMessageRenderer::render);
+        HudRenderCallback.EVENT.register(ProximityRenderer::render);
+
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
             CONFIG_MANAGER.updatePathData();
+            PermissionHelper.hasEditPermission(client.player);
         });
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
@@ -60,8 +63,8 @@ public class ArdaPathsClient implements ClientModInitializer
                 PathMarkerBlock.selectedBlockPosition = null;
 
                 var message = Text.empty()
-                        .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                        .append(Text.literal("Deselected origin block.").formatted(Formatting.RED));
+                        .append(Text.translatable("ardapaths.client.message.ardapaths").formatted(Formatting.DARK_AQUA))
+                        .append(Text.translatable("ardapaths.client.message.deselected_origin_block").formatted(Formatting.RED));
 
                 MinecraftClient.getInstance().player.sendMessage(message);
 
@@ -77,31 +80,38 @@ public class ArdaPathsClient implements ClientModInitializer
         {
             if (callingForTeleport && MinecraftClient.getInstance().player != null)
             {
-                var playerPosition = MinecraftClient.getInstance().player.getPos();
+                String currentSelectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId() != null ? ArdaPathsClient.CONFIG.getCurrentChapterId() : "";
 
-                Vec3d closestPosition = null;
-                var closestDistance = Double.MAX_VALUE;
-                String selectedPathId = CONFIG.getSelectedPathId();
-                String selectedChapterId = CONFIG.getCurrentChapterId();
+                if(lastVisitedTrailNodeData != null) {
 
-                for (PathMarkerBlockEntity tickingPathMarker : Paths.getTickingMarkers())
-                {
-                    PathMarkerBlockEntity.ChapterNbtData data = tickingPathMarker.getChapterData(selectedPathId, selectedChapterId);
-                    if (data.getTarget() == null) continue;
+                    String lastVisitedNodeChapterId = lastVisitedTrailNodeData.selectedChapterId() != null ? lastVisitedTrailNodeData.selectedChapterId() : "";
 
-                    var dist = tickingPathMarker.getCenterPos().distanceTo(playerPosition);
-
-                    if (dist < closestDistance)
-                    {
-                        closestPosition = tickingPathMarker.getCenterPos();
-                        closestDistance = dist;
+                    if (!currentSelectedChapterId.isBlank() && currentSelectedChapterId.equals(lastVisitedNodeChapterId)) {
+                        ProximityRenderer.clear();
+                        PlayerTeleportPacket packet = new PlayerTeleportPacket(lastVisitedTrailNodeData.posX() + 0.5, lastVisitedTrailNodeData.posY(), lastVisitedTrailNodeData.posZ() + 0.5, lastVisitedTrailNodeData.worldId());
+                        PacketRegistry.PLAYER_TELEPORT.send(packet);
+                        callingForTeleport = false;
+                        return;
+                    } else {
+                        var message = Text.empty()
+                                .append(Text.translatable("ardapaths.client.message.trail_does_not_belong_to_chapter").formatted(Formatting.DARK_AQUA));
+                        MinecraftClient.getInstance().player.sendMessage(message);
                     }
+                } else {
+
+                    var message = Text.empty()
+                            .append(Text.translatable("ardapaths.client.message.no_trail_data").formatted(Formatting.DARK_AQUA));
+                    MinecraftClient.getInstance().player.sendMessage(message);
                 }
 
-                if (closestPosition != null)
-                {
-                    PlayerTeleportPacket packet = new PlayerTeleportPacket(closestPosition.x + 0.5, closestPosition.y, closestPosition.z + 0.5);
-                    PacketRegistry.PLAYER_TELEPORT.send(packet);
+                if (!currentSelectedChapterId.isBlank()) {
+                    ProximityRenderer.clear();
+                    Paths.gotoChapter(currentSelectedChapterId, true);
+                } else {
+
+                    var message = Text.empty()
+                            .append(Text.translatable("ardapaths.client.message.no_chapter_selected").formatted(Formatting.DARK_AQUA));
+                    MinecraftClient.getInstance().player.sendMessage(message);
                 }
 
                 callingForTeleport = false;

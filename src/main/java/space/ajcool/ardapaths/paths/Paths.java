@@ -6,6 +6,7 @@ import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -49,9 +50,28 @@ public class Paths
         TrailRenderer.clearTrails();
     }
 
+    public static void showChapterTitles(final boolean show)
+    {
+        config.showChapterTitles(show);
+        configManager.save();
+    }
+
     public static void showProximityMessages(final boolean show)
     {
         config.showProximityMessages(show);
+        configManager.save();
+    }
+
+    public static void setChapterTitleDisplaySpeed(final Float miliseconds)
+    {
+        config.setChapterTitleDisplaySpeed(miliseconds);
+        configManager.save();
+    }
+
+
+    public static void setProximityMessagesSpeedMultiplier(final Double factor)
+    {
+        config.setProximityTextSpeedMultiplier(factor);
         configManager.save();
     }
 
@@ -64,6 +84,18 @@ public class Paths
             configManager.save();
             ChapterUpdatePacket packet = new ChapterUpdatePacket(pathId, chapter);
             PacketRegistry.CHAPTER_UPDATE.send(packet);
+        }
+    }
+
+    public static void deleteChapter(String pathId, ChapterData chapter)
+    {
+        PathData path = config.getPath(pathId);
+        if (path != null)
+        {
+            path.removeChapter(chapter.getId());
+            configManager.save();
+            ChapterDeletePacket packet = new ChapterDeletePacket(pathId, chapter.getId());
+            PacketRegistry.CHAPTER_DELETE.send(packet);
         }
     }
 

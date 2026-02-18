@@ -8,33 +8,28 @@ import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 
-public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacket>
+public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacket>
 {
-    public ChapterUpdateHandler()
+    public ChapterDeleteHandler()
     {
-        super("path_chapter_update", ChapterUpdatePacket::read);
+        super("path_chapter_delete", ChapterDeletePacket::read);
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterUpdatePacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterDeletePacket packet, PacketSender sender)
     {
         final String pathId = packet.pathId();
+        final String chapterId = packet.chapterId();
         final PathData pathData = ArdaPaths.CONFIG.getPath(pathId);
         if (pathData == null)
         {
             return;
         }
 
-        final String chapterId = packet.chapterId();
-        final String chapterName = packet.chapterName();
-        final String chapterDate = packet.chapterDate();
-        final int chapterIndex = packet.chapterIndex();
-        final String warp = packet.warp();
-        final ChapterData chapterData = new ChapterData(chapterId, chapterName, chapterDate, chapterIndex,warp);
-
-        pathData.setChapter(chapterData);
+        pathData.removeChapter(chapterId);
         ArdaPaths.CONFIG_MANAGER.save();
     }
 }

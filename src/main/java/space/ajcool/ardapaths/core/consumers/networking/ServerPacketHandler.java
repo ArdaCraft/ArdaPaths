@@ -20,9 +20,7 @@ public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandl
 
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender)
     {
-        System.out.println("Reading packet");
         T packet = reader.apply(buf);
-        System.out.println(packet);
         handle(server, player, handler, packet, sender);
     }
 

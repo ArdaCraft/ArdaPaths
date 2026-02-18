@@ -5,6 +5,8 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
+import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +18,17 @@ public class ClientConfig
     @SerializedName("proximity_messages")
     private boolean proximityMessages;
 
+    @SerializedName("chapter_titles")
+    private boolean chapterTitles;
+
+    @SerializedName("proximity_text_speed_multiplier")
+    private Double proximityTextSpeedMultiplier;
+
+    @SerializedName("chapter_title_display_speed")
+    private Float chapterTitleDisplaySpeed;
+
     @SerializedName("selected_paths")
-    private Map<String, SelectedPathData> selectedPaths = new HashMap<>();
+    private final Map<String, SelectedPathData> selectedPaths = new HashMap<>();
 
     @SerializedName("paths")
     private List<PathData> clientPaths = new ArrayList<>();
@@ -40,6 +51,39 @@ public class ClientConfig
     public void showProximityMessages(boolean proximityMessages)
     {
         this.proximityMessages = proximityMessages;
+    }
+
+    public boolean showChapterTitles()
+    {
+        return chapterTitles;
+    }
+
+    public void showChapterTitles(boolean chapterTitles)
+    {
+        this.chapterTitles = chapterTitles;
+    }
+
+    public Float getChapterTitleDisplaySpeed(){
+        return chapterTitleDisplaySpeed != null ? chapterTitleDisplaySpeed : AnimatedTitle.DEFAULT_CHAPTER_TITLE_DISPLAY_SPEED;
+    }
+
+    public void setChapterTitleDisplaySpeed(Float chapterTitleDisplaySpeed){
+        this.chapterTitleDisplaySpeed = chapterTitleDisplaySpeed;
+    }
+
+    /**
+     * @return the factor with which the speed of the text should be displayed
+     */
+    public Double getProximityTextSpeedMultiplier() {
+        return proximityTextSpeedMultiplier != null ? proximityTextSpeedMultiplier : AnimatedMessage.DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER;
+    }
+
+    /**
+     * Defines the factor at which the proximity messages are displayed
+     * @param proximityTextSpeedMultiplier the factor to set
+     */
+    public void setProximityTextSpeedMultiplier(Double proximityTextSpeedMultiplier) {
+        this.proximityTextSpeedMultiplier = proximityTextSpeedMultiplier;
     }
 
     /**
