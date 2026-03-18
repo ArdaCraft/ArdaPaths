@@ -34,7 +34,7 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
 
                 ArdaPaths.LOGGER.info("Attempting to warp player {} at {}", player.getUuidAsString(), startWarp.get());
                 WarpExecutor warpExecutor = new WarpExecutor();
-                warpExecutor.warpTo(player, startWarp.get());
+                warpExecutor.warpTo(server, player, startWarp.get());
             } else {
                 final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
 
