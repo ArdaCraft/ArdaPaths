@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.paths.rendering;
 
+import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
@@ -9,6 +10,7 @@ import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
@@ -178,6 +180,26 @@ public class TrailRenderer {
             updateLastVisitedTrailNode(currentChapterId, closestValidMarker);
             closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);
         }
+
+        setWaypointToNextTrailNode(closestValidMarker);
+    }
+
+    /**
+     * Adds an ardamap waypoint on the next node
+     * @param closestValidMarker the closest valid marker
+     */
+    private static void setWaypointToNextTrailNode(PathMarkerBlockEntity closestValidMarker) {
+
+        if (closestValidMarker != null) {
+
+            for (var trail : trails) {
+
+                if (trail.getStart().equals(closestValidMarker.getPos())) {
+
+                    ArdaMapsConsumer.setNextTrailNode(trail.getEnd());
+                }
+            }
+        }
     }
 
     /**
@@ -340,6 +362,8 @@ public class TrailRenderer {
      * Clear all registered trails.
      */
     public static void clearTrails() {
+
+        ArdaMapsConsumer.clearMapMarkers();
         trails.clear();
         trailSoundInstance = null;
     }

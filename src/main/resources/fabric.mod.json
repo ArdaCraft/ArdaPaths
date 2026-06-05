@@ -23,6 +23,9 @@
     ],
     "arda-regions:api": [
       "space.ajcool.ardapaths.core.consumers.ArdaRegionsConsumer"
+    ],
+    "ardamaps:api": [
+      "space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer"
     ]
   },
   "mixins": [
@@ -34,6 +37,10 @@
     "fabric": "*",
     "minecraft": "${minecraft_version}",
     "fabric-permissions-api-v0": "*",
-    "arda-regions": "*"
+    "arda-regions": "*",
+    "ardamaps": "*"
+  },
+  "custom": {
+    "ardapaths:api_entrypoint": "space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint"
   }
 }

@@ -11,8 +11,11 @@ import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 
 public class ModItems
 {
+    /** Identifier of the Path revealer */
+    public static final String PATH_REVEALER_ID = "path_revealer";
+
     public static final PathRevealerItem PATH_REVEALER = register(
-            "path_revealer",
+            PATH_REVEALER_ID,
             new PathRevealerItem(new FabricItemSettings().maxCount(1).fireproof().rarity(Rarity.EPIC))
     );
     public static final Item PATH_MARKER = ModBlocks.PATH_MARKER.asItem();

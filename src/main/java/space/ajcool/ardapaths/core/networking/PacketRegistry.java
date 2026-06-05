@@ -23,6 +23,7 @@ public class PacketRegistry
     public static final ChapterStartRemoveHandler CHAPTER_START_REMOVE = register(new ChapterStartRemoveHandler());
     public static final ChapterPlayerTeleportHandler CHAPTER_PLAYER_TELEPORT = register(new ChapterPlayerTeleportHandler());
     public static final ArdaPathsPermissionCheckHandler PERMISSION_CHECK = register(new ArdaPathsPermissionCheckHandler());
+    public static final WieldPathfinderRequestHandler WIELD_PATHFINDER_REQUEST = register(new WieldPathfinderRequestHandler());
 
     /**
      * Register a client-to-server packet handler.

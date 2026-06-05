@@ -13,6 +13,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -46,6 +47,7 @@ public class PathSelectionScreen extends Screen
     private String selectedChapterId;
     private boolean showProximityMessages;
     private boolean showChapterTitles;
+    private boolean showTrailWaypoints;
     private final double proximityTextSpeedMultiplier;
     private final float titleDisplaySpeed;
 
@@ -58,6 +60,7 @@ public class PathSelectionScreen extends Screen
         this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         this.selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
         this.showProximityMessages = ArdaPathsClient.CONFIG.showProximityMessages();
+        this.showTrailWaypoints = ArdaPathsClient.CONFIG.showTrailWaypoints();
         this.showChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
         this.proximityTextSpeedMultiplier = ArdaPathsClient.CONFIG.getProximityTextSpeedMultiplier();
         this.titleDisplaySpeed = ArdaPathsClient.CONFIG.getChapterTitleDisplaySpeed();
@@ -100,6 +103,8 @@ public class PathSelectionScreen extends Screen
         proximityTextSpeedSlider = this.addDrawableChild(initializeProximityTextSpeedMultiplierSlider(center + horizontalHalfCenterGap, y));
         this.addDrawableChild(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap));
         titleDisplaySpeedSlider = this.addDrawableChild(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
+
+        this.addDrawableChild(initializeShowTrailWaypointsToggle(center - UI_ELEMENT_HEIGHT - horizontalHalfCenterGap,y += uiElementVerticalGap));
 
         this.addDrawableChild(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap));
     }
@@ -270,6 +275,25 @@ public class PathSelectionScreen extends Screen
         proximityTextToggle.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.proximity_text_tooltip")));
 
         return proximityTextToggle;
+    }
+
+    private @NotNull CheckboxWidget initializeShowTrailWaypointsToggle(int center, int y) {
+
+        CheckboxWidget trailWaypointToggle = CheckboxBuilder.create()
+                .setPosition(center,y)
+                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+                .setText(Text.translatable("ardapaths.client.configuration.screens.trail_waypoints", (showTrailWaypoints ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
+                .setChecked(showTrailWaypoints)
+                .setOnChange(checked -> {
+                    showTrailWaypoints = checked;
+                    Paths.showTrailWaypoints(showTrailWaypoints);
+                    ProximityRenderer.clear();
+                })
+                .build();
+
+        trailWaypointToggle.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.configuration.screens.trail_waypoints.tooltip")));
+
+        return trailWaypointToggle;
     }
 
     private @NotNull SliderWidget initializeProximityTextSpeedMultiplierSlider(int center, int y) {

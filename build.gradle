@@ -1,5 +1,5 @@
 plugins {
-    id "fabric-loom" version "1.7-SNAPSHOT"
+    id "fabric-loom" version "1.9-SNAPSHOT"
     id "maven-publish"
 }
 
@@ -32,7 +32,9 @@ dependencies {
     compileOnly("curse.maven:huskhomes-849217:5468607")
 
     // Arda regions
-    modApi(files("build/libs/arda-regions-1.0.0.jar"))
+    modApi("maven.modrinth:ardaregions:${project.ardaregions_version}")
+    //modApi("maven.modrinth:ardamaps:${project.ardamaps_version}")
+    modApi(files('build/libs/ArdaMaps-0.9.3.jar'))
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
 }

@@ -62,6 +62,12 @@ public class Paths
         configManager.save();
     }
 
+    public static void showTrailWaypoints(final boolean show)
+    {
+        config.showTrailWaypoints(show);
+        configManager.save();
+    }
+
     public static void setChapterTitleDisplaySpeed(final Float miliseconds)
     {
         config.setChapterTitleDisplaySpeed(miliseconds);

@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths;
 
+import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -7,11 +8,16 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.ajcool.ardapaths.api.ArdaPathsApi;
+import space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint;
+import space.ajcool.ardapaths.api.ArdaPathsApiImpl;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
@@ -48,6 +54,10 @@ public class ArdaPaths implements ModInitializer
         ModSounds.init();
         PacketRegistry.init();
 
+        ArdaPathsApiImpl.initialize();
+
+        invokeApiEntrypoints();
+
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) ->
         {
             var blockEntity = world.getBlockEntity(hitResult.getBlockPos().offset(hitResult.getSide()));
@@ -77,6 +87,39 @@ public class ArdaPaths implements ModInitializer
         });
     }
 
+
+    /**
+     * Queries Fabric for all mods that registered an {@code ardamaps:api} entrypoint and
+     * calls {@link ArdaPathsApiEntrypoint#onApiReady(ArdaPathsApi)} on each of them.
+     */
+    private void invokeApiEntrypoints() {
+
+        ArdaPathsApi api = ArdaPathsApiImpl.getInstance();
+
+        if (api != null) {
+
+            for (EntrypointContainer<ArdaPathsApiEntrypoint> container :
+                    FabricLoader.getInstance().getEntrypointContainers(MOD_ID + ":api", ArdaPathsApiEntrypoint.class)) {
+
+                String modId = container.getProvider().getMetadata().getId();
+                try {
+
+                    LOGGER.info("[ArdaPaths] Invoking ardapaths:api entrypoint for mod '{}'", modId);
+                    container.getEntrypoint().onApiReady(api);
+
+                } catch (Exception e) {
+
+                    LOGGER.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, e.getMessage(), e);
+                }
+            }
+        } else {
+            LOGGER.error("[ArdaPaths] API not initialized, skipping ardapaths:api entrypoints");
+        }
+    }
+
+    /**
+     * @return true if this code is running on the server
+     */
     public static boolean amITheServer() {
 
         var serverEnv = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;

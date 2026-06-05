@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.mc.blocks.entities;
 
+import com.duom.ardamaps.api.ArdaMapsApi;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
@@ -48,9 +50,11 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable
         if (!this.pathData.get(pathId).containsKey(chapterId)) return;
 
         ChapterNbtData chapterNbtData = this.pathData.get(pathId).get(chapterId);
-        if (chapterNbtData.getTarget() == null) return;
+        BlockPos target = chapterNbtData.getTarget();
 
-        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), chapterNbtData.getTarget(), chapterNbtData.displayAboveBlocks(), colors);
+        if (target == null) return;
+
+        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), target, chapterNbtData.displayAboveBlocks(), colors);
         TrailRenderer.registerTrail(trail);
     }
 

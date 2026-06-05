@@ -207,4 +207,8 @@ public class AnimatedTrail
 
         return Math.sqrt(start2D.distanceSquared(end2D));
     }
+
+    public Vec3d getEnd() {
+        return end;
+    }
 }

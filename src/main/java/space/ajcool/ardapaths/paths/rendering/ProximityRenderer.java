@@ -23,8 +23,6 @@ import java.util.Queue;
  */
 public class ProximityRenderer {
 
-    private static boolean regionWasDisplaying = false;
-
     private static final ProximityRenderer INSTANCE = new ProximityRenderer();
 
     /**

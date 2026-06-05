@@ -21,6 +21,9 @@ public class ClientConfig
     @SerializedName("chapter_titles")
     private boolean chapterTitles;
 
+    @SerializedName("trail_waypoints")
+    private boolean trailWaypoints;
+
     @SerializedName("proximity_text_speed_multiplier")
     private Double proximityTextSpeedMultiplier;
 
@@ -41,6 +44,21 @@ public class ClientConfig
     public boolean showProximityMessages()
     {
         return proximityMessages;
+    }
+
+    /**
+     * @return True if waypoints should be added when the player follows a path, false otherwise
+     */
+    public boolean showTrailWaypoints() {
+        return trailWaypoints;
+    }
+
+    /**
+     * Sets whether to show trail waypoints or not
+     * @param show True if waypoints should be added when the player follows a path, false otherwise
+     */
+    public void showTrailWaypoints(boolean show) {
+        this.trailWaypoints = show;
     }
 
     /**
