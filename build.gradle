@@ -33,8 +33,7 @@ dependencies {
 
     // Arda regions
     modApi("maven.modrinth:ardaregions:${project.ardaregions_version}")
-    //modApi("maven.modrinth:ardamaps:${project.ardamaps_version}")
-    modApi(files('build/libs/ArdaMaps-0.9.3.jar'))
+    modApi("maven.modrinth:ardamaps:${project.ardamaps_version}")
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
 }
