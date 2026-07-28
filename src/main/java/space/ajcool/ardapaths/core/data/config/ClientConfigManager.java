@@ -1,6 +1,7 @@
 package space.ajcool.ardapaths.core.data.config;
 
 import com.google.gson.reflect.TypeToken;
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
@@ -18,48 +19,49 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Client-side configuration manager for ArdaPaths.
+ * Handles loading/saving client config and synchronizing path data from the server.
+ */
 @Environment(EnvType.CLIENT)
-public class ClientConfigManager extends ConfigManager<ClientConfig>
-{
-    public ClientConfigManager(String configPath)
-    {
+@Slf4j(topic = "ardapaths")
+public class ClientConfigManager extends ConfigManager<ClientConfig> {
+    /**
+     * Constructs a ClientConfigManager and loads configuration from the given path.
+     *
+     * @param configPath the file path to the client configuration JSON
+     */
+    public ClientConfigManager(String configPath) {
         super(configPath);
     }
 
     @Override
-    protected ClientConfig createDefault()
-    {
+    protected ClientConfig createDefault() {
         ClientConfig config = new ClientConfig();
-        config.showProximityMessages(true);
-        config.showChapterTitles(false);
+        config.setProximityMessages(true);
+        config.setChapterTitles(false);
         return config;
     }
 
     /**
      * Update the path data from the server.
      */
-    public void updatePathData()
-    {
-        if (Client.isInSinglePlayer())
-        {
+    public void updatePathData() {
+        if (Client.isInSinglePlayer()) {
             ServerConfigManager serverConfigManager = ArdaPaths.CONFIG_MANAGER;
             this.onPathData(serverConfigManager.getConfig().getPaths());
-        }
-        else
-        {
+        } else {
             PacketRegistry.PATH_DATA_REQUEST.send(new EmptyPacket(), response ->
             {
                 String json = response.json();
 
-                Type listType = new TypeToken<ArrayList<PathData>>()
-                {
+                Type listType = new TypeToken<ArrayList<PathData>>() {
                 }.getType();
 
                 List<PathData> paths = Json.fromJson(json, listType);
 
-                if (paths != null)
-                {
-                    ArdaPaths.LOGGER.info("Updating path data");
+                if (paths != null) {
+                    log.info("Updating path data");
 
                     this.onPathData(paths);
                 }
@@ -72,12 +74,10 @@ public class ClientConfigManager extends ConfigManager<ClientConfig>
      *
      * @param paths The path data
      */
-    public void onPathData(List<PathData> paths)
-    {
+    public void onPathData(List<PathData> paths) {
         this.config.setPaths(paths);
 
-        if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty())
-        {
+        if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty()) {
             this.config.setSelectedPath(paths.get(0).getId());
         }
 
@@ -85,8 +85,7 @@ public class ClientConfigManager extends ConfigManager<ClientConfig>
 
         ColorProviderRegistry.ITEM.register((itemStack, i) ->
         {
-            for (PathData path : paths)
-            {
+            for (PathData path : paths) {
                 if (!path.getId().equalsIgnoreCase(this.config.getSelectedPathId())) continue;
                 return path.getPrimaryColor().asHex();
             }

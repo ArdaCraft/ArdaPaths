@@ -10,6 +10,10 @@ import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 
+/**
+ * Handles the update of a chapter start position in the server configuration.
+ * Processes incoming {@link ChapterStartUpdatePacket} from clients and persists the new chapter start location.
+ */
 public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartUpdatePacket>
 {
     public ChapterStartUpdateHandler()

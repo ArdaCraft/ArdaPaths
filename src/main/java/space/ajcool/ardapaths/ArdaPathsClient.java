@@ -27,16 +27,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class ArdaPathsClient implements ClientModInitializer
-{
+/**
+ * Client-side initialization for ArdaPaths.
+ * Handles UI rendering, client-side state management, and input handling.
+ */
+public class ArdaPathsClient implements ClientModInitializer {
+    /**
+     * Manager for client-side configuration, handles loading and saving config.json.
+     */
     public static ClientConfigManager CONFIG_MANAGER;
+
+    /**
+     * The current client-side path configuration, loaded from config.json.
+     */
     public static ClientConfig CONFIG;
+
+    /**
+     * Flag indicating whether a teleport to the last visited trail node has been requested.
+     */
     public static boolean callingForTeleport = false;
+
+    /**
+     * Data about the last trail node visited by the player, or null if not yet visited.
+     */
     public static LastVisitedTrailNodeData lastVisitedTrailNodeData;
 
+    /**
+     * Fabric client mod initialization entry point.
+     * Initializes client-side systems including UI rendering, event listeners, and particle effects.
+     */
     @Override
-    public void onInitializeClient()
-    {
+    public void onInitializeClient() {
         CONFIG_MANAGER = new ClientConfigManager("./config/arda-paths/config.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
@@ -58,8 +79,7 @@ public class ArdaPathsClient implements ClientModInitializer
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
         {
-            if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER))
-            {
+            if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER)) {
                 PathMarkerBlock.selectedBlockPosition = null;
 
                 var message = Text.empty()
@@ -68,9 +88,7 @@ public class ArdaPathsClient implements ClientModInitializer
 
                 MinecraftClient.getInstance().player.sendMessage(message);
 
-            }
-            else if (PathMarkerBlock.selectedBlockPosition != null)
-            {
+            } else if (PathMarkerBlock.selectedBlockPosition != null) {
                 var random = level.random;
                 level.addParticle(ParticleTypes.COMPOSTER, PathMarkerBlock.selectedBlockPosition.getX() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getY() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getZ() + random.nextDouble(), 0.0, 0.0, 0.0);
             }
@@ -78,11 +96,10 @@ public class ArdaPathsClient implements ClientModInitializer
 
         ClientTickEvents.END_CLIENT_TICK.register(client ->
         {
-            if (callingForTeleport && MinecraftClient.getInstance().player != null)
-            {
+            if (callingForTeleport && MinecraftClient.getInstance().player != null) {
                 String currentSelectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId() != null ? ArdaPathsClient.CONFIG.getCurrentChapterId() : "";
 
-                if(lastVisitedTrailNodeData != null) {
+                if (lastVisitedTrailNodeData != null) {
 
                     String lastVisitedNodeChapterId = lastVisitedTrailNodeData.selectedChapterId() != null ? lastVisitedTrailNodeData.selectedChapterId() : "";
 

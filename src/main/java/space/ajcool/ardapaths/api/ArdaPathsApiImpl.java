@@ -1,6 +1,9 @@
 package space.ajcool.ardapaths.api;
 
-import space.ajcool.ardapaths.ArdaPaths;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.paths.Paths;
@@ -13,21 +16,15 @@ import space.ajcool.ardapaths.paths.Paths;
  * initializers run before the server starts, so any registration is visible by
  * the time ArdaPaths validates and schedules its refresh.</p>
  */
+@Slf4j(topic = "ardapaths")
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
-    /** API Instance */
-    private static ArdaPathsApiImpl instance;
-
-    private ArdaPathsApiImpl() { /* Not instantiable */ }
-
     /**
-     * Get the current initialized instance of the API
-     * @return a valid instance of the API
+     * The singleton instance of the ArdaPaths API implementation.
      */
-    public static ArdaPathsApiImpl getInstance() {
-
-        return instance;
-    }
+    @Getter
+    private static ArdaPathsApiImpl instance;
 
     /**
      * Initializes the API
@@ -40,6 +37,7 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
     /**
      * Selects the specified path and chapter for the player, optionally teleporting them to the chapter's location.
+     *
      * @param pathId               the path ID to select
      * @param chapterId            the chapter ID to select
      * @param putPathfinderInHands whether to make the player wield the pathfinder or not
@@ -49,22 +47,20 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
     public void selectPathAndChapter(String pathId, String chapterId, boolean putPathfinderInHands, boolean teleport) {
 
         if (pathId == null) {
-            ArdaPaths.LOGGER.error("[ArdaPathsApi] pathId must not be null");
+            log.error("[ArdaPathsApi] pathId must not be null");
             return;
         }
 
         if (chapterId == null) {
 
-            ArdaPaths.LOGGER.error("[ArdaPathsApi] chapterId must not be null");
+            log.error("[ArdaPathsApi] chapterId must not be null");
             return;
         }
 
         if (putPathfinderInHands) {
 
             // Request to put the pathfinder in the player's hands if needed
-            PacketRegistry.WIELD_PATHFINDER_REQUEST.send(new EmptyPacket(), response -> {
-                selectPathAndChapter(pathId, chapterId, teleport);
-            });
+            PacketRegistry.WIELD_PATHFINDER_REQUEST.send(new EmptyPacket(), response -> selectPathAndChapter(pathId, chapterId, teleport));
         } else {
 
             selectPathAndChapter(pathId, chapterId, teleport);
@@ -73,9 +69,10 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
     /**
      * Selects the specified path and chapter for the player
-     * @param pathId               the path ID to select
-     * @param chapterId            the chapter ID to select
-     * @param teleport             whether to teleport the player to the location or not
+     *
+     * @param pathId    the path ID to select
+     * @param chapterId the chapter ID to select
+     * @param teleport  whether to teleport the player to the location or not
      */
     private void selectPathAndChapter(String pathId, String chapterId, boolean teleport) {
 

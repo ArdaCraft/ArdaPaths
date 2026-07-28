@@ -6,6 +6,11 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
+/**
+ * Packet sent from client to server to request deletion of a chapter from a path.
+ * @param pathId the ID of the path containing the chapter
+ * @param chapterId the ID of the chapter to delete
+ */
 public record ChapterDeletePacket(
         String pathId,
         String chapterId

@@ -19,33 +19,53 @@ import space.ajcool.ardapaths.screens.Screens;
 
 import java.util.List;
 
-public class PathRevealerItem extends Item
-{
-    public PathRevealerItem(Settings properties)
-    {
+/**
+ * The Path Revealer item used to activate path rendering and trail visualization.
+ * When held, displays animated trails and proximity messages.
+ * Right-clicking opens the path selection screen.
+ */
+public class PathRevealerItem extends Item {
+    /**
+     * Constructs a Path Revealer item with the given properties.
+     *
+     * @param properties the item settings (max count 1, fireproof, epic rarity)
+     */
+    public PathRevealerItem(Settings properties) {
         super(properties);
     }
 
+    /**
+     * Opens the path selection screen when the player uses this item.
+     *
+     * @param level           the world
+     * @param player          the player using the item
+     * @param interactionHand the hand used
+     * @return the action result with the item stack
+     */
     @Environment(EnvType.CLIENT)
     @Override
-    public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand)
-    {
-        if (level.isClient())
-        {
+    public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand) {
+        if (level.isClient()) {
             Screens.openSelectionScreen();
         }
 
         return super.use(level, player, interactionHand);
     }
 
+    /**
+     * Appends tooltip information showing the current path and usage instructions.
+     *
+     * @param itemStack   the item stack
+     * @param level       the world, or null in inventory
+     * @param list        the tooltip lines to append to
+     * @param tooltipFlag the tooltip context
+     */
     @Override
-    public void appendTooltip(ItemStack itemStack, @Nullable World level, List<Text> list, TooltipContext tooltipFlag)
-    {
+    public void appendTooltip(ItemStack itemStack, @Nullable World level, List<Text> list, TooltipContext tooltipFlag) {
         super.appendTooltip(itemStack, level, list, tooltipFlag);
 
         PathData path = ArdaPathsClient.CONFIG.getSelectedPath();
-        if (path != null)
-        {
+        if (path != null) {
             var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex())));
             list.add(text);
         }

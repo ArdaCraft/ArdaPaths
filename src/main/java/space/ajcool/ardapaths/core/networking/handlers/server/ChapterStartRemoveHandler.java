@@ -8,6 +8,10 @@ import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 
+/**
+ * Handles the removal of a chapter start position from the server configuration.
+ * Processes incoming {@link ChapterStartRemovePacket} from clients and updates the server-side config.
+ */
 public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartRemovePacket>
 {
     public ChapterStartRemoveHandler()

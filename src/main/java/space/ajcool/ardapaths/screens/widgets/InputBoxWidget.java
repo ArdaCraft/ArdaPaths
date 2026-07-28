@@ -1,6 +1,9 @@
 package space.ajcool.ardapaths.screens.widgets;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
@@ -12,54 +15,81 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.Client;
 
+/**
+ * A custom input box widget with text validation support.
+ * Validates input as the user types and displays error messages.
+ */
 @Environment(EnvType.CLIENT)
-public class InputBoxWidget extends EditBoxWidget
-{
-    private boolean enabled;
+public class InputBoxWidget extends EditBoxWidget {
+    /**
+     * The text validator that validates input content.
+     */
     private final TextValidator validator;
+
+    /**
+     * Whether this input box is enabled for editing.
+     */
+    @Getter
+    private boolean enabled;
+
+    /**
+     * The current validation error message, or null if valid.
+     */
     private String errorMessage;
+
+    /**
+     * Whether the user has triggered validation at least once.
+     */
     private boolean hasValidatedOnce;
+
+    /**
+     * The background colour for the input box (-1 for default).
+     */
+    @Getter
+    @Setter
     private int backgroundColor = Integer.MIN_VALUE;
 
-    public InputBoxWidget(int x, int y, int width, int height, Text title, Text placeholder, TextValidator validator, boolean enabled)
-    {
+    /**
+     * Constructs an InputBoxWidget with the given parameters.
+     *
+     * @param x           the x coordinate
+     * @param y           the y coordinate
+     * @param width       the width of the input box
+     * @param height      the height of the input box
+     * @param title       the title/label text
+     * @param placeholder the placeholder text when empty
+     * @param validator   the text validator to use
+     * @param enabled     whether the input box is enabled
+     */
+    @Builder(builderClassName = "InputBoxBuilder", builderMethodName = "create", setterPrefix = "set")
+    @SuppressWarnings("resource")
+    public InputBoxWidget(int x, int y, int width, int height, Text title, Text placeholder, TextValidator validator, boolean enabled) {
         super(Client.mc().textRenderer, x, y, width, height, placeholder, title != null ? title : Text.empty());
         this.validator = validator;
         this.errorMessage = null;
         this.hasValidatedOnce = false;
         this.enabled = enabled;
-        if (!enabled)
-        {
+        if (!enabled) {
             this.disable();
         }
     }
 
-    /**
-     * Override setText so that after the first validation, every edit revalidates.
-     */
-    @Override
-    public void setText(String text)
-    {
-        super.setText(text);
-        if (hasValidatedOnce)
-        {
-            validateText();
-        }
+    public void disable() {
+        this.enabled = false;
+        this.setFocused(false);
+        this.setTooltip(Tooltip.of(Text.literal("Disabled")));
     }
 
     /**
      * When focus is lost, validate the text and enable live validation.
      */
     @Override
-    public void setFocused(boolean focused)
-    {
-        if (!enabled && focused)
-        {
+    public void setFocused(boolean focused) {
+        if (!enabled && focused) {
             return;
         }
 
-        if (this.isFocused() && !focused)
-        {
+        if (this.isFocused() && !focused) {
             hasValidatedOnce = true;
             validateText();
         }
@@ -67,18 +97,32 @@ public class InputBoxWidget extends EditBoxWidget
     }
 
     /**
+     * Validates the current text. If the text is invalid, stores the error message.
+     */
+    public boolean validateText() {
+
+        if (validator == null) return true;
+
+        try {
+            validator.validate(getText());
+            errorMessage = null;
+            return true;
+        } catch (TextValidationError e) {
+            errorMessage = e.getMessage();
+            return false;
+        }
+    }
+
+    /**
      * When the enter key is pressed, unfocus the input box.
      */
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers)
-    {
-        if (!enabled)
-        {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (!enabled) {
             return false;
         }
 
-        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)
-        {
+        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             this.setFocused(false);
             return true;
         }
@@ -86,10 +130,8 @@ public class InputBoxWidget extends EditBoxWidget
     }
 
     @Override
-    public boolean charTyped(char chr, int modifiers)
-    {
-        if (!enabled)
-        {
+    public boolean charTyped(char chr, int modifiers) {
+        if (!enabled) {
             return false;
         }
         return super.charTyped(chr, modifiers);
@@ -97,15 +139,14 @@ public class InputBoxWidget extends EditBoxWidget
 
     /**
      * If the widget is disabled, render its background/border (via super.render) then
-     * overdraw its text in a light gray color and show a tooltip when hovered.
+     * overdraw its text in a light grey colour and show a tooltip when hovered.
      */
+    @SuppressWarnings("resource")
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta)
-    {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        if (!enabled)
-        {
+        if (!enabled) {
             MatrixStack matrices = context.getMatrices();
             matrices.push();
             matrices.translate(0, 0, 2);
@@ -119,11 +160,8 @@ public class InputBoxWidget extends EditBoxWidget
 
         if (backgroundColor != Integer.MIN_VALUE) {
 
-            // Draw colored text on top of the textbox
-            String raw = this.getText();
-
-            // Convert raw text → colored styled text (you define this)
-            Text colored = Text.literal(this.getText()).fillStyle(Style.EMPTY.withColor(backgroundColor));;
+            // Convert raw text → coloured styled text (you define this)
+            Text colored = Text.literal(this.getText()).fillStyle(Style.EMPTY.withColor(backgroundColor));
 
             // Coordinates for drawing inside the box
             int textX = this.getX() + 4;
@@ -142,8 +180,7 @@ public class InputBoxWidget extends EditBoxWidget
             context.getMatrices().pop();
         }
 
-        if (errorMessage != null && !errorMessage.isEmpty())
-        {
+        if (errorMessage != null && !errorMessage.isEmpty()) {
             int errorX = this.getX();
             int errorY = this.getY() + this.height + 2;
             context.getMatrices().push();
@@ -157,10 +194,8 @@ public class InputBoxWidget extends EditBoxWidget
      * Prevent mouse clicks if disabled.
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button)
-    {
-        if (!isEnabled())
-        {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!isEnabled()) {
             return false;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -169,65 +204,34 @@ public class InputBoxWidget extends EditBoxWidget
     /**
      * Getters and setters for enabled state.
      */
-    public void enable()
-    {
+    public void enable() {
         this.enabled = true;
         this.setTooltip(null);
     }
 
-    public void disable()
-    {
-        this.enabled = false;
-        this.setFocused(false);
-        this.setTooltip(Tooltip.of(Text.literal("Disabled")));
-    }
-
-    public boolean isEnabled()
-    {
-        return enabled;
-    }
-
-    /**
-     * Validates the current text. If the text is invalid, stores the error message.
-     */
-    public boolean validateText()
-    {
-        try
-        {
-            validator.validate(getText());
-            errorMessage = null;
-            return true;
-        }
-        catch (TextValidationError e)
-        {
-            errorMessage = e.getMessage();
-            return false;
-        }
-    }
-
-    public void resetValidation()
-    {
-        errorMessage = null;
-        hasValidatedOnce = false;
-    }
-
-    public void reset()
-    {
+    public void reset() {
         setText("");
         resetValidation();
     }
 
-    public void reset(String text)
-    {
+    /**
+     * Override setText so that after the first validation, every edit revalidates.
+     */
+    @Override
+    public void setText(String text) {
+        super.setText(text);
+        if (hasValidatedOnce) {
+            validateText();
+        }
+    }
+
+    public void resetValidation() {
+        errorMessage = null;
+        hasValidatedOnce = false;
+    }
+
+    public void reset(String text) {
         setText(text);
         resetValidation();
-    }
-
-    public int getBackgroundColor() {
-        return backgroundColor;
-    }
-
-    public void setTextColor(int backgroundColor) {
-        this.backgroundColor = backgroundColor;
     }
 }

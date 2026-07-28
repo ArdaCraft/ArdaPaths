@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.mc.blocks;
 
+import lombok.extern.slf4j.Slf4j;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
@@ -18,7 +19,6 @@ import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -29,32 +29,66 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.screens.Screens;
 
+/**
+ * Custom block for Path Markers.
+ * Players place these blocks to define waypoints and trail segments in paths.
+ * Supports Ctrl+click to open the marker editor and regular clicks to link markers.
+ */
 @SuppressWarnings("deprecation")
-public class PathMarkerBlock extends BlockWithEntity
-{
+@Slf4j(topic = "ardapaths")
+public class PathMarkerBlock extends BlockWithEntity {
+    /**
+     * The block position of the currently selected origin marker for linking paths,
+     * or null if no marker is currently selected.
+     */
     public static BlockPos selectedBlockPosition = null;
 
-    public PathMarkerBlock(AbstractBlock.Settings properties)
-    {
+    /**
+     * Constructs a PathMarkerBlock with the given Minecraft block properties.
+     *
+     * @param properties the block settings (non-opaque, no collision, indestructible, etc.)
+     */
+    public PathMarkerBlock(AbstractBlock.Settings properties) {
         super(properties);
     }
 
-    public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult)
-    {
+    /**
+     * Handles the player clicking on a Path Marker block.
+     * Validates permissions and delegates to {@link #validateOnUse} if the player has edit permission.
+     *
+     * @param blockState      the state of the block
+     * @param level           the world
+     * @param blockPos        the position of the block
+     * @param player          the player who clicked
+     * @param interactionHand the hand used
+     * @param blockHitResult  the hit result
+     * @return the action result (CONSUME if handled, PASS otherwise)
+     */
+    public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult) {
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
         if (selectedBlockEntity == null) return ActionResult.PASS;
-        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity)) return ActionResult.PASS;
+        if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
+            return ActionResult.PASS;
         if (!level.isClient()) return ActionResult.CONSUME;
 
-        PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(),response -> {
+        PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(), response -> {
             if (response.hasPermission()) this.validateOnUse(level, blockPos, pathMarkerBlockEntity, player);
         });
 
         return ActionResult.CONSUME;
     }
 
-    public void validateOnUse(World level, BlockPos blockPos, PathMarkerBlockEntity pathMarkerBlockEntity, PlayerEntity player){
+    /**
+     * Validates the player's interaction with the Path Marker block.
+     * If Ctrl is held, opens the marker editor. Otherwise, links markers for path traversal.
+     *
+     * @param level                 the world
+     * @param blockPos              the position of this block
+     * @param pathMarkerBlockEntity the block entity
+     * @param player                the player interacting
+     */
+    public void validateOnUse(World level, BlockPos blockPos, PathMarkerBlockEntity pathMarkerBlockEntity, PlayerEntity player) {
         MinecraftClient.getInstance().execute(() -> {
             if (Client.isCtrlDown()) {
                 Screens.openEditorScreen(pathMarkerBlockEntity);
@@ -96,7 +130,7 @@ public class PathMarkerBlock extends BlockWithEntity
                     PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getPos(), pathMarker.createNbt());
                     PacketRegistry.PATH_MARKER_UPDATE.send(packet);
                     player.sendMessage(message);
-                    ArdaPaths.LOGGER.info("Sending Update Packet");
+                    log.info("Sending Update Packet");
                 }
 
                 selectedBlockPosition = null;
@@ -104,37 +138,31 @@ public class PathMarkerBlock extends BlockWithEntity
         });
     }
 
-    public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos)
-    {
+    public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
         return true;
     }
 
-    public BlockRenderType getRenderType(BlockState blockState)
-    {
+    public BlockRenderType getRenderType(BlockState blockState) {
         return BlockRenderType.INVISIBLE;
     }
 
-    public float getAmbientOcclusionLightLevel(BlockState blockState, BlockView blockGetter, BlockPos blockPos)
-    {
+    public float getAmbientOcclusionLightLevel(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
         return 1.0F;
     }
 
-    public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext)
-    {
+    public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext) {
         return collisionContext.isHolding(ModItems.PATH_MARKER) ? VoxelShapes.fullCube() : VoxelShapes.empty();
     }
 
     @Nullable
     @Override
-    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState)
-    {
+    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new PathMarkerBlockEntity(blockPos, blockState);
     }
 
     @Nullable
     @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType)
-    {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType) {
         return level.isClient ? checkType(blockEntityType, ModBlockEntities.PATH_MARKER, PathMarkerBlockEntity::tick) : null;
     }
 }

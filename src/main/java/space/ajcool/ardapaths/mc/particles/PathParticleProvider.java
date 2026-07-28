@@ -12,23 +12,44 @@ import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 
+/**
+ * Factory for creating custom glow particles used in ArdaPaths trail rendering.
+ * Creates particles with dynamic colours, lighting, and velocity for visual effect.
+ */
 @Environment(EnvType.CLIENT)
-public class PathParticleProvider implements ParticleFactory<DefaultParticleType>
-{
+public class PathParticleProvider implements ParticleFactory<DefaultParticleType> {
+    /**
+     * The sprite provider for particle rendering.
+     */
     private final SpriteProvider sprite;
 
-    public PathParticleProvider(SpriteProvider spriteSet)
-    {
+    /**
+     * Constructs a PathParticleProvider with the given sprite provider.
+     *
+     * @param spriteSet the sprite provider for particle textures
+     */
+    public PathParticleProvider(SpriteProvider spriteSet) {
         this.sprite = spriteSet;
     }
 
-    public Particle createParticle(DefaultParticleType simpleParticleType, ClientWorld level, double x, double y, double z, double encodedColorA, double encodedColorB, double encodedColorC)
-    {
-        var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite)
-        {
+    /**
+     * Creates a glow particle with trail path colours and animation.
+     * Encodes up to three colours in the double parameters and randomly selects one.
+     *
+     * @param simpleParticleType the particle type (unused)
+     * @param level              the client world
+     * @param x                  the x coordinate
+     * @param y                  the y coordinate
+     * @param z                  the z coordinate
+     * @param encodedColorA      the primary colour encoded as RGB in integer bits
+     * @param encodedColorB      the secondary colour encoded as RGB in integer bits (0 if unused)
+     * @param encodedColorC      the tertiary colour encoded as RGB in integer bits (0 if unused)
+     * @return the created particle
+     */
+    public Particle createParticle(DefaultParticleType simpleParticleType, ClientWorld level, double x, double y, double z, double encodedColorA, double encodedColorB, double encodedColorC) {
+        var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite) {
             @Override
-            public int getBrightness(float f)
-            {
+            public int getBrightness(float f) {
                 BlockPos blockPos = new BlockPos((int) this.x, (int) this.y, (int) this.z);
                 var lightColor = WorldRenderer.getLightmapCoordinates(this.world, blockPos);
 
@@ -37,8 +58,7 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
 
                 float brightness = MathHelper.clamp(((float) this.maxAge - ((float) this.age + f)) / (float) this.maxAge, 0.0f, 1.0f);
 
-                if ((j += (int) (brightness * 240)) > 240)
-                {
+                if ((j += (int) (brightness * 240)) > 240) {
                     j = 240;
                 }
 
@@ -52,14 +72,11 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
         float g = ((int) encodedColorA >> 8) & 0x0ff;
         float b = (int) encodedColorA & 0x0ff;
 
-        if (encodedColorB != 0 && rand >= (encodedColorC == 0 ? 0.5 : 0.3333))
-        {
+        if (encodedColorB != 0 && rand >= (encodedColorC == 0 ? 0.5 : 0.3333)) {
             r = ((int) encodedColorB >> 16) & 0x0ff;
             g = ((int) encodedColorB >> 8) & 0x0ff;
             b = (int) encodedColorB & 0x0ff;
-        }
-        else if (encodedColorC != 0 && rand > 0.6666)
-        {
+        } else if (encodedColorC != 0 && rand > 0.6666) {
             r = ((int) encodedColorC >> 16) & 0x0ff;
             g = ((int) encodedColorC >> 8) & 0x0ff;
             b = (int) encodedColorC & 0x0ff;

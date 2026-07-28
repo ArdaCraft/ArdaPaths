@@ -17,6 +17,11 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Handles updates to path-chapter links stored in a marker's NBT data.
+ * Syncs incoming path and chapter data from a client with the existing marker data on the server,
+ * ensuring the marker correctly references the paths and chapters it belongs to.
+ */
 public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarkerLinksUpdatePacket>
 {
     public PathMarkerLinksUpdateHandler()
@@ -41,6 +46,11 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         });
     }
 
+    /**
+     * Extracts the paths-chapters structure from an NBT compound.
+     * @param nbt the NBT compound containing a "paths" key with nested chapter data
+     * @return a map of path IDs to maps of chapter IDs and their NBT data
+     */
     private Map<String, Map<String, NbtCompound>> getPaths(NbtCompound nbt) {
         Map<String, Map<String, NbtCompound>> result = new HashMap<>();
 
@@ -58,6 +68,13 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         return result;
     }
 
+    /**
+     * Merges incoming path-chapter data with existing marker data, handling additions, updates, and removals.
+     * Ensures the marker's path links are in sync with the client's updates.
+     * @param existing the current NBT data from the marker
+     * @param incoming the new NBT data from the client
+     * @return the merged NBT compound with synced paths and chapters
+     */
     public NbtCompound syncPathsFromIncoming(NbtCompound existing, NbtCompound incoming) {
 
         var oldPaths = getPaths(existing);

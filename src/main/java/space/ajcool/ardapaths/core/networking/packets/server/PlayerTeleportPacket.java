@@ -5,6 +5,13 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
+/**
+ * Packet sent from client to server to request teleporting the player to specific coordinates.
+ * @param x the X coordinate
+ * @param y the Y coordinate
+ * @param z the Z coordinate
+ * @param worldId the world/dimension identifier, or null to teleport within the current world
+ */
 public record PlayerTeleportPacket(double x, double y, double z, Identifier worldId) implements IPacket
 {
 

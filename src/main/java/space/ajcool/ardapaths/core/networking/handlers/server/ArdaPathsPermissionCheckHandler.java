@@ -9,6 +9,10 @@ import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.core.networking.packets.client.ArdaPathsPermissionCheckResponsePacket;
 
+/**
+ * Handles permission check requests from clients and responds with whether the player has edit permissions.
+ * Uses {@link PermissionHelper} to determine if the player has the required permissions for editing paths.
+ */
 public class ArdaPathsPermissionCheckHandler extends RespondablePacketHandler<EmptyPacket, ArdaPathsPermissionCheckResponsePacket> {
 
     private static final String REQUEST_CHANNEL = "ardapaths_permission_check_request";

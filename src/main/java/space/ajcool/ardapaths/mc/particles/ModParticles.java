@@ -11,12 +11,15 @@ import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
-public class ModParticles
-{
+/**
+ * Registry for custom particle types in ArdaPaths.
+ * Handles both registration and client-side initialization of particle types and factories.
+ */
+public class ModParticles {
     /**
+     * The particle type for trail path particles.
      * If adding a new particle, make sure to add it to the {@link ModParticles#initClient} method.
      */
-
     public static final DefaultParticleType PATH = register(
             "path",
             FabricParticleTypes.simple(true)
@@ -28,13 +31,16 @@ public class ModParticles
      * @param id   The particle's ID
      * @param type The particle type to register
      */
-    private static <T extends ParticleType<?>> T register(final String id, final T type)
-    {
+    @SuppressWarnings("SameParameterValue")
+    private static <T extends ParticleType<?>> T register(final String id, final T type) {
         return Registry.register(Registries.PARTICLE_TYPE, new Identifier(ArdaPaths.MOD_ID, id), type);
     }
 
-    public static void init()
-    {
+    /**
+     * Initializes the particle type registry by forcing class loading.
+     * This method is called during mod initialization and must be invoked before {@link #initClient()}.
+     */
+    public static void init() {
     }
 
     /**
@@ -43,8 +49,7 @@ public class ModParticles
      * This method must be invoked <b>after</b> {@link ModParticles#init}.
      */
     @Environment(EnvType.CLIENT)
-    public static void initClient()
-    {
+    public static void initClient() {
         ParticleFactoryRegistry registry = ParticleFactoryRegistry.getInstance();
         registry.register(PATH, PathParticleProvider::new);
     }

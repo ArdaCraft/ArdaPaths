@@ -14,17 +14,22 @@ import java.util.Objects;
 
 /**
  * Consumer for the ArdaMaps API.
+ * Manages waypoints displayed on the ArdaMaps for the next trail node in the current path.
  */
 public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
 
-    /** Whether the API is ready to be queried or not **/
+    /**
+     * The ArdaMaps API instance, or null if the API is not available.
+     */
     private static ArdaMapsApi INSTANCE;
 
-    /** Currently displayed next waypoint */
+    /**
+     * The currently displayed next waypoint, or null if no waypoint is shown.
+     */
     private static Vec3d CURRENT_WAYPOINT = null;
 
     /**
-     * Clears all the ArdaMaps ArdaPaths waypoints
+     * Clears all waypoints created by ArdaPaths from the ArdaMaps display.
      */
     public static void clearMapMarkers() {
 
@@ -34,15 +39,11 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
         INSTANCE.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
     }
 
-    @Override
-    public void onApiReady(ArdaMapsApi ardaMapsApi) {
-
-        INSTANCE = ardaMapsApi;
-    }
-
     /**
-     * Sets the next trail node to the given target
-     * @param target the target to set
+     * Sets or updates the next trail node waypoint displayed on ArdaMaps.
+     * Creates a new waypoint at the target location if enabled and different from the current one.
+     *
+     * @param target the position of the next trail node
      */
     public static void setNextTrailNode(Vec3d target) {
 
@@ -71,11 +72,11 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
 
     /**
      * Validates whether a waypoint should be shown for the given target
+     *
      * @param target the target to display
      * @return true if a waypoint should be shown, false otherwise
      */
-    private static boolean shouldShowWaypoint(Vec3d target)
-    {
+    private static boolean shouldShowWaypoint(Vec3d target) {
 
         if (!ArdaPathsClient.CONFIG.showTrailWaypoints()) return false;
 
@@ -86,5 +87,17 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
         if (Client.mc().world == null) return false;
 
         return !Objects.equals(CURRENT_WAYPOINT, target);
+    }
+
+    /**
+     * Called when the ArdaMaps API becomes available.
+     * Stores the API instance for later use.
+     *
+     * @param ardaMapsApi the ArdaMaps API instance
+     */
+    @Override
+    public void onApiReady(ArdaMapsApi ardaMapsApi) {
+
+        INSTANCE = ardaMapsApi;
     }
 }

@@ -1,5 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Hand;
@@ -21,6 +23,7 @@ import java.util.Queue;
  * is automatically displayed. Duplicate items are prevented from being queued.
  *
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ProximityRenderer {
 
     private static final ProximityRenderer INSTANCE = new ProximityRenderer();
@@ -86,9 +89,9 @@ public class ProximityRenderer {
      * the queue is polled and rendered. If the queue is empty, no rendering occurs.
      *
      * @param context the drawing context for rendering
-     * @param delta   the time delta since last frame
+     * @param ignoredDelta   the time delta since last frame
      */
-    private void renderNextItem(DrawContext context, float delta) {
+    private void renderNextItem(DrawContext context, float ignoredDelta) {
 
         var nextItem = renderQueue.peek();
 

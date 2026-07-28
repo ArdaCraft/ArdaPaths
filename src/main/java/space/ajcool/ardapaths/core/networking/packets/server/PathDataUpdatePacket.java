@@ -4,6 +4,14 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.PacketByteBuf;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
+/**
+ * Packet sent from client to server to update a path's metadata and colors.
+ * @param id the unique path identifier
+ * @param name the path name
+ * @param primaryColor the primary color in ARGB format
+ * @param secondaryColor the secondary color in ARGB format
+ * @param tertiaryColor the tertiary color in ARGB format
+ */
 public record PathDataUpdatePacket(
         String id,
         String name,

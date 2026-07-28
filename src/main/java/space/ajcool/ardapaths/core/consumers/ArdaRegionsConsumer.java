@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.core.consumers;
 
+import lombok.extern.slf4j.Slf4j;
 import mc.ardacraft.ardaregions.api.ArdaRegionsAPI;
 import mc.ardacraft.ardaregions.api.ArdaRegionsApiEntrypoint;
 import net.fabricmc.api.EnvType;
@@ -10,6 +11,7 @@ import space.ajcool.ardapaths.ArdaPaths;
  * Consumer for the Arda Regions API that listens for client discovery popup events
  * and updates the ArdaRegionsState accordingly.
  */
+@Slf4j(topic = "ardapaths")
 public class ArdaRegionsConsumer implements ArdaRegionsApiEntrypoint {
 
     /**
@@ -22,15 +24,12 @@ public class ArdaRegionsConsumer implements ArdaRegionsApiEntrypoint {
     public void onApiReady(ArdaRegionsAPI api) {
 
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
-            ArdaPaths.LOGGER.info("{}, skipping Arda Regions consumer registration on server side.", ArdaPaths.MOD_ID);
+            log.info("{}, skipping Arda Regions consumer registration on server side.", ArdaPaths.MOD_ID);
             return;
         }
-        ArdaPaths.LOGGER.info("Arda Regions API is ready, registering consumer.");
+        log.info("Arda Regions API is ready, registering consumer.");
         api.getClientDiscoveryPopupEvent().register(
-                (regionId, regionName, description, alpha) -> {
-
-                    ArdaRegionsState.setDisplaying(alpha > 0.2f);
-                }
+                (regionId, regionName, description, alpha) -> ArdaRegionsState.setDisplaying(alpha > 0.2f)
         );
     }
 }

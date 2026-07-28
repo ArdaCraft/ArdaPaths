@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.paths.rendering;
 
+import lombok.Getter;
 import net.minecraft.client.gui.DrawContext;
 
 /**
@@ -8,17 +9,21 @@ import net.minecraft.client.gui.DrawContext;
  */
 public abstract class TextRenderable {
 
-
+    /**
+     * The system time (in milliseconds) when this renderable was started, or -1 if not yet started.
+     */
     protected long startTime;
 
     /**
-     * Indicates whether this renderable is currently visible on screen
+     * Indicates whether this renderable is currently visible on screen.
      */
+    @Getter
     protected boolean showing;
 
     /**
      * Indicates whether this renderable has completed its lifecycle
      */
+    @Getter
     protected boolean done;
 
     /**
@@ -49,31 +54,17 @@ public abstract class TextRenderable {
      * Resets the animation to its initial state for reuse.
      * Clears the start time and marks the message as showing and not done.
      */
-    public void reset()
-    {
+    public void reset() {
         this.startTime = -1;
         this.showing = true;
         this.done = false;
     }
 
     /**
-     * @return true if this renderable is currently visible
-     */
-    public boolean isShowing() {
-        return showing;
-    }
-
-    /**
-     * @return true if this renderable has completed its lifecycle
-     */
-    public boolean isDone() {
-        return done;
-    }
-
-    /**
      * Immediately stops the renderable and marks it as done.
      * Sets showing to false and done to true.
      */
+    @SuppressWarnings("unused")
     public void stop() {
         showing = false;
         done = true;

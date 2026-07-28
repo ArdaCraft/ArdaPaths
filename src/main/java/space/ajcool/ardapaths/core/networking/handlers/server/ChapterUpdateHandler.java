@@ -10,6 +10,10 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 
+/**
+ * Handles updates to chapter data in the server configuration.
+ * Processes incoming {@link ChapterUpdatePacket} from clients and persists changes to chapter name, date, index, and warp settings.
+ */
 public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacket>
 {
     public ChapterUpdateHandler()

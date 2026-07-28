@@ -120,3 +120,5 @@ runServer/
 
 # Ignore DevAuth tokens
 .devauth/microsoft_accounts.json
+!README.md
+*.md

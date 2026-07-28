@@ -10,11 +10,15 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerLinksUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.screens.builders.TextBuilder;
+import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.*;
 import java.util.function.Supplier;
 
+/**
+ * Screen for editing and managing which paths and chapters a marker is linked to.
+ * Displays all available paths and chapters, allowing the player to add or remove marker associations.
+ */
 public class MarkerLinksEditScreen extends Screen {
 
     private final PathMarkerBlockEntity MARKER;
@@ -33,11 +37,13 @@ public class MarkerLinksEditScreen extends Screen {
         int centerX = this.width / 2;
         int y = 20;
 
-        this.addDrawableChild(TextBuilder.create()
-                .setPosition(centerX - 70, y)
-                .setSize(140, 20)
-                .setText(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit_marker_links"))
-                .build()
+        this.addDrawableChild(TextWidget.create()
+                        .setX(centerX - 70)
+                        .setY(y)
+                        .setWidth(140)
+                        .setHeight(20)
+                        .setMessage(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit_marker_links"))
+                        .build()
         );
 
         if (MARKER.getPathData() != null){
@@ -55,7 +61,7 @@ public class MarkerLinksEditScreen extends Screen {
                     boolean hasLinkedData = false;
 
                     List<ChapterData> chapterData = new ArrayList<>(pathData.getChapters());
-                    chapterData.sort((o1, o2) -> Integer.compare(o1.getIndex(), o2.getIndex()));
+                    chapterData.sort(Comparator.comparingInt(ChapterData::getIndex));
 
                     for (ChapterData chapter : chapterData) {
 
@@ -66,10 +72,12 @@ public class MarkerLinksEditScreen extends Screen {
                         if (doesMarkerReferenceChapter && !isDefault && isInOriginalMarkerData) {
 
                             hasLinkedData = true;
-                            var chaperName = TextBuilder.create()
-                                    .setPosition(centerX - 120, y += 25)
-                                    .setSize(120, 20)
-                                    .setText(Text.literal(chapter.getName()))
+                            var chaperName = TextWidget.create()
+                                    .setX(centerX - 120)
+                                    .setY(y += 25)
+                                    .setWidth(120)
+                                    .setHeight(20)
+                                    .setMessage(Text.literal(chapter.getName()))
                                     .build();
                             chaperName.alignRight();
                             this.addDrawableChild(chaperName);
@@ -80,10 +88,7 @@ public class MarkerLinksEditScreen extends Screen {
                                     40,
                                     20,
                                     Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.unlink"),
-                                    button -> {
-
-                                        unlinkMarkerToPathAndChapter(pathEntryKey, chapter);
-                                    },
+                                    button -> unlinkMarkerToPathAndChapter(pathEntryKey, chapter),
                                     Supplier::get
                             );
                             boolean samePath = Objects.equals(ArdaPathsClient.CONFIG.getSelectedPathId(), pathEntryKey);
@@ -100,22 +105,26 @@ public class MarkerLinksEditScreen extends Screen {
                                 .styled(style -> style.withUnderline(true))
                                 .styled(style -> style.withColor(pathData.getPrimaryColor().asHex()));
 
-                        this.addDrawableChild(TextBuilder.create()
-                                .setPosition(pathTitlePositionX, pathTitlePositionY)
-                                .setSize(140, 20)
-                                .setText(pathName)
-                                .build());
+                        this.addDrawableChild(TextWidget.create()
+                                        .setX(pathTitlePositionX)
+                                        .setY(pathTitlePositionY)
+                                        .setWidth(140)
+                                        .setY(20)
+                                        .setMessage(pathName)
+                                        .build());
                     }
                 }
             }
 
         } else {
 
-            this.addDrawableChild(TextBuilder.create()
-                    .setPosition(centerX - 70, y+30)
-                    .setSize(140, 20)
-                    .setText(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.no_linked_data"))
-                    .build()
+            this.addDrawableChild(TextWidget.create()
+                            .setX(centerX - 70)
+                            .setY(y+30)
+                            .setWidth(140)
+                            .setY(20)
+                            .setMessage(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.no_linked_data"))
+                            .build()
             );
         }
     }
@@ -144,6 +153,7 @@ public class MarkerLinksEditScreen extends Screen {
     @Override
     public void close()
     {
-        this.client.setScreen(new MarkerEditScreen(MARKER, originalPathAndChapterData));
+        if (this.client != null)
+            this.client.setScreen(new MarkerEditScreen(MARKER, originalPathAndChapterData));
     }
 }

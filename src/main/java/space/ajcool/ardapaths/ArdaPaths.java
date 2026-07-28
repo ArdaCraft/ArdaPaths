@@ -1,20 +1,15 @@
 package space.ajcool.ardapaths;
 
-import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import space.ajcool.ardapaths.api.ArdaPathsApi;
 import space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint;
 import space.ajcool.ardapaths.api.ArdaPathsApiImpl;
@@ -23,7 +18,6 @@ import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
-import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -32,17 +26,50 @@ import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.mc.sounds.ModSounds;
 
-public class ArdaPaths implements ModInitializer
-{
+/**
+ * Main entry point for the ArdaPaths Fabric mod.
+ * Initializes all mod features including blocks, items, particles, sounds, and networking.
+ */
+@Slf4j(topic = "ardapaths")
+public class ArdaPaths implements ModInitializer {
+    /**
+     * The unique identifier for the ArdaPaths mod.
+     */
     public static final String MOD_ID = "ardapaths";
-    public static final Logger LOGGER = LoggerFactory.getLogger("ardapaths");
+
+    /**
+     * The LuckPerms permission string for editing paths and markers.
+     */
     public static final String MOD_EDIT_PERMISSION = String.format("%s.edit", MOD_ID);
+
+    /**
+     * Manager for server-side configuration, handles loading and saving server.json.
+     */
     public static ServerConfigManager CONFIG_MANAGER;
+
+    /**
+     * The current server-side path configuration, loaded from server.json.
+     */
     public static ServerConfig CONFIG;
 
+    /**
+     * @return true if this code is running on the server
+     */
+    public static boolean amITheServer() {
+
+        var serverEnv = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
+
+        if (!serverEnv) return Client.isInSinglePlayer();
+
+        return true;
+    }
+
+    /**
+     * Fabric mod initialization entry point.
+     * Initializes all mod components including configs, registries, networking, and permission handlers.
+     */
     @Override
-    public void onInitialize()
-    {
+    public void onInitialize() {
         CONFIG_MANAGER = new ServerConfigManager("./config/arda-paths/server.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
@@ -79,14 +106,8 @@ public class ArdaPaths implements ModInitializer
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
-        {
-            if (blockEntity instanceof PathMarkerBlockEntity && !PermissionHelper.hasEditPermission(player))
-                return false;
-
-            return true;
-        });
+                !(blockEntity instanceof PathMarkerBlockEntity) || PermissionHelper.hasEditPermission(player));
     }
-
 
     /**
      * Queries Fabric for all mods that registered an {@code ardamaps:api} entrypoint and
@@ -104,28 +125,16 @@ public class ArdaPaths implements ModInitializer
                 String modId = container.getProvider().getMetadata().getId();
                 try {
 
-                    LOGGER.info("[ArdaPaths] Invoking ardapaths:api entrypoint for mod '{}'", modId);
+                    log.info("[ArdaPaths] Invoking ardapaths:api entrypoint for mod '{}'", modId);
                     container.getEntrypoint().onApiReady(api);
 
                 } catch (Exception e) {
 
-                    LOGGER.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, e.getMessage(), e);
+                    log.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, e.getMessage(), e);
                 }
             }
         } else {
-            LOGGER.error("[ArdaPaths] API not initialized, skipping ardapaths:api entrypoints");
+            log.error("[ArdaPaths] API not initialized, skipping ardapaths:api entrypoints");
         }
-    }
-
-    /**
-     * @return true if this code is running on the server
-     */
-    public static boolean amITheServer() {
-
-        var serverEnv = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
-
-        if (!serverEnv) return Client.isInSinglePlayer();
-
-        return true;
     }
 }

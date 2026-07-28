@@ -1,148 +1,112 @@
 package space.ajcool.ardapaths.core.data.config.shared;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PathData
-{
+/**
+ * Represents a path with an ID, name, three colours, and a collection of chapters.
+ * This is a primary configuration object that is serialized to JSON.
+ */
+public class PathData {
+    /**
+     * The unique identifier for this path.
+     */
+    @Setter
     @SerializedName("id")
     private String id;
 
+    /**
+     * The display name of this path.
+     */
+    @Setter
     @SerializedName("name")
     private String name;
 
+    /**
+     * The primary colour used for rendering this path's trails.
+     */
+    @Setter
     @SerializedName("primaryColor")
     private Color primaryColor;
 
+    /**
+     * The secondary colour used for rendering this path's trails.
+     */
+    @Setter
     @SerializedName("secondaryColor")
     private Color secondaryColor;
 
+    /**
+     * The tertiary colour used for rendering this path's trails.
+     */
+    @Setter
     @SerializedName("tertiaryColor")
     private Color tertiaryColor;
 
+    /**
+     * Map of chapter IDs to chapter data objects, representing all chapters in this path.
+     */
     @SerializedName("chapters")
-    private Map<String, ChapterData> chapters = new HashMap<>();
+    private final Map<String, ChapterData> chapters = new HashMap<>();
 
     /**
      * @return The ID of this path
      */
-    public String getId()
-    {
+    public String getId() {
         return id == null ? "" : id;
-    }
-
-    /**
-     * Sets the ID of this path.
-     *
-     * @param id The new ID
-     */
-    public PathData setId(String id)
-    {
-        this.id = id;
-        return this;
     }
 
     /**
      * @return The name of this path
      */
-    public String getName()
-    {
+    public String getName() {
         return name == null ? "" : name;
     }
 
     /**
-     * Sets the name of this path.
-     *
-     * @param name The new name
+     * @return Array containing the primary, secondary, and tertiary colours of this path.
      */
-    public PathData setName(String name)
-    {
-        this.name = name;
-        return this;
-    }
-
-    /**
-     * @return The primary color of this path.
-     */
-    public Color getPrimaryColor()
-    {
-        return primaryColor == null ? new Color(191, 64, 191) : primaryColor;
-    }
-
-    /**
-     * @return The secondary color of this path.
-     */
-    public Color getSecondaryColor()
-    {
-        return secondaryColor == null ? new Color(191, 64, 191) : secondaryColor;
-    }
-
-    /**
-     * @return The tertiary color of this path.
-     */
-    public Color getTertiaryColor()
-    {
-        return tertiaryColor == null ? new Color(191, 64, 191) : tertiaryColor;
-    }
-
-    /**
-     * @return Array containing the primary, secondary, and tertiary colors of this path.
-     */
-    public Color[] getColors()
-    {
+    public Color[] getColors() {
         return new Color[]{getPrimaryColor(), getSecondaryColor(), getTertiaryColor()};
     }
 
     /**
-     * Sets the primary color of this path.
-     *
-     * @param color The new color
+     * @return The primary colour of this path.
      */
-    public PathData setPrimaryColor(Color color)
-    {
-        this.primaryColor = color;
-        return this;
+    public Color getPrimaryColor() {
+        return primaryColor == null ? new Color(191, 64, 191) : primaryColor;
     }
 
     /**
-     * Sets the secondary color of this path.
-     *
-     * @param color The new color
+     * @return The secondary colour of this path.
      */
-    public PathData setSecondaryColor(Color color)
-    {
-        this.secondaryColor = color;
-        return this;
+    public Color getSecondaryColor() {
+        return secondaryColor == null ? new Color(191, 64, 191) : secondaryColor;
     }
 
     /**
-     * Sets the tertiary color of this path.
-     *
-     * @param color The new color
+     * @return The tertiary colour of this path.
      */
-    public PathData setTertiaryColor(Color color)
-    {
-        this.tertiaryColor = color;
-        return this;
+    public Color getTertiaryColor() {
+        return tertiaryColor == null ? new Color(191, 64, 191) : tertiaryColor;
     }
 
     /**
      * @return The IDs of the chapters in this path
      */
-    public List<String> getChapterIds()
-    {
+    public List<String> getChapterIds() {
         return chapters.keySet().stream().toList();
     }
 
     /**
      * @return The chapters in this path
      */
-    public List<ChapterData> getChapters()
-    {
+    public List<ChapterData> getChapters() {
         return chapters.values().stream().toList();
     }
 
@@ -150,8 +114,7 @@ public class PathData
      * @param id The ID of the chapter
      * @return The chapter with the given ID, or null if not found
      */
-    public @Nullable ChapterData getChapter(String id)
-    {
+    public @Nullable ChapterData getChapter(String id) {
         return chapters.get(id);
     }
 
@@ -160,8 +123,7 @@ public class PathData
      *
      * @param chapter The chapter data
      */
-    public PathData setChapter(ChapterData chapter)
-    {
+    public PathData setChapter(ChapterData chapter) {
         chapters.put(chapter.getId(), chapter);
         return this;
     }
@@ -171,8 +133,8 @@ public class PathData
      *
      * @param id The ID of the chapter
      */
-    public PathData removeChapter(String id)
-    {
+    @SuppressWarnings("UnusedReturnValue")
+    public PathData removeChapter(String id) {
         chapters.remove(id);
         return this;
     }

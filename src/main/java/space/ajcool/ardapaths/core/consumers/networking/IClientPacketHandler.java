@@ -5,8 +5,10 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.PacketByteBuf;
 
-public interface IClientPacketHandler
-{
+/**
+ * Interface for client-side packet handlers that process packets received from the server.
+ */
+public interface IClientPacketHandler {
     /**
      * Handle an incoming packet on the client.
      */

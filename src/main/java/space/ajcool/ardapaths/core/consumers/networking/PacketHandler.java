@@ -1,20 +1,27 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
+import lombok.Getter;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
-public abstract class PacketHandler implements IPacketHandler
-{
+/**
+ * Abstract base class for packet handlers that provides common channel ID management.
+ */
+public abstract class PacketHandler implements IPacketHandler {
+    /**
+     * The network channel identifier for this handler.
+     */
+    @Getter
     private final Identifier channelId;
 
-    public PacketHandler(final String channelId)
-    {
+    /**
+     * Constructs a PacketHandler with the given channel name.
+     * The channel ID is constructed as "ardapaths:&lt;channelId&gt;".
+     *
+     * @param channelId the local channel name
+     */
+    public PacketHandler(final String channelId) {
         this.channelId = Identifier.of(ArdaPaths.MOD_ID, channelId);
     }
 
-    @Override
-    public Identifier getChannelId()
-    {
-        return channelId;
-    }
 }

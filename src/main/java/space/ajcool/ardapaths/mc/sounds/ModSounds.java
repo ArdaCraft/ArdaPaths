@@ -6,8 +6,14 @@ import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
-public class ModSounds
-{
+/**
+ * Registry for custom sound events in ArdaPaths.
+ * Handles registration of sound events with the Minecraft registry.
+ */
+public class ModSounds {
+    /**
+     * The sound event played when traversing a trail.
+     */
     public static final SoundEvent TRAIL = register("trail_sound");
 
     /**
@@ -15,13 +21,16 @@ public class ModSounds
      *
      * @param id The sound's ID.
      */
-    private static SoundEvent register(final String id)
-    {
+    @SuppressWarnings("SameParameterValue")
+    private static SoundEvent register(final String id) {
         final Identifier identifier = new Identifier(ArdaPaths.MOD_ID, id);
         return Registry.register(Registries.SOUND_EVENT, identifier, SoundEvent.of(identifier));
     }
 
-    public static void init()
-    {
+    /**
+     * Initializes the sound event registry by forcing class loading.
+     * This method is called during mod initialization.
+     */
+    public static void init() {
     }
 }

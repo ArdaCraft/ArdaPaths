@@ -11,6 +11,10 @@ import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 
+/**
+ * Handles the deletion of a chapter from a path in the server configuration.
+ * Processes incoming {@link ChapterDeletePacket} from clients and removes the specified chapter from its path.
+ */
 public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacket>
 {
     public ChapterDeleteHandler()

@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
@@ -13,6 +14,7 @@ import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacke
 /**
  * A packet sent from the client to the server to request path data.
  */
+@Slf4j(topic = "ardapaths")
 public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUpdatePacket>
 {
     public PathDataUpdateRequestHandler()
@@ -32,7 +34,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
         PathData pathData = ArdaPaths.CONFIG.getPath(pathId);
 
         if (pathData != null) {
-            ArdaPaths.LOGGER.info("Updating path data for path ID: {}, name {}", pathId, name);
+            log.info("Updating path data for path ID: {}, name {}", pathId, name);
 
             pathData.setName(name);
             pathData.setPrimaryColor(Color.fromHex(primaryColor));
@@ -41,7 +43,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
 
             ArdaPaths.CONFIG_MANAGER.save();
         } else {
-            ArdaPaths.LOGGER.warn("No path found with ID: {}", pathId);
+            log.warn("No path found with ID: {}", pathId);
         }
     }
 }

@@ -1,6 +1,8 @@
 package space.ajcool.ardapaths.core.data.config.client;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
+import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
@@ -13,36 +15,74 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ClientConfig
-{
-    @SerializedName("proximity_messages")
-    private boolean proximityMessages;
-
-    @SerializedName("chapter_titles")
-    private boolean chapterTitles;
-
-    @SerializedName("trail_waypoints")
-    private boolean trailWaypoints;
-
-    @SerializedName("proximity_text_speed_multiplier")
-    private Double proximityTextSpeedMultiplier;
-
-    @SerializedName("chapter_title_display_speed")
-    private Float chapterTitleDisplaySpeed;
-
+/**
+ * Client-side configuration containing player preferences and selected path/chapter.
+ * Mirrors the server configuration and adds per-player settings for rendering and display.
+ * Serialized to JSON in config.json.
+ */
+public class ClientConfig {
+    /**
+     * Map of server addresses to their selected path/chapter data.
+     */
     @SerializedName("selected_paths")
     private final Map<String, SelectedPathData> selectedPaths = new HashMap<>();
 
+    /**
+     * Whether to show proximity messages when near path markers.
+     */
+    @Setter
+    @SerializedName("proximity_messages")
+    private boolean proximityMessages;
+
+    /**
+     * Whether to display chapter title overlays when chapters start.
+     */
+    @Setter
+    @SerializedName("chapter_titles")
+    private boolean chapterTitles;
+
+    /**
+     * Whether to show ArdaMaps waypoints for the next trail node.
+     */
+    @Setter
+    @SerializedName("trail_waypoints")
+    private boolean trailWaypoints;
+
+    /**
+     * Speed multiplier for proximity message animation speed (0.0-1.0+).
+     * -- SETTER --
+     * Defines the factor at which the proximity messages are displayed
+     *
+     * @param proximityTextSpeedMultiplier the factor to set
+     */
+    @Setter
+    @SerializedName("proximity_text_speed_multiplier")
+    private Double proximityTextSpeedMultiplier;
+
+    /**
+     * Duration in milliseconds to display chapter titles.
+     */
+    @Setter
+    @SerializedName("chapter_title_display_speed")
+    private Float chapterTitleDisplaySpeed;
+
+    /**
+     * List of paths serialized to JSON (mirror of server config).
+     */
+    @Getter
+    @Setter
     @SerializedName("paths")
     private List<PathData> clientPaths = new ArrayList<>();
 
+    /**
+     * Transient list of paths loaded from the server, used during runtime.
+     */
     private transient List<PathData> paths = new ArrayList<>();
 
     /**
      * @return True if proximity messages should be shown, otherwise false
      */
-    public boolean showProximityMessages()
-    {
+    public boolean showProximityMessages() {
         return proximityMessages;
     }
 
@@ -53,40 +93,12 @@ public class ClientConfig
         return trailWaypoints;
     }
 
-    /**
-     * Sets whether to show trail waypoints or not
-     * @param show True if waypoints should be added when the player follows a path, false otherwise
-     */
-    public void showTrailWaypoints(boolean show) {
-        this.trailWaypoints = show;
-    }
-
-    /**
-     * Sets whether proximity messages should be shown.
-     *
-     * @param proximityMessages True if proximity messages should be shown, otherwise false
-     */
-    public void showProximityMessages(boolean proximityMessages)
-    {
-        this.proximityMessages = proximityMessages;
-    }
-
-    public boolean showChapterTitles()
-    {
+    public boolean showChapterTitles() {
         return chapterTitles;
     }
 
-    public void showChapterTitles(boolean chapterTitles)
-    {
-        this.chapterTitles = chapterTitles;
-    }
-
-    public Float getChapterTitleDisplaySpeed(){
+    public Float getChapterTitleDisplaySpeed() {
         return chapterTitleDisplaySpeed != null ? chapterTitleDisplaySpeed : AnimatedTitle.DEFAULT_CHAPTER_TITLE_DISPLAY_SPEED;
-    }
-
-    public void setChapterTitleDisplaySpeed(Float chapterTitleDisplaySpeed){
-        this.chapterTitleDisplaySpeed = chapterTitleDisplaySpeed;
     }
 
     /**
@@ -97,36 +109,26 @@ public class ClientConfig
     }
 
     /**
-     * Defines the factor at which the proximity messages are displayed
-     * @param proximityTextSpeedMultiplier the factor to set
-     */
-    public void setProximityTextSpeedMultiplier(Double proximityTextSpeedMultiplier) {
-        this.proximityTextSpeedMultiplier = proximityTextSpeedMultiplier;
-    }
-
-    /**
-     * Toggles whether proximity messages should be shown.
-     */
-    public void toggleProximityMessages()
-    {
-        proximityMessages = !proximityMessages;
-    }
-
-    /**
      * @return The selected path, or an empty string if no path is selected
      */
-    public String getSelectedPathId()
-    {
+    public String getSelectedPathId() {
         String identifier = getIdentifier();
         return getSelectedPathId(identifier);
+    }
+
+    /**
+     * @return The current identifier for accessing the selected path data
+     */
+    private static String getIdentifier() {
+        if (Client.isInSinglePlayer()) return Client.getUuidString();
+        return Client.getServerAddress();
     }
 
     /**
      * @param identifier The identifier, usually a server address or the player UUID
      * @return The selected path for the given identifier, or an empty string if no path is selected
      */
-    public String getSelectedPathId(String identifier)
-    {
+    public String getSelectedPathId(String identifier) {
         if (!selectedPaths.containsKey(identifier)) return "frodo";
         return selectedPaths.get(identifier).getPathId();
     }
@@ -134,8 +136,7 @@ public class ClientConfig
     /**
      * @return The selected path data, or null if no path is selected
      */
-    public @Nullable PathData getSelectedPath()
-    {
+    public @Nullable PathData getSelectedPath() {
         String identifier = getIdentifier();
         return getSelectedPath(identifier);
     }
@@ -144,11 +145,44 @@ public class ClientConfig
      * @param identifier The identifier, usually a server address or the player UUID
      * @return The selected path data for the given identifier, or null if no path is selected
      */
-    public @Nullable PathData getSelectedPath(String identifier)
-    {
+    public @Nullable PathData getSelectedPath(String identifier) {
         String pathId = getSelectedPathId(identifier);
         if (pathId.isEmpty()) return null;
         return getPath(pathId);
+    }
+
+    /**
+     * @param id The ID of the path
+     * @return The path with the given ID, or null if not found
+     */
+    public @Nullable PathData getPath(String id) {
+        List<PathData> paths = getPaths();
+        for (PathData path : paths) {
+            if (path.getId().equalsIgnoreCase(id)) {
+                return path;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @return The list of available paths
+     */
+    public List<PathData> getPaths() {
+        return Client.isInSinglePlayer() ? this.clientPaths : this.paths;
+    }
+
+    /**
+     * Sets the list of paths available on this server.
+     *
+     * @param paths The new list of paths
+     */
+    public void setPaths(List<PathData> paths) {
+        if (Client.isInSinglePlayer()) {
+            this.clientPaths = paths;
+        } else {
+            this.paths = paths;
+        }
     }
 
     /**
@@ -156,8 +190,7 @@ public class ClientConfig
      *
      * @param path The selected path ID
      */
-    public void setSelectedPath(String path)
-    {
+    public void setSelectedPath(String path) {
         String identifier = getIdentifier();
         setSelectedPath(identifier, path);
     }
@@ -168,11 +201,9 @@ public class ClientConfig
      * @param identifier The identifier, usually a server address or the player UUID
      * @param path       The path to select
      */
-    public void setSelectedPath(String identifier, String path)
-    {
+    public void setSelectedPath(String identifier, String path) {
         if (identifier.isEmpty()) return;
-        if (!selectedPaths.containsKey(identifier))
-        {
+        if (!selectedPaths.containsKey(identifier)) {
             selectedPaths.put(identifier, new SelectedPathData());
         }
         selectedPaths.get(identifier).setPathId(path);
@@ -181,8 +212,7 @@ public class ClientConfig
     /**
      * @return The current chapter ID, or an empty string if no chapter is selected
      */
-    public String getCurrentChapterId()
-    {
+    public String getCurrentChapterId() {
         String identifier = getIdentifier();
         return getCurrentChapterId(identifier);
     }
@@ -191,8 +221,7 @@ public class ClientConfig
      * @param identifier The identifier, usually a server address or the player UUID
      * @return The chapter ID for the given identifier, or an empty string if no chapter is selected
      */
-    public String getCurrentChapterId(String identifier)
-    {
+    public String getCurrentChapterId(String identifier) {
         if (!selectedPaths.containsKey(identifier)) return "default";
         return selectedPaths.get(identifier).getChapterId();
     }
@@ -200,8 +229,7 @@ public class ClientConfig
     /**
      * @return The current chapter, or null if no chapter is selected
      */
-    public @Nullable ChapterData getCurrentChapter()
-    {
+    public @Nullable ChapterData getCurrentChapter() {
         String identifier = getIdentifier();
         return getCurrentChapter(identifier);
     }
@@ -210,8 +238,7 @@ public class ClientConfig
      * @param identifier The identifier, usually a server address or the player UUID
      * @return The current chapter for the given server, or null if no chapter is selected
      */
-    public @Nullable ChapterData getCurrentChapter(String identifier)
-    {
+    public @Nullable ChapterData getCurrentChapter(String identifier) {
         String chapterId = getCurrentChapterId(identifier);
         if (chapterId.isEmpty()) return null;
         PathData path = getSelectedPath(identifier);
@@ -224,8 +251,7 @@ public class ClientConfig
      *
      * @param chapter The chapter ID to set
      */
-    public void setCurrentChapter(String chapter)
-    {
+    public void setCurrentChapter(String chapter) {
         String identifier = getIdentifier();
         setCurrentChapter(identifier, chapter);
     }
@@ -236,56 +262,12 @@ public class ClientConfig
      * @param identifier The identifier, usually a server address or the player UUID
      * @param chapter    The chapter to set
      */
-    public void setCurrentChapter(String identifier, String chapter)
-    {
+    public void setCurrentChapter(String identifier, String chapter) {
         if (identifier.isEmpty()) return;
-        if (!selectedPaths.containsKey(identifier))
-        {
+        if (!selectedPaths.containsKey(identifier)) {
             selectedPaths.put(identifier, new SelectedPathData());
         }
         selectedPaths.get(identifier).setChapterId(chapter);
-    }
-
-    /**
-     * @return The list of available paths
-     */
-    public List<PathData> getPaths()
-    {
-        return Client.isInSinglePlayer() ? this.clientPaths : this.paths;
-    }
-
-    /**
-     * @param id The ID of the path
-     * @return The path with the given ID, or null if not found
-     */
-    public @Nullable PathData getPath(String id)
-    {
-        List<PathData> paths = getPaths();
-        for (PathData path : paths)
-        {
-            if (path.getId().equalsIgnoreCase(id))
-            {
-                return path;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Sets the list of paths available on this server.
-     *
-     * @param paths The new list of paths
-     */
-    public void setPaths(List<PathData> paths)
-    {
-        if (Client.isInSinglePlayer())
-        {
-            this.clientPaths = paths;
-        }
-        else
-        {
-            this.paths = paths;
-        }
     }
 
     /**
@@ -293,26 +275,14 @@ public class ClientConfig
      *
      * @param path The path data
      */
-    public void setPath(PathData path)
-    {
+    public void setPath(PathData path) {
         List<PathData> paths = getPaths();
-        for (int i = 0; i < paths.size(); i++)
-        {
-            if (paths.get(i).getId().equalsIgnoreCase(path.getId()))
-            {
+        for (int i = 0; i < paths.size(); i++) {
+            if (paths.get(i).getId().equalsIgnoreCase(path.getId())) {
                 paths.set(i, path);
                 return;
             }
         }
         paths.add(path);
-    }
-
-    /**
-     * @return The current identifier for accessing the selected path data
-     */
-    private static String getIdentifier()
-    {
-        if (Client.isInSinglePlayer()) return Client.getUuidString();
-        return Client.getServerAddress();
     }
 }

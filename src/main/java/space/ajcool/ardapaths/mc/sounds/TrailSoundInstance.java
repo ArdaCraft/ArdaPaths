@@ -10,16 +10,34 @@ import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
+/**
+ * A moving sound instance that plays trail ambience while the player holds the Path Revealer.
+ * Follows the animated trail position and fades in/out with configurable volume.
+ */
 @Environment(value = EnvType.CLIENT)
-public class TrailSoundInstance extends MovingSoundInstance
-{
+public class TrailSoundInstance extends MovingSoundInstance {
+    /**
+     * The animated trail this sound follows.
+     */
     public AnimatedTrail animatedTrail;
 
+    /**
+     * The timestamp of the last tick update.
+     */
     public long lastTick;
+
+    /**
+     * Total time in milliseconds this sound has been alive.
+     */
     public long timeAlive;
 
-    public TrailSoundInstance(AnimatedTrail animatedTrail)
-    {
+    /**
+     * Constructs a trail sound instance for the given animated trail.
+     * Initializes volume, position, and repeat settings.
+     *
+     * @param animatedTrail the trail to follow
+     */
+    public TrailSoundInstance(AnimatedTrail animatedTrail) {
         super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
 
         this.timeAlive = 0;
@@ -38,8 +56,7 @@ public class TrailSoundInstance extends MovingSoundInstance
     }
 
     @Override
-    public boolean canPlay()
-    {
+    public boolean canPlay() {
         if (MinecraftClient.getInstance().player == null) return false;
         var mainHandItem = MinecraftClient.getInstance().player.getMainHandStack();
 
@@ -47,21 +64,18 @@ public class TrailSoundInstance extends MovingSoundInstance
     }
 
     @Override
-    public boolean shouldAlwaysPlay()
-    {
+    public boolean shouldAlwaysPlay() {
         return true;
     }
 
     @Override
-    public void tick()
-    {
+    public void tick() {
         var delta = System.currentTimeMillis() - lastTick;
 
         timeAlive += delta;
         lastTick = System.currentTimeMillis();
 
-        if (volume == 0)
-        {
+        if (volume == 0) {
             this.setDone();
             return;
         }

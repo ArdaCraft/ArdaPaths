@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.screens;
 
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
@@ -13,7 +14,6 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.BitPacker;
@@ -24,19 +24,18 @@ import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemoveP
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
-import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
-import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
-import space.ajcool.ardapaths.screens.builders.InputBoxBuilder;
-import space.ajcool.ardapaths.screens.builders.TextBuilder;
-import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
-import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
-import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
-import space.ajcool.ardapaths.screens.widgets.TextValidationError;
+import space.ajcool.ardapaths.screens.widgets.*;
 
 import java.util.*;
 import java.util.function.Supplier;
 
+/**
+ * Screen for editing a path marker block's configuration.
+ * Allows editing proximity messages, activation ranges, chapter assignments, visual effects (fade, opacity),
+ * chapter start positions, and animation parameters.
+ */
 @Environment(value = EnvType.CLIENT)
+@Slf4j(topic = "ardapaths")
 public class MarkerEditScreen extends Screen
 {
     private final PathMarkerBlockEntity MARKER;
@@ -147,7 +146,7 @@ public class MarkerEditScreen extends Screen
         this.showChapterStartTitle = data.isDisplayChapterTitleOnTrail();
         this.proximityMessage = data.getProximityMessage();
         this.activationRange = data.getActivationRange();
-        this.displayAboveBlocks = data.displayAboveBlocks();
+        this.displayAboveBlocks = data.isDisplayAboveBlocks();
 
         var unpackedMessageData = BitPacker.unpackFive(data.getPackedMessageData());
 
@@ -159,11 +158,13 @@ public class MarkerEditScreen extends Screen
     }
 
     private void buildTitle(int x, int y){
-        this.addDrawableChild(TextBuilder.create()
-                .setPosition(x, y)
-                .setSize(280, 20)
-                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_marker"))
-                .build()
+        this.addDrawableChild(TextWidget.create()
+                        .setX(x)
+                        .setY(y)
+                        .setWidth(280)
+                        .setHeight(20)
+                        .setMessage(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_marker"))
+                        .build()
         );
     }
 
@@ -195,21 +196,25 @@ public class MarkerEditScreen extends Screen
 
         if (linkedPaths >= 1 || linkedChapters >= 1) {
 
-            this.addDrawableChild(TextBuilder.create()
-                    .setPosition(x, y)
-                    .setSize(280, 20)
-                    .setText(Text.translatable("ardapaths.client.marker.configuration.screens.linked_chapters_and_paths", linkedPaths, linkedChapters))
-                    .build()
+            this.addDrawableChild(TextWidget.create()
+                            .setX(x)
+                            .setY(y)
+                            .setWidth(280)
+                            .setHeight(20)
+                            .setMessage(Text.translatable("ardapaths.client.marker.configuration.screens.linked_chapters_and_paths", linkedPaths, linkedChapters))
+                            .build()
             );
 
             if ((linkedPaths == 1 && linkedChapters > 1) || (linkedPaths > 1 && linkedChapters >= 1))
                 this.buildMarkerEditLinksButton(x+260, y);
         } else {
-            this.addDrawableChild(TextBuilder.create()
-                    .setPosition(x + 35, y)
-                    .setSize(280, 20)
-                    .setText(Text.translatable("ardapaths.client.marker.configuration.screens.no_linked_chapters_and_paths"))
-                    .build()
+            this.addDrawableChild(TextWidget.create()
+                            .setX(x + 35)
+                            .setY(y)
+                            .setWidth(280)
+                            .setHeight(20)
+                            .setMessage(Text.translatable("ardapaths.client.marker.configuration.screens.no_linked_chapters_and_paths"))
+                            .build()
             );
         }
     }
@@ -223,10 +228,10 @@ public class MarkerEditScreen extends Screen
                 minOpacityInput.validateText();
     }
 
-    private DropdownWidget<PathData> buildPathSelectionDropdown(int x, int y)
+    private void buildPathSelectionDropdown(int x, int y)
     {
-        return this.addDrawableChild(DropdownBuilder.<PathData>create()
-                .setPosition(x,y)
+        this.addDrawableChild(DropdownWidget.<PathData>create()
+                .setPosition(x, y)
                 .setSize(280, 20)
                 .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.edit_path_data"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
@@ -258,7 +263,10 @@ public class MarkerEditScreen extends Screen
         List<ChapterData> chapters = selectedPath != null ? new ArrayList<>(selectedPath.getChapters()) : new ArrayList<>();
         chapters.sort(Comparator.comparingInt(ChapterData::getIndex));
 
-        this.addDrawableChild(DropdownBuilder.<ChapterData>create()
+        var selection = ArdaPathsClient.CONFIG.getPath(selectedPathId);
+        var selectedChapter = selection != null ? selection.getChapter(selectedChapterId) : null;
+
+        this.addDrawableChild(DropdownWidget.<ChapterData>create()
                 .setPosition(x,y)
                 .setSize(175, 20)
                 .setTitle(Text.translatable("ardapaths.client.marker.configuration.screens.chapter"))
@@ -272,7 +280,7 @@ public class MarkerEditScreen extends Screen
                     return label;
                 })
                 .setOptions(chapters)
-                .setSelected(ArdaPathsClient.CONFIG.getPath(selectedPathId).getChapter(selectedChapterId))
+                .setSelected(selectedChapter)
                 .setOnSelect(chapter ->
                 {
                     selectedChapterId = chapter.getId();
@@ -284,6 +292,7 @@ public class MarkerEditScreen extends Screen
 
     private void buildMarkerEditLinksButton(int x, int y)
     {
+        assert this.client != null;
         this.addDrawableChild(new ButtonWidget(
                 x,
                 y,
@@ -297,6 +306,7 @@ public class MarkerEditScreen extends Screen
 
     private void buildEditChaptersButton(int x, int y)
     {
+        assert this.client != null;
         this.addDrawableChild(new ButtonWidget(
                 x,
                 y,
@@ -310,24 +320,29 @@ public class MarkerEditScreen extends Screen
 
     private void buildChapterStartCheckbox(int x, int y)
     {
-        this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(x,y)
-                .setSize(15, 15)
-                .setText(Text.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
-                .setChecked(isChapterStart)
-                .setOnChange(checked -> {
-                    isChapterStart = checked;
-                    displayChapterTitleOnTrail.setEnabled(isChapterStart);
-                })
-                .build()
+        this.addDrawableChild(CheckboxWidget.create()
+                        .setX(x)
+                        .setY(y)
+                        .setWidth(15)
+                        .setHeight(15)
+                        .setText(Text.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
+                        .setChecked(isChapterStart)
+                        .setEnabled(true)
+                        .setOnChange(checked -> {
+                            isChapterStart = checked;
+                            displayChapterTitleOnTrail.setEnabled(isChapterStart);
+                        })
+                        .build()
         );
     }
 
     private CheckboxWidget buildChapterStartHideTitleCheckbox(int x, int y)
     {
-        return addDrawableChild(CheckboxBuilder.create()
-                .setPosition(x,y)
-                .setSize(15, 15)
+        return addDrawableChild(CheckboxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(15)
+                .setHeight(15)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.show_title_on_trail"))
                 .setChecked(showChapterStartTitle)
                 .setEnabled(isChapterStart)
@@ -336,6 +351,7 @@ public class MarkerEditScreen extends Screen
         );
     }
 
+    @SuppressWarnings("resource")
     private void buildMultilineEditBox(int x, int y)
     {
         this.multiLineEditBox = this.addDrawableChild(new EditBoxWidget(
@@ -351,9 +367,12 @@ public class MarkerEditScreen extends Screen
 
     private InputBoxWidget buildIntegerInput(int x, int y)
     {
-        return this.addDrawableChild(InputBoxBuilder.create()
-                .setPosition(x, y)
-                .setSize(40, 17)
+        return this.addDrawableChild(InputBoxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(40)
+                .setHeight(17)
+                .setEnabled(true)
                 .setPlaceholder(Text.empty())
                 .setValidator(text ->
                 {
@@ -401,11 +420,14 @@ public class MarkerEditScreen extends Screen
 
     private void buildDisplayAboveBlocksCheckbox(int x, int y)
     {
-        this.addDrawableChild(CheckboxBuilder.create()
-                .setPosition(x, y)
-                .setSize(15, 15)
+        this.addDrawableChild(CheckboxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(15)
+                .setHeight(15)
                 .setText(Text.translatable("ardapaths.client.marker.configuration.screens.display_trail_above_blocks"))
                 .setChecked(displayAboveBlocks)
+                .setEnabled(true)
                 .setOnChange(checked -> displayAboveBlocks = checked)
                 .build()
         );
@@ -419,7 +441,7 @@ public class MarkerEditScreen extends Screen
                 60,
                 20,
                 Text.translatable("ardapaths.generic.close"),
-                button -> {this.close();},
+                button -> this.close(),
                 Supplier::get
         );
 
@@ -451,7 +473,7 @@ public class MarkerEditScreen extends Screen
 
                     } else {
 
-                        ArdaPaths.LOGGER.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
+                        log.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
                     }
                 },
                 Supplier::get
@@ -474,7 +496,7 @@ public class MarkerEditScreen extends Screen
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fdelay"), centerX + 52, sideY += 20, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.ffactor"), centerX + 45, sideY += 20, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.fspeed"), centerX + 49, sideY += 20, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.opacity"), centerX + 53, sideY += 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.opacity"), centerX + 53, sideY + 20, 0xFFFFFF);
 
         super.render(context, mouseX, mouseY, delta);
     }
@@ -541,6 +563,7 @@ public class MarkerEditScreen extends Screen
 
         if (!validationWarning.equals(Text.empty()))
         {
+            assert this.client != null;
             ConfirmationPopup popup = new ConfirmationPopup(
                     validationWarning,
                     this::saveAndClose,
@@ -661,9 +684,16 @@ public class MarkerEditScreen extends Screen
                     if (!originalPathAndChapterData.contains(comparedEntry)) {
 
                         var configuredPath = ArdaPathsClient.CONFIG.getPath(pathEntryKey);
+
+                        if (configuredPath == null) continue;
+
+                        var chapter = configuredPath.getChapter(chapterEntryKey);
+
+                        if (chapter == null) continue;
+
                         modifiedEntries.append(Text.literal(configuredPath.getName()).styled(style -> style.withColor(configuredPath.getPrimaryColor().asHex())))
                                 .append(Text.literal(" - "))
-                                .append(Text.literal(configuredPath.getChapter(chapterEntryKey).getName()).styled(style -> style.withColor(configuredPath.getSecondaryColor().asHex())))
+                                .append(Text.literal(chapter.getName()).styled(style -> style.withColor(configuredPath.getSecondaryColor().asHex())))
                                 .append(Text.literal(" "));
                     }
                 }

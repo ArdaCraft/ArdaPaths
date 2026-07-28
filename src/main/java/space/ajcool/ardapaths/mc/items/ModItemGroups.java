@@ -12,8 +12,16 @@ import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 
-public class ModItemGroups
-{
+/**
+ * Registry for custom creative mode item groups in ArdaPaths.
+ * Handles item group registration and item group membership.
+ */
+@SuppressWarnings("unused")
+public class ModItemGroups {
+    /**
+     * The primary item group for ArdaPaths items, displayed in the creative inventory.
+     * Contains the Path Revealer and Path Marker items.
+     */
     public static final ItemGroup PATH = register(
             "path",
             FabricItemGroup.builder()
@@ -31,19 +39,17 @@ public class ModItemGroups
      * @param group The item group to register
      * @param items The items to add to the item group
      */
-    private static ItemGroup register(final String id, final ItemGroup group, Item... items)
-    {
+    @SuppressWarnings("SameParameterValue")
+    private static ItemGroup register(final String id, final ItemGroup group, Item... items) {
         RegistryKey<ItemGroup> key = RegistryKey.of(Registries.ITEM_GROUP.getKey(), new Identifier(ArdaPaths.MOD_ID, id));
-        if (Registries.ITEM_GROUP.contains(key))
-        {
+        if (Registries.ITEM_GROUP.contains(key)) {
             return Registries.ITEM_GROUP.get(key);
         }
 
         Registry.register(Registries.ITEM_GROUP, key, group);
         ItemGroupEvents.modifyEntriesEvent(key).register(itemGroup ->
         {
-            for (Item item : items)
-            {
+            for (Item item : items) {
                 itemGroup.add(item.getDefaultStack());
             }
         });
@@ -51,7 +57,10 @@ public class ModItemGroups
         return group;
     }
 
-    public static void init()
-    {
+    /**
+     * Initializes the item group registry by forcing class loading.
+     * This method is called during mod initialization.
+     */
+    public static void init() {
     }
 }

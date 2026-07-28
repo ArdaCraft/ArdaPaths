@@ -4,6 +4,11 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.PacketByteBuf;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
+/**
+ * Packet sent from client to server to request teleporting the player to a chapter's start position.
+ * @param pathId the ID of the path containing the chapter
+ * @param chapterId the ID of the chapter to teleport to
+ */
 public record ChapterPlayerTeleportPacket(String pathId, String chapterId) implements IPacket
 {
 

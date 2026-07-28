@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.core;
 
+import lombok.experimental.UtilityClass;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
@@ -10,11 +11,22 @@ import net.minecraft.client.world.ClientWorld;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
-
+/**
+ * Client-side utility methods for accessing the Minecraft client instance,
+ * player, world, and other client-specific information.
+ * This class can only be used on the client side.
+ */
+@SuppressWarnings("resource")
 @Environment(EnvType.CLIENT)
-public class Client
-{
+@UtilityClass
+public class Client {
+    /**
+     * @return The client's player, or null if not available
+     */
+    public static @Nullable ClientPlayerEntity player() {
+        return mc().player;
+    }
+
     /**
      * Gets the Minecraft client instance. We annotate this with
      * {@link NotNull} because utility methods should only be
@@ -22,32 +34,14 @@ public class Client
      *
      * @return The Minecraft client instance
      */
-    public static @NotNull MinecraftClient mc()
-    {
+    public static @NotNull MinecraftClient mc() {
         return MinecraftClient.getInstance();
-    }
-
-    /**
-     * @return The client's world, or null if not available
-     */
-    public static @Nullable ClientWorld world()
-    {
-        return mc().world;
-    }
-
-    /**
-     * @return The client's player, or null if not available
-     */
-    public static @Nullable ClientPlayerEntity player()
-    {
-        return mc().player;
     }
 
     /**
      * @return The address of the current server, or an empty string if the client is in single player mode
      */
-    public static String getServerAddress()
-    {
+    public static String getServerAddress() {
         MinecraftClient client = mc();
         if (client.isInSingleplayer()) return "";
         ServerInfo server = client.getCurrentServerEntry();
@@ -56,26 +50,16 @@ public class Client
     }
 
     /**
-     * @return The player's UUID, or null if not available
-     */
-    public static @Nullable UUID getUuid()
-    {
-        return mc().getSession().getUuidOrNull();
-    }
-
-    /**
      * @return The player's UUID as a string, or an empty string if not available
      */
-    public static String getUuidString()
-    {
+    public static String getUuidString() {
         return mc().getSession().getUuid();
     }
 
     /**
      * @return True if the client is in a single player world, otherwise false
      */
-    public static boolean isInSinglePlayer()
-    {
+    public static boolean isInSinglePlayer() {
         MinecraftClient client = mc();
         return client.isInSingleplayer();
     }
@@ -83,9 +67,15 @@ public class Client
     /**
      * @return True if the client is holding the control key, otherwise false
      */
-    public static boolean isCtrlDown()
-    {
+    public static boolean isCtrlDown() {
         ClientWorld level = world();
         return level != null && level.isClient() && Screen.hasControlDown();
+    }
+
+    /**
+     * @return The client's world, or null if not available
+     */
+    public static @Nullable ClientWorld world() {
+        return mc().world;
     }
 }

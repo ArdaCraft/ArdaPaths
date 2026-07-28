@@ -15,17 +15,37 @@ import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Paths
-{
+/**
+ * Client-side façade for modifying path selection state and settings.
+ * Provides a single entry point for changing the current path/chapter,
+ * updating preferences, and managing marker animations.
+ * All changes are automatically persisted to the client config and synchronized with the server.
+ */
+public class Paths {
+    /**
+     * The client-side configuration object containing path and player preferences.
+     */
     private static final ClientConfig config = ArdaPathsClient.CONFIG;
+
+    /**
+     * The configuration manager responsible for saving changes to disk.
+     */
     private static final ClientConfigManager configManager = ArdaPathsClient.CONFIG_MANAGER;
+
+    /**
+     * List of path marker block entities currently being ticked for animation updates.
+     */
     private static final List<PathMarkerBlockEntity> tickingMarkers = new ArrayList<>();
 
-    public static void setSelectedPath(final String pathId)
-    {
+    /**
+     * Sets the current selected path, clearing the chapter selection if the path changed.
+     * Automatically saves the configuration to disk.
+     *
+     * @param pathId the ID of the path to select
+     */
+    public static void setSelectedPath(final String pathId) {
 
-        if (!config.getSelectedPathId().equalsIgnoreCase(pathId))
-        {
+        if (!config.getSelectedPathId().equalsIgnoreCase(pathId)) {
             config.setCurrentChapter("");
         }
 
@@ -33,13 +53,24 @@ public class Paths
         configManager.save();
     }
 
-    public static void gotoChapter(final String chapterId)
-    {
+    /**
+     * Selects a chapter and optionally teleports the player to the chapter start.
+     * Automatically saves the configuration to disk and clears active trails.
+     *
+     * @param chapterId the ID of the chapter to select
+     */
+    public static void gotoChapter(final String chapterId) {
         gotoChapter(chapterId, true);
     }
 
-    public static void gotoChapter(final String chapterId, boolean teleport)
-    {
+    /**
+     * Selects a chapter with an option to teleport.
+     * Automatically saves the configuration to disk.
+     *
+     * @param chapterId the ID of the chapter to select
+     * @param teleport  whether to teleport the player to the chapter start
+     */
+    public static void gotoChapter(final String chapterId, boolean teleport) {
         config.setCurrentChapter(chapterId);
         configManager.save();
 
@@ -50,42 +81,34 @@ public class Paths
         TrailRenderer.clearTrails();
     }
 
-    public static void showChapterTitles(final boolean show)
-    {
-        config.showChapterTitles(show);
+    public static void showChapterTitles(final boolean show) {
+        config.setChapterTitles(show);
         configManager.save();
     }
 
-    public static void showProximityMessages(final boolean show)
-    {
-        config.showProximityMessages(show);
+    public static void showProximityMessages(final boolean show) {
+        config.setProximityMessages(show);
         configManager.save();
     }
 
-    public static void showTrailWaypoints(final boolean show)
-    {
-        config.showTrailWaypoints(show);
+    public static void showTrailWaypoints(final boolean show) {
+        config.setTrailWaypoints(show);
         configManager.save();
     }
 
-    public static void setChapterTitleDisplaySpeed(final Float miliseconds)
-    {
+    public static void setChapterTitleDisplaySpeed(final Float miliseconds) {
         config.setChapterTitleDisplaySpeed(miliseconds);
         configManager.save();
     }
 
-
-    public static void setProximityMessagesSpeedMultiplier(final Double factor)
-    {
+    public static void setProximityMessagesSpeedMultiplier(final Double factor) {
         config.setProximityTextSpeedMultiplier(factor);
         configManager.save();
     }
 
-    public static void updateChapter(String pathId, ChapterData chapter)
-    {
+    public static void updateChapter(String pathId, ChapterData chapter) {
         PathData path = config.getPath(pathId);
-        if (path != null)
-        {
+        if (path != null) {
             path.setChapter(chapter);
             configManager.save();
             ChapterUpdatePacket packet = new ChapterUpdatePacket(pathId, chapter);
@@ -93,11 +116,9 @@ public class Paths
         }
     }
 
-    public static void deleteChapter(String pathId, ChapterData chapter)
-    {
+    public static void deleteChapter(String pathId, ChapterData chapter) {
         PathData path = config.getPath(pathId);
-        if (path != null)
-        {
+        if (path != null) {
             path.removeChapter(chapter.getId());
             configManager.save();
             ChapterDeletePacket packet = new ChapterDeletePacket(pathId, chapter.getId());
@@ -105,18 +126,15 @@ public class Paths
         }
     }
 
-    public static void addTickingMarker(PathMarkerBlockEntity marker)
-    {
+    public static void addTickingMarker(PathMarkerBlockEntity marker) {
         tickingMarkers.add(marker);
     }
 
-    public static List<PathMarkerBlockEntity> getTickingMarkers()
-    {
+    public static List<PathMarkerBlockEntity> getTickingMarkers() {
         return List.copyOf(tickingMarkers);
     }
 
-    public static void clearTickingMarkers()
-    {
+    public static void clearTickingMarkers() {
         tickingMarkers.clear();
     }
 }

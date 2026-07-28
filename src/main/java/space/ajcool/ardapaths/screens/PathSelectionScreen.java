@@ -1,6 +1,5 @@
 package space.ajcool.ardapaths.screens;
 
-
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
@@ -13,7 +12,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -22,17 +20,20 @@ import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
-import space.ajcool.ardapaths.screens.builders.CheckboxBuilder;
-import space.ajcool.ardapaths.screens.builders.DropdownBuilder;
-import space.ajcool.ardapaths.screens.builders.TextBuilder;
 import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
+import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * Screen for selecting and managing which path and chapter the player is currently following.
+ * Provides controls for toggling trail display, proximity messages, chapter titles, waypoints,
+ * and adjusting animation speeds and appearance settings.
+ */
 @Environment(value = EnvType.CLIENT)
 public class PathSelectionScreen extends Screen
 {
@@ -40,7 +41,7 @@ public class PathSelectionScreen extends Screen
     private static final int UI_ELEMENT_SPACING = 10;
     private static final int UI_ELEMENT_WIDTH = 155;
     private static final int UI_ELEMENT_HEIGHT = 20;
-    private static final int UI_SEPARATOR_SPACING = 10;;
+    private static final int UI_SEPARATOR_SPACING = 10;
     private static final int TITLE_SPACING = 20;
 
     private String selectedPathId;
@@ -80,13 +81,15 @@ public class PathSelectionScreen extends Screen
         String currentChapterName = currentChapter != null ? currentChapter.getName() : "0";
         String currentPathName = currentPath != null ? currentPath.getName() : Text.translatable("ardapaths.client.configuration.screens.generic_path").toString();
 
-        this.addDrawableChild(TextBuilder.create()
-                .setPosition(center - 75, y)
-                .setSize(150, 20)
-                .setText(Text.literal(Text.translatable("ardapaths.client.configuration.screens.path_selection.current_path_chapter",currentChapterName).getString())
-                        .append(Text.literal(Text.translatable(currentPathName).getString())
+        this.addDrawableChild(TextWidget.create()
+                        .setX(center - 75)
+                        .setY(y)
+                        .setWidth(150)
+                        .setHeight(20)
+                        .setMessage(Text.literal(Text.translatable("ardapaths.client.configuration.screens.path_selection.current_path_chapter",currentChapterName).getString())
+                                .append(Text.literal(Text.translatable(currentPathName).getString())
                                 .fillStyle(Style.EMPTY.withColor(currentPath != null ? currentPath.getPrimaryColor().asHex() : Color.fromRgb(100, 100, 100).asHex()))))
-                .build()
+                        .build()
         );
 
         var horizontalHalfCenterGap = COLUMNS_SPACING /2;
@@ -110,7 +113,7 @@ public class PathSelectionScreen extends Screen
     }
 
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
-        DropdownWidget<PathData> pathSelectionDropdown = DropdownBuilder.<PathData>create()
+        DropdownWidget<PathData> pathSelectionDropdown = DropdownWidget.<PathData>create()
                 .setPosition(center,y)
                 .setSize(UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
                 .setTitle(Text.translatable( "ardapaths.client.configuration.screens.select_path_follow"))
@@ -150,7 +153,7 @@ public class PathSelectionScreen extends Screen
         List<ChapterData> chapterData = currentPath != null ? new ArrayList<>(currentPath.getChapters()) : new ArrayList<>();
         chapterData.sort(Comparator.comparingInt(ChapterData::getIndex));
 
-        return DropdownBuilder.<ChapterData>create()
+        return DropdownWidget.<ChapterData>create()
                 .setPosition(center, y)
                 .setSize(UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
                 .setTitle(Text.translatable("ardapaths.client.configuration.screens.select_chapter"))
@@ -227,7 +230,8 @@ public class PathSelectionScreen extends Screen
                 button ->
                 {
                     this.close();
-                    this.client.setScreen(new JournalScreen());
+                    if (this.client != null)
+                        this.client.setScreen(new JournalScreen());
                 },
                 Supplier::get
         );
@@ -237,13 +241,17 @@ public class PathSelectionScreen extends Screen
         return journalButton;
     }
 
+    @SuppressWarnings("SuspiciousNameCombination")
     private @NotNull CheckboxWidget initializeChapterTitleDisplayToggle(int center, int y) {
 
-        CheckboxWidget chapterTitleDisplayToggle = CheckboxBuilder.create()
-                .setPosition(center,y)
-                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+        CheckboxWidget chapterTitleDisplayToggle = CheckboxWidget.create()
+                .setX(center)
+                .setY(y)
+                .setWidth(UI_ELEMENT_HEIGHT)
+                .setHeight(UI_ELEMENT_HEIGHT)
                 .setText(Text.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
                 .setChecked(showChapterTitles)
+                .setEnabled(true)
                 .setOnChange(checked -> {
                     showChapterTitles = checked;
                     titleDisplaySpeedSlider.active = checked;
@@ -257,13 +265,17 @@ public class PathSelectionScreen extends Screen
         return chapterTitleDisplayToggle;
     }
 
+    @SuppressWarnings("SuspiciousNameCombination")
     private @NotNull CheckboxWidget initializeProximityTextToggle(int center, int y) {
 
-        CheckboxWidget proximityTextToggle = CheckboxBuilder.create()
-                .setPosition(center,y)
-                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+        CheckboxWidget proximityTextToggle = CheckboxWidget.create()
+                .setX(center)
+                .setY(y)
+                .setWidth(UI_ELEMENT_HEIGHT)
+                .setHeight(UI_ELEMENT_HEIGHT)
                 .setText(Text.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
                 .setChecked(showProximityMessages)
+                .setEnabled(true)
                 .setOnChange(checked -> {
                     showProximityMessages = checked;
                     proximityTextSpeedSlider.active = checked;
@@ -277,13 +289,17 @@ public class PathSelectionScreen extends Screen
         return proximityTextToggle;
     }
 
+    @SuppressWarnings("SuspiciousNameCombination")
     private @NotNull CheckboxWidget initializeShowTrailWaypointsToggle(int center, int y) {
 
-        CheckboxWidget trailWaypointToggle = CheckboxBuilder.create()
-                .setPosition(center,y)
-                .setSize(UI_ELEMENT_HEIGHT, UI_ELEMENT_HEIGHT)
+        CheckboxWidget trailWaypointToggle = CheckboxWidget.create()
+                .setX(center)
+                .setY(y)
+                .setWidth(UI_ELEMENT_HEIGHT)
+                .setHeight(UI_ELEMENT_HEIGHT)
                 .setText(Text.translatable("ardapaths.client.configuration.screens.trail_waypoints", (showTrailWaypoints ? Text.translatable("ardapaths.generic.on"):Text.translatable("ardapaths.generic.off"))))
                 .setChecked(showTrailWaypoints)
+                .setEnabled(true)
                 .setOnChange(checked -> {
                     showTrailWaypoints = checked;
                     Paths.showTrailWaypoints(showTrailWaypoints);

@@ -6,6 +6,11 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
+/**
+ * Packet sent from client to server to update a path marker block's NBT data.
+ * @param position the block position of the marker to update
+ * @param data the NBT compound containing the updated marker configuration
+ */
 public record PathMarkerUpdatePacket(BlockPos position, NbtCompound data) implements IPacket
 {
 

@@ -11,6 +11,11 @@ import net.minecraft.world.World;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 
+/**
+ * Handles player teleportation requests from the client.
+ * Processes incoming {@link PlayerTeleportPacket} and teleports the player to the specified coordinates,
+ * optionally in a different world dimension if specified.
+ */
 public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPacket>
 {
     public PlayerTeleportHandler()

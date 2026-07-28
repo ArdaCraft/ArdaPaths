@@ -19,6 +19,15 @@ repositories {
 }
 
 dependencies {
+
+    // Lombok - Compile only
+    compileOnly("org.projectlombok:lombok:${project.lombok_version}")
+    annotationProcessor("org.projectlombok:lombok:${project.lombok_version}")
+
+    // Lombok - Compile only
+    testCompileOnly("org.projectlombok:lombok:${project.lombok_version}")
+    testAnnotationProcessor("org.projectlombok:lombok:${project.lombok_version}")
+
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 

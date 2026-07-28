@@ -9,8 +9,14 @@ import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
-public class ModBlocks
-{
+/**
+ * Registry for all custom blocks in ArdaPaths.
+ * Handles block registration with the Minecraft registry.
+ */
+public class ModBlocks {
+    /**
+     * The Path Marker block instance, which is placed to define trail points in the world.
+     */
     public static final PathMarkerBlock PATH_MARKER = register(
             "path_marker",
             new PathMarkerBlock(FabricBlockSettings.create()
@@ -27,15 +33,18 @@ public class ModBlocks
      * @param id    The block's ID
      * @param block The block to register
      */
-    private static <T extends Block> T register(final String id, final T block)
-    {
+    @SuppressWarnings("SameParameterValue")
+    private static <T extends Block> T register(final String id, final T block) {
         final Identifier identifier = Identifier.of(ArdaPaths.MOD_ID, id);
         Registry.register(Registries.BLOCK, identifier, block);
         Registry.register(Registries.ITEM, identifier, new BlockItem(block, new FabricItemSettings()));
         return block;
     }
 
-    public static void init()
-    {
+    /**
+     * Initializes the block registry by forcing class loading.
+     * This method is called during mod initialization.
+     */
+    public static void init() {
     }
 }

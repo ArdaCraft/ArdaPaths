@@ -5,16 +5,22 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
-public class ServerConfigManager extends ConfigManager<ServerConfig>
-{
-    public ServerConfigManager(String configPath)
-    {
+/**
+ * Server-side configuration manager for ArdaPaths.
+ * Handles loading/saving server configuration with default paths.
+ */
+public class ServerConfigManager extends ConfigManager<ServerConfig> {
+    /**
+     * Constructs a ServerConfigManager and loads configuration from the given path.
+     *
+     * @param configPath the file path to the server configuration JSON
+     */
+    public ServerConfigManager(String configPath) {
         super(configPath);
     }
 
     @Override
-    protected ServerConfig createDefault()
-    {
+    protected ServerConfig createDefault() {
         ServerConfig config = new ServerConfig();
         config.addPath(new PathData()
                 .setId("frodo")

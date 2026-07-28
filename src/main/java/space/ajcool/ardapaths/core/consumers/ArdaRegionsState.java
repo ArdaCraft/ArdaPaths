@@ -1,5 +1,8 @@
 package space.ajcool.ardapaths.core.consumers;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -7,23 +10,14 @@ import net.fabricmc.api.Environment;
  * Maintains the state of whether Arda Regions is currently displaying on the client.
  */
 @Environment(EnvType.CLIENT)
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ArdaRegionsState {
 
-    /** Indicates if Arda Regions is currently displaying */
-    private static volatile boolean displaying = false;
-
-    /** class should not be instantiated */
-    private ArdaRegionsState() {/* Singleton */}
-
-
     /**
-     * Checks if Arda Regions is currently being displayed.
-     *
-     * @return true if Arda Regions is displaying, false otherwise
+     * Indicates if Arda Regions is currently displaying
      */
-    public static boolean isDisplaying() {
-        return displaying;
-    }
+    @Getter
+    private static volatile boolean displaying = false;
 
     /**
      * Sets the displaying state of Arda Regions.
