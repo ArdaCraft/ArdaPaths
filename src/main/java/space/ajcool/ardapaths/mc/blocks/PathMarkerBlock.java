@@ -19,8 +19,8 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
-import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
@@ -69,9 +69,9 @@ public class PathMarkerBlock extends BlockWithEntity {
             return ActionResult.PASS;
         if (!level.isClient()) return ActionResult.CONSUME;
 
-        PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(), response -> {
-            if (response.hasPermission()) this.validateOnUse(level, blockPos, pathMarkerBlockEntity, player);
-        });
+        if (PermissionHelper.hasEditPermission(player)) {
+            this.validateOnUse(level, blockPos, pathMarkerBlockEntity, player);
+        }
 
         return ActionResult.CONSUME;
     }

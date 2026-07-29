@@ -17,6 +17,7 @@ import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * An animated text message that reveals characters progressively and fades out over time.
@@ -252,5 +253,15 @@ public class AnimatedMessage extends TextRenderable {
         if (!(obj instanceof AnimatedMessage other)) return super.equals(obj);
 
         return message.equals(other.message);
+    }
+
+    /**
+     * Computes a hash code matching message-text equality.
+     *
+     * @return the hash code for this message
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(message);
     }
 }

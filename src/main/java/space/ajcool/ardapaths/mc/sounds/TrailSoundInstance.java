@@ -38,7 +38,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
      * @param animatedTrail the trail to follow
      */
     public TrailSoundInstance(AnimatedTrail animatedTrail) {
-        super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
+        super(ModSounds.TRAIL, SoundCategory.AMBIENT, SoundInstance.createRandom());
 
         this.timeAlive = 0;
         this.lastTick = System.currentTimeMillis();

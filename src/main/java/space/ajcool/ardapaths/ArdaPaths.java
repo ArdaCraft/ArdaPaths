@@ -87,7 +87,7 @@ public class ArdaPaths implements ModInitializer {
 
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) ->
         {
-            var blockEntity = world.getBlockEntity(hitResult.getBlockPos().offset(hitResult.getSide()));
+            var blockEntity = world.getBlockEntity(hitResult.getBlockPos());
 
             if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !PermissionHelper.hasEditPermission(player))
                 return ActionResult.FAIL;

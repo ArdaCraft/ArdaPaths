@@ -26,12 +26,12 @@ public class PermissionHelper {
     /**
      * Cached result of the last edit permission check on the client.
      */
-    private static Boolean hasEditPermission = false;
+    private static volatile Boolean hasEditPermission = false;
 
     /**
      * Timestamp of the last permission check made to the server.
      */
-    private static long lastPermissionCheckTime = 0;
+    private static volatile long lastPermissionCheckTime = 0;
 
     /**
      * Checks whether the given player has the {@code ardapaths.edit} permission.
@@ -96,14 +96,14 @@ public class PermissionHelper {
      */
     private static boolean clientEditPermissionCheck() {
 
-        log.info("Client check edit permission for player {}", hasEditPermission);
+        log.debug("Client check edit permission for player {}", hasEditPermission);
 
         var currentTime = System.currentTimeMillis();
         var delta = currentTime - lastPermissionCheckTime;
 
         if (hasEditPermission == null || delta > PERMISSION_CHECK_COOLDOWN_MS) {
 
-            log.info("Refreshing permissions");
+            log.debug("Refreshing permissions");
 
             lastPermissionCheckTime = currentTime;
             PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(), response -> hasEditPermission = response.hasPermission());
@@ -113,5 +113,13 @@ public class PermissionHelper {
         }
 
         return hasEditPermission;
+    }
+
+    /**
+     * Clears the client-side permission cache after leaving a server.
+     */
+    public static void resetClientCache() {
+        hasEditPermission = false;
+        lastPermissionCheckTime = 0;
     }
 }

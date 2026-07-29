@@ -528,16 +528,11 @@ public class MarkerEditScreen extends Screen
 
     public void saveAndClose()
     {
-        if (!validateForm()) {
-            log.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
-            return;
-        }
-
-        charRevealSpeed = Integer.parseInt(charRevealInput.getText());
-        fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
-        fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());
-        fadeSpeed = Integer.parseInt(fadeSpeedInput.getText());
-        minOpacity = Integer.parseInt(minOpacityInput.getText());
+        charRevealSpeed = parseIntegerOrFallback(charRevealInput, charRevealSpeed);
+        fadeDelayOffset = parseIntegerOrFallback(fadeDelayOffsetInput, fadeDelayOffset);
+        fadeDelayFactor = parseIntegerOrFallback(fadeDelayFactorInput, fadeDelayFactor);
+        fadeSpeed = parseIntegerOrFallback(fadeSpeedInput, fadeSpeed);
+        minOpacity = parseIntegerOrFallback(minOpacityInput, minOpacity);
 
         this.close();
         save();
@@ -634,11 +629,11 @@ public class MarkerEditScreen extends Screen
         if (selectedPathId.isEmpty())
             return 1;
 
-        var setCharRevealSpeed = charRevealInput.getText() != null ? Integer.parseInt(charRevealInput.getText()) : "";
-        var setFadeDelayOffset = fadeDelayOffsetInput.getText() != null ? Integer.parseInt(fadeDelayOffsetInput.getText()) : "";
-        var setFadeDelayFactor = fadeDelayFactorInput.getText() != null ? Integer.parseInt(fadeDelayFactorInput.getText()) : "";
-        var setFadeSpeed = fadeSpeedInput.getText() != null ? Integer.parseInt(fadeSpeedInput.getText()) : "";
-        var setMinOpacity = minOpacityInput.getText() != null ? Integer.parseInt(minOpacityInput.getText()) : "";
+        var setCharRevealSpeed = parseIntegerOrFallback(charRevealInput, charRevealSpeed);
+        var setFadeDelayOffset = parseIntegerOrFallback(fadeDelayOffsetInput, fadeDelayOffset);
+        var setFadeDelayFactor = parseIntegerOrFallback(fadeDelayFactorInput, fadeDelayFactor);
+        var setFadeSpeed = parseIntegerOrFallback(fadeSpeedInput, fadeSpeed);
+        var setMinOpacity = parseIntegerOrFallback(minOpacityInput, minOpacity);
 
         return Objects.hash(
                 proximityMessage,
@@ -652,6 +647,21 @@ public class MarkerEditScreen extends Screen
                 setFadeSpeed,
                 setMinOpacity
         );
+    }
+
+    /**
+     * Parses an integer input, falling back to the last known valid value if the field is malformed.
+     *
+     * @param input        the input widget to parse
+     * @param fallbackValue the value to use when parsing fails
+     * @return the parsed integer or the fallback value
+     */
+    private int parseIntegerOrFallback(InputBoxWidget input, int fallbackValue) {
+        try {
+            return Integer.parseInt(input.getText());
+        } catch (NumberFormatException e) {
+            return fallbackValue;
+        }
     }
 
     private boolean wasFormModified(){

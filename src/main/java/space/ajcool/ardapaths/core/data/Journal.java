@@ -18,21 +18,24 @@ public class Journal {
     /**
      * Adds a proximity message to the journal.
      *
+     * @param pathId         the ID of the path this entry belongs to
+     * @param chapterId      the ID of the chapter this entry belongs to
      * @param text           The proximity message text
      * @param teleportPacket The teleport packet associated with the message
      */
     public static void addProximityMessage(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket) {
-        rotateJournal();
-        LOG.add(new Entry(pathId, chapterId, text, teleportPacket, EntryType.PROXIMITY_MESSAGE));
+        if (LOG.add(new Entry(pathId, chapterId, text, teleportPacket, EntryType.PROXIMITY_MESSAGE))) {
+            trimToMaxSize();
+        }
     }
 
     /**
      * Ensures the journal does not exceed its maximum size by removing the oldest entry if necessary.
      */
-    private static void rotateJournal() {
+    private static void trimToMaxSize() {
 
         // Remove eldest entry if we exceed max size
-        if (LOG.size() + 1 > MAX_SIZE) {
+        while (LOG.size() > MAX_SIZE) {
 
             Iterator<Entry> it = LOG.iterator();
             if (it.hasNext()) {
@@ -45,13 +48,16 @@ public class Journal {
     /**
      * Adds a chapter start entry to the journal.
      *
+     * @param pathId         the ID of the path this entry belongs to
+     * @param chapterId      the ID of the chapter this entry belongs to
      * @param text           The chapter start text
      * @param teleportPacket The teleport packet associated with the chapter start
      * @param color          The colour associated with the chapter start
      */
     public static void addChapterStart(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket, int color) {
-        rotateJournal();
-        LOG.add(new Entry(pathId, chapterId, text, teleportPacket, EntryType.CHAPTER_START, color));
+        if (LOG.add(new Entry(pathId, chapterId, text, teleportPacket, EntryType.CHAPTER_START, color))) {
+            trimToMaxSize();
+        }
     }
 
     /**

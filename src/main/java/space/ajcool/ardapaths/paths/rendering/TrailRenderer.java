@@ -374,7 +374,7 @@ public class TrailRenderer {
         trails.add(trail);
         trailsByStart.put(trail.getStart(), trail);
 
-        if (trailSoundInstance != null) return;
+        if (trailSoundInstance != null && !trailSoundInstance.isDone()) return;
 
         trailSoundInstance = new TrailSoundInstance(trail);
         MinecraftClient.getInstance().getSoundManager().play(trailSoundInstance);

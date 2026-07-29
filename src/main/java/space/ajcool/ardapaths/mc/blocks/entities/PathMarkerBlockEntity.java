@@ -157,26 +157,35 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             return;
         }
 
-        this.pathData = new HashMap<>();
+        Map<String, Map<String, ChapterNbtData>> loadedPathData = new HashMap<>();
+        boolean serverSide = this.world != null ? !this.world.isClient() : ArdaPaths.amITheServer();
 
         for (String pathKey : nbt.getKeys()) {
-            var configPath = ArdaPaths.amITheServer() ? ArdaPaths.CONFIG.getPath(pathKey) : ArdaPathsClient.CONFIG.getPath(pathKey);
+            var configPath = serverSide ? ArdaPaths.CONFIG.getPath(pathKey) : ArdaPathsClient.CONFIG.getPath(pathKey);
 
-            if (configPath == null) continue;
+            if (configPath == null && serverSide) {
+                log.warn("Refusing to apply marker NBT at {} with unknown path '{}'", this.getPos(), pathKey);
+                return;
+            }
 
             var chapterData = new HashMap<String, ChapterNbtData>();
 
             var nbtEntry = nbt.getCompound(pathKey);
 
             for (String chapterKey : nbtEntry.getKeys()) {
-                if (configPath.getChapter(chapterKey) == null) continue;
+                if (configPath != null && configPath.getChapter(chapterKey) == null && serverSide) {
+                    log.warn("Refusing to apply marker NBT at {} with unknown chapter '{}:{}'", this.getPos(), pathKey, chapterKey);
+                    return;
+                }
 
                 ChapterNbtData chapterNbtData = ChapterNbtData.fromNbt(nbtEntry.getCompound(chapterKey));
                 chapterData.put(chapterKey, chapterNbtData);
             }
 
-            this.pathData.put(pathKey, chapterData);
+            loadedPathData.put(pathKey, chapterData);
         }
+
+        this.pathData = loadedPathData;
     }
 
     /**

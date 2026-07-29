@@ -166,17 +166,18 @@ public class ProximityRenderer {
      * to reflect the number of messages currently queued for display, clamped
      * between 1 and 64.
      */
-    @SuppressWarnings("DataFlowIssue")
     private static void updateVisualMessageStack(DrawContext context){
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
 
-        count += Math.max(0, INSTANCE.renderQueue.size() - count);
+        count = Math.max(count, INSTANCE.renderQueue.size());
 
         if (count == 0) return;
 
         var player = Client.player();
+        if (player == null) return;
+
         var activeHand = player.getActiveHand();
         if (activeHand == null) return;
 
