@@ -29,27 +29,24 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterPlayerTeleportPacket packet, PacketSender sender)
     {
-        server.execute(() ->
-        {
-            final String pathId = packet.pathId();
-            final String chapterId = packet.chapterId();
+        final String pathId = packet.pathId();
+        final String chapterId = packet.chapterId();
 
-            final Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(pathId, chapterId);
-            final Runnable fallback = () -> {
-                final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
+        final Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(pathId, chapterId);
+        final Runnable fallback = () -> {
+            final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
 
-                if (start != null)
-                {
-                    player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
-                }
-            };
-
-            if (startWarp.isPresent() && Warps.isAvailable()) {
-                log.info("Attempting to warp player {} at {}", player.getUuidAsString(), startWarp.get());
-                Warps.warpTo(server, player, startWarp.get(), fallback);
-            } else {
-                fallback.run();
+            if (start != null)
+            {
+                player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
             }
-        });
+        };
+
+        if (startWarp.isPresent() && Warps.isAvailable()) {
+            log.info("Attempting to warp player {} at {}", player.getUuidAsString(), startWarp.get());
+            Warps.warpTo(server, player, startWarp.get(), fallback);
+        } else {
+            fallback.run();
+        }
     }
 }

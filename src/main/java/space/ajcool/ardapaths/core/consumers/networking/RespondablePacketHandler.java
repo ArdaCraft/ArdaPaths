@@ -102,12 +102,13 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender) {
         UUID requestId = buf.readUuid();
         T packet = reader.apply(buf);
-        System.out.println(packet);
-        U responsePacket = handle(server, player, handler, packet, sender);
-        PacketByteBuf responseBuf = PacketByteBufs.create().writeUuid(requestId);
-        PacketByteBuf responsePacketBuf = responsePacket.build();
-        responseBuf.writeBytes(responsePacketBuf);
-        sender.sendPacket(responseChannelId, responseBuf);
+        server.execute(() -> {
+            U responsePacket = handle(server, player, handler, packet, sender);
+            PacketByteBuf responseBuf = PacketByteBufs.create().writeUuid(requestId);
+            PacketByteBuf responsePacketBuf = responsePacket.build();
+            responseBuf.writeBytes(responsePacketBuf);
+            sender.sendPacket(responseChannelId, responseBuf);
+        });
     }
 
     /**

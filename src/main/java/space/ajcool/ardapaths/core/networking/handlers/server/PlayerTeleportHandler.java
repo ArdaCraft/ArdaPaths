@@ -26,23 +26,17 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PlayerTeleportPacket packet, PacketSender sender)
     {
+        if (packet.worldId() != null) {
 
-        server.execute(() -> {
+            RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, packet.worldId());
+            ServerWorld serverWorld = server.getWorld(key);
 
-            if (packet.worldId() != null) {
-
-                RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, packet.worldId());
-                ServerWorld serverWorld = server.getWorld(key);
-
-                if (serverWorld != null){
-
-                    player.teleport(serverWorld, packet.x(), packet.y(), packet.z(), player.getYaw(), player.getPitch());
-                    return;
-                }
+            if (serverWorld != null){
+                player.teleport(serverWorld, packet.x(), packet.y(), packet.z(), player.getYaw(), player.getPitch());
+                return;
             }
+        }
 
-            player.teleport(packet.x(), packet.y(), packet.z());
-
-        });
+        player.teleport(packet.x(), packet.y(), packet.z());
     }
 }

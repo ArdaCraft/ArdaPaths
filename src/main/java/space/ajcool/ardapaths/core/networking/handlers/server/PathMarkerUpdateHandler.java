@@ -30,15 +30,12 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
         BlockPos blockPos = packet.position();
         NbtCompound nbt = packet.data();
         log.info("Received NBT : [{}]", nbt.toString());
-        server.execute(() ->
-        {
-            BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
+        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
 
-            if (blockEntity instanceof PathMarkerBlockEntity marker)
-            {
-                marker.readNbt(nbt);
-                marker.markUpdated();
-            }
-        });
+        if (blockEntity instanceof PathMarkerBlockEntity marker)
+        {
+            marker.readNbt(nbt);
+            marker.markUpdated();
+        }
     }
 }

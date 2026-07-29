@@ -33,17 +33,13 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
     {
         BlockPos blockPos = packet.position();
+        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
 
-        server.execute(() ->
+        if (blockEntity instanceof PathMarkerBlockEntity marker)
         {
-            BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
-
-            if (blockEntity instanceof PathMarkerBlockEntity marker)
-            {
-                marker.applyNbt(syncPathsFromIncoming(marker.toNbt(), packet.data()));
-                marker.markUpdated();
-            }
-        });
+            marker.applyNbt(syncPathsFromIncoming(marker.toNbt(), packet.data()));
+            marker.markUpdated();
+        }
     }
 
     /**
