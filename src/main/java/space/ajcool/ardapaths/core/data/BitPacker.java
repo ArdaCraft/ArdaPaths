@@ -24,6 +24,16 @@ public class BitPacker {
     private static final long MASK_8 = (1L << 8) - 1;
 
     /**
+     * Maximum value that can be stored in the first 8-bit field.
+     */
+    public static final int MAX_8_BIT_VALUE = (int) MASK_8;
+
+    /**
+     * Maximum value that can be stored in each 14-bit field.
+     */
+    public static final int MAX_14_BIT_VALUE = (int) MASK;
+
+    /**
      * Packs five integers into a single long value.
      * The first value uses 8 bits, the remaining four use 14 bits each.
      *
@@ -35,7 +45,11 @@ public class BitPacker {
      * @return the packed long value
      */
     public static long packFive(int a, int b, int c, int d, int e) {
-        return ((long) a << 56) | ((long) b << 42) | ((long) c << 28) | ((long) d << 14) | (long) e;
+        return ((long) a & MASK_8) << 56
+                | ((long) b & MASK) << 42
+                | ((long) c & MASK) << 28
+                | ((long) d & MASK) << 14
+                | ((long) e & MASK);
     }
 
     /**

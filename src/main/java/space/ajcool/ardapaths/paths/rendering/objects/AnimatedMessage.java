@@ -90,11 +90,11 @@ public class AnimatedMessage extends TextRenderable {
         this.proximitySpeedMultiplier = ArdaPathsClient.CONFIG_MANAGER.getConfig().getProximityTextSpeedMultiplier();
         this.message = message;
 
-        this.charRevealSpeed = charRevealSpeed;
-        this.fadeDelayOffset = fadeDelayOffset;
-        this.fadeDelayFactor = fadeDelayFactor;
-        this.fadeSpeed = fadeSpeed;
-        this.minOpacity = minOpacity;
+        this.charRevealSpeed = Math.max(0, charRevealSpeed);
+        this.fadeDelayOffset = Math.max(0, fadeDelayOffset);
+        this.fadeDelayFactor = Math.max(0, fadeDelayFactor);
+        this.fadeSpeed = Math.max(1, fadeSpeed);
+        this.minOpacity = Math.max(0, Math.min(255, minOpacity));
     }
 
     /**

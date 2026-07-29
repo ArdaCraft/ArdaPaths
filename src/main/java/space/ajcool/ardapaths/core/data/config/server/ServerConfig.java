@@ -134,6 +134,25 @@ public class ServerConfig {
     }
 
     /**
+     * Checks whether the supplied block position is a configured chapter start.
+     *
+     * @param pos the position to validate
+     * @return true when any configured chapter start resolves to the supplied position
+     */
+    public boolean isChapterStartPosition(BlockPos pos) {
+        for (PathData path : paths) {
+            for (ChapterData chapter : path.getChapters()) {
+                BlockPos chapterStart = getChapterStartCoordinates(path.getId(), chapter.getId());
+                if (pos.equals(chapterStart)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Sets the chapter start position for the given path.
      *
      * @param pathId    The ID of the path

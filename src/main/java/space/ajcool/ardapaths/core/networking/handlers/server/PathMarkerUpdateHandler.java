@@ -24,6 +24,16 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
         super("path_marker_update", PathMarkerUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because marker updates mutate marker NBT.
+     *
+     * @return true because this packet changes editable marker data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerUpdatePacket packet, PacketSender sender)
     {

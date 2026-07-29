@@ -21,6 +21,16 @@ public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartU
         super("path_chapter_start_update", ChapterStartUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because chapter start updates mutate server path config.
+     *
+     * @return true because this packet changes editable path data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterStartUpdatePacket packet, PacketSender sender)
     {

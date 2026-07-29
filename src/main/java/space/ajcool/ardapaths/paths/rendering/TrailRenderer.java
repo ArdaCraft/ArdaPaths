@@ -163,7 +163,7 @@ public class TrailRenderer {
 
             if (currentChapterData != null) {
 
-                displayAnimatedText(squaredDistance, currentChapterData, player, playerPos, currentPathColors);
+                displayAnimatedText(squaredDistance, currentChapterData, player, marker.getPos(), currentPathColors);
 
                 if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance) {
                     closestValidMarker = marker;
@@ -257,13 +257,13 @@ public class TrailRenderer {
      * @param squaredDistance     The squared distance between the player and the path marker
      * @param currentChapterData  The chapter data of the path marker
      * @param player              The player entity
-     * @param playerPos           The position of the player
+     * @param markerPos           The position of the marker
      * @param currentPathColors   The colors of the current path
      */
     private static void displayAnimatedText(double squaredDistance,
                                             PathMarkerBlockEntity.ChapterNbtData currentChapterData,
                                             ClientPlayerEntity player,
-                                            BlockPos playerPos,
+                                            BlockPos markerPos,
                                             Color[] currentPathColors) {
 
         var renderMessages      = ArdaPathsClient.CONFIG.showProximityMessages();
@@ -280,7 +280,7 @@ public class TrailRenderer {
                 Journal.addProximityMessage(selectedPath.getId(),
                         currentChapterData.getChapterId(),
                         currentChapterData.getProximityMessage(),
-                        getPlayerTeleportPacket(player, playerPos));
+                        getPlayerTeleportPacket(player, markerPos));
 
                 ProximityRenderer.addMessage(AnimatedMessage.getAnimatedMessage(currentChapterData));
             }
@@ -293,7 +293,7 @@ public class TrailRenderer {
                 Journal.addChapterStart(selectedPath.getId(),
                         currentChapterData.getChapterId(),
                         currentChapterInfo.getName(),
-                        getPlayerTeleportPacket(player, playerPos),
+                        getPlayerTeleportPacket(player, markerPos),
                         currentPathColors[0].asHex());
 
                 if (renderChapterTitles)

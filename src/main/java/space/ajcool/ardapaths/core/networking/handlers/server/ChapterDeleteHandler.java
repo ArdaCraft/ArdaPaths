@@ -22,6 +22,16 @@ public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacke
         super("path_chapter_delete", ChapterDeletePacket::read);
     }
 
+    /**
+     * Requires edit permission because chapter deletion mutates server path config.
+     *
+     * @return true because this packet changes editable path data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterDeletePacket packet, PacketSender sender)
     {

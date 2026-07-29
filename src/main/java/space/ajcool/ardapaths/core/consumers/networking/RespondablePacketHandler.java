@@ -13,9 +13,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -28,9 +28,19 @@ import java.util.function.Function;
  */
 public abstract class RespondablePacketHandler<T extends IPacket, U extends IPacket> extends PacketHandler implements IServerPacketHandler<T>, IClientPacketHandler {
     /**
+     * Maximum time a response callback can remain pending before it is evicted.
+     */
+    private static final long RESPONSE_CONSUMER_TTL_MS = 30_000L;
+
+    /**
+     * All respondable handlers registered in this JVM, used to clear pending callbacks on disconnect.
+     */
+    private static final Set<RespondablePacketHandler<?, ?>> HANDLERS = ConcurrentHashMap.newKeySet();
+
+    /**
      * Map of request UUIDs to response consumers waiting for their replies.
      */
-    private final Map<UUID, Consumer<U>> responseConsumers = new HashMap<>();
+    private final ConcurrentHashMap<UUID, ResponseConsumer<U>> responseConsumers = new ConcurrentHashMap<>();
 
     /**
      * Function to deserialize request packets from PacketByteBuf.
@@ -66,6 +76,7 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
         this.reader = reader;
         responseChannelId = new Identifier(ArdaPaths.MOD_ID, responseChannel);
         this.responseReader = responseReader;
+        HANDLERS.add(this);
     }
 
     /**
@@ -76,13 +87,14 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
      * @param consumer the callback to invoke when the response arrives, or null if no callback is needed
      */
     public void send(final T packet, final Consumer<U> consumer) {
+        sweepExpiredResponseConsumers();
         UUID id = UUID.randomUUID();
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeUuid(id);
         PacketByteBuf packetBuf = packet.build();
         buf.writeBytes(packetBuf);
         if (consumer != null) {
-            responseConsumers.put(id, consumer);
+            responseConsumers.put(id, new ResponseConsumer<>(consumer, System.currentTimeMillis()));
         }
         ClientPlayNetworking.send(getChannelId(), buf);
     }
@@ -137,9 +149,40 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
     public void handle(MinecraftClient client, ClientPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender) {
         UUID requestId = buf.readUuid();
         U packet = responseReader.apply(buf);
-        Consumer<U> consumer = responseConsumers.remove(requestId);
-        if (consumer != null) {
-            consumer.accept(packet);
+        ResponseConsumer<U> responseConsumer = responseConsumers.remove(requestId);
+        if (responseConsumer != null) {
+            responseConsumer.consumer().accept(packet);
         }
+    }
+
+    /**
+     * Clears pending response callbacks for every respondable handler.
+     */
+    public static void clearAllResponseConsumers() {
+        HANDLERS.forEach(RespondablePacketHandler::clearResponseConsumers);
+    }
+
+    /**
+     * Clears pending response callbacks for this handler.
+     */
+    private void clearResponseConsumers() {
+        responseConsumers.clear();
+    }
+
+    /**
+     * Removes stale response callbacks that will no longer receive a server reply.
+     */
+    private void sweepExpiredResponseConsumers() {
+        long cutoff = System.currentTimeMillis() - RESPONSE_CONSUMER_TTL_MS;
+        responseConsumers.entrySet().removeIf(entry -> entry.getValue().createdAtMs() < cutoff);
+    }
+
+    /**
+     * Client-side callback awaiting a response packet.
+     *
+     * @param consumer    the callback to invoke when the response arrives
+     * @param createdAtMs the wall-clock time when the request was sent
+     */
+    private record ResponseConsumer<U extends IPacket>(Consumer<U> consumer, long createdAtMs) {
     }
 }

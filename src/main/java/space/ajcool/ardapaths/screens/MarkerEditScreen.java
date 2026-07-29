@@ -110,11 +110,11 @@ public class MarkerEditScreen extends Screen
 
         var sideY = currentY;
 
-        charRevealInput = this.buildIntegerInput(centerX + 100, sideY);
-        fadeDelayOffsetInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
-        fadeDelayFactorInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
-        fadeSpeedInput = this.buildIntegerInput(centerX + 100, sideY+= 20);
-        minOpacityInput = this.buildIntegerInput(centerX + 100, sideY+ 20);
+        charRevealInput = this.buildIntegerInput(centerX + 100, sideY, 0, BitPacker.MAX_8_BIT_VALUE);
+        fadeDelayOffsetInput = this.buildIntegerInput(centerX + 100, sideY+= 20, 0, BitPacker.MAX_14_BIT_VALUE);
+        fadeDelayFactorInput = this.buildIntegerInput(centerX + 100, sideY+= 20, 0, BitPacker.MAX_14_BIT_VALUE);
+        fadeSpeedInput = this.buildIntegerInput(centerX + 100, sideY+= 20, 1, BitPacker.MAX_14_BIT_VALUE);
+        minOpacityInput = this.buildIntegerInput(centerX + 100, sideY+ 20, 0, 255);
 
         charRevealInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.rspeed_tooltip")));
         fadeDelayOffsetInput.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.ffactor_tooltip")));
@@ -365,7 +365,16 @@ public class MarkerEditScreen extends Screen
         ));
     }
 
-    private InputBoxWidget buildIntegerInput(int x, int y)
+    /**
+     * Builds an integer input constrained to values that can be persisted in packed marker data.
+     *
+     * @param x   the input x coordinate
+     * @param y   the input y coordinate
+     * @param min the minimum accepted value
+     * @param max the maximum accepted value
+     * @return the configured integer input widget
+     */
+    private InputBoxWidget buildIntegerInput(int x, int y, int min, int max)
     {
         return this.addDrawableChild(InputBoxWidget.create()
                 .setX(x)
@@ -378,7 +387,10 @@ public class MarkerEditScreen extends Screen
                 {
                     try
                     {
-                        Integer.parseInt(text);
+                        int value = Integer.parseInt(text);
+                        if (value < min || value > max) {
+                            throw new TextValidationError(String.format("Must be between %d and %d.", min, max));
+                        }
                     }
                     catch (NumberFormatException e)
                     {
@@ -516,6 +528,11 @@ public class MarkerEditScreen extends Screen
 
     public void saveAndClose()
     {
+        if (!validateForm()) {
+            log.error(Text.translatable("ardapaths.generic.validation.form.errors").getString());
+            return;
+        }
+
         charRevealSpeed = Integer.parseInt(charRevealInput.getText());
         fadeDelayOffset = Integer.parseInt(fadeDelayOffsetInput.getText());
         fadeDelayFactor = Integer.parseInt(fadeDelayFactorInput.getText());

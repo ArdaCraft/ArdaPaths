@@ -11,6 +11,7 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import space.ajcool.ardapaths.core.PermissionHelper;
+import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
@@ -76,6 +77,8 @@ public class ArdaPathsClient implements ClientModInitializer {
             CONFIG_MANAGER.updatePathData();
             PermissionHelper.hasEditPermission(client.player);
         });
+
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RespondablePacketHandler.clearAllResponseConsumers());
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
         {
