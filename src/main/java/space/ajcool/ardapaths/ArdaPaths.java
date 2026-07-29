@@ -12,9 +12,9 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import space.ajcool.ardapaths.api.ArdaPathsApi;
 import space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint;
-import space.ajcool.ardapaths.api.ArdaPathsApiImpl;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
+import space.ajcool.ardapaths.core.api.ArdaPathsApiImpl;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -38,7 +38,7 @@ public class ArdaPaths implements ModInitializer {
     public static final String MOD_ID = "ardapaths";
 
     /**
-     * The LuckPerms permission string for editing paths and markers.
+     * The Fabric Permissions API permission string for editing paths and markers.
      */
     public static final String MOD_EDIT_PERMISSION = String.format("%s.edit", MOD_ID);
 
@@ -110,31 +110,26 @@ public class ArdaPaths implements ModInitializer {
     }
 
     /**
-     * Queries Fabric for all mods that registered an {@code ardamaps:api} entrypoint and
+     * Queries Fabric for all mods that registered an {@code ardapaths:api} entrypoint and
      * calls {@link ArdaPathsApiEntrypoint#onApiReady(ArdaPathsApi)} on each of them.
      */
     private void invokeApiEntrypoints() {
 
         ArdaPathsApi api = ArdaPathsApiImpl.getInstance();
 
-        if (api != null) {
+        for (EntrypointContainer<ArdaPathsApiEntrypoint> container :
+                FabricLoader.getInstance().getEntrypointContainers(MOD_ID + ":api", ArdaPathsApiEntrypoint.class)) {
 
-            for (EntrypointContainer<ArdaPathsApiEntrypoint> container :
-                    FabricLoader.getInstance().getEntrypointContainers(MOD_ID + ":api", ArdaPathsApiEntrypoint.class)) {
+            String modId = container.getProvider().getMetadata().getId();
+            try {
 
-                String modId = container.getProvider().getMetadata().getId();
-                try {
+                log.info("[ArdaPaths] Invoking ardapaths:api entrypoint for mod '{}'", modId);
+                container.getEntrypoint().onApiReady(api);
 
-                    log.info("[ArdaPaths] Invoking ardapaths:api entrypoint for mod '{}'", modId);
-                    container.getEntrypoint().onApiReady(api);
+            } catch (Throwable throwable) {
 
-                } catch (Exception e) {
-
-                    log.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, e.getMessage(), e);
-                }
+                log.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, throwable.getMessage(), throwable);
             }
-        } else {
-            log.error("[ArdaPaths] API not initialized, skipping ardapaths:api entrypoints");
         }
     }
 }

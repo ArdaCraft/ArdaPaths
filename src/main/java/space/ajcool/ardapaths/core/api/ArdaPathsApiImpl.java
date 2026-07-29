@@ -1,20 +1,16 @@
-package space.ajcool.ardapaths.api;
+package space.ajcool.ardapaths.core.api;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import space.ajcool.ardapaths.api.ArdaPathsApi;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.paths.Paths;
 
 /**
- * Public API entry point for the ArdaPaths mod.
- *
- * <p>Other mods interact with ArdaPaths through the static methods on this class.
- * Call these methods during your mod's {@code onInitialize()} — all Fabric mod
- * initializers run before the server starts, so any registration is visible by
- * the time ArdaPaths validates and schedules its refresh.</p>
+ * Internal implementation of the ArdaPaths public API.
  */
 @Slf4j(topic = "ardapaths")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -27,7 +23,7 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
     private static ArdaPathsApiImpl instance;
 
     /**
-     * Initializes the API
+     * Initializes the API.
      */
     public static void initialize() {
 
@@ -59,7 +55,6 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
         if (putPathfinderInHands) {
 
-            // Request to put the pathfinder in the player's hands if needed
             PacketRegistry.WIELD_PATHFINDER_REQUEST.send(new EmptyPacket(), response -> selectPathAndChapter(pathId, chapterId, teleport));
         } else {
 
@@ -68,7 +63,7 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
     }
 
     /**
-     * Selects the specified path and chapter for the player
+     * Selects the specified path and chapter for the player.
      *
      * @param pathId    the path ID to select
      * @param chapterId the chapter ID to select

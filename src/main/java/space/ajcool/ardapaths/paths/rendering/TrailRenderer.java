@@ -1,6 +1,5 @@
 package space.ajcool.ardapaths.paths.rendering;
 
-import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
@@ -10,12 +9,12 @@ import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
-import space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.integration.Waypoints;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -196,7 +195,7 @@ public class TrailRenderer {
 
                 if (trail.getStart().equals(closestValidMarker.getPos())) {
 
-                    ArdaMapsConsumer.setNextTrailNode(trail.getEnd());
+                    Waypoints.setNextTrailNode(trail.getEnd());
                 }
             }
         }
@@ -363,7 +362,7 @@ public class TrailRenderer {
      */
     public static void clearTrails() {
 
-        ArdaMapsConsumer.clearMapMarkers();
+        Waypoints.clearWaypoints();
         trails.clear();
         trailSoundInstance = null;
     }

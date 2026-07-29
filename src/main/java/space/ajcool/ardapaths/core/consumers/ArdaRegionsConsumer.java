@@ -6,6 +6,7 @@ import mc.ardacraft.ardaregions.api.ArdaRegionsApiEntrypoint;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 
 /**
  * Consumer for the Arda Regions API that listens for client discovery popup events

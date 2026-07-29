@@ -4,11 +4,16 @@ import com.duom.ardamaps.api.ArdaMapsApi;
 import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
 import com.duom.ardamaps.core.Client;
 import com.duom.ardamaps.core.data.map.Waypoint;
+import lombok.extern.slf4j.Slf4j;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.integration.WaypointProvider;
+import space.ajcool.ardapaths.core.integration.Waypoints;
 
 import java.util.Objects;
 
@@ -16,27 +21,30 @@ import java.util.Objects;
  * Consumer for the ArdaMaps API.
  * Manages waypoints displayed on the ArdaMaps for the next trail node in the current path.
  */
-public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
+@Slf4j(topic = "ardapaths")
+public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider {
 
     /**
      * The ArdaMaps API instance, or null if the API is not available.
      */
-    private static ArdaMapsApi INSTANCE;
+    private ArdaMapsApi api;
 
     /**
      * The currently displayed next waypoint, or null if no waypoint is shown.
      */
-    private static Vec3d CURRENT_WAYPOINT = null;
+    private Vec3d currentWaypoint = null;
 
     /**
      * Clears all waypoints created by ArdaPaths from the ArdaMaps display.
      */
-    public static void clearMapMarkers() {
+    @Override
+    public void clearWaypoints() {
 
         // API is unavailable, stop here
-        if (INSTANCE == null) return;
+        if (api == null) return;
 
-        INSTANCE.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
+        api.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
+        currentWaypoint = null;
     }
 
     /**
@@ -45,9 +53,10 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
      *
      * @param target the position of the next trail node
      */
-    public static void setNextTrailNode(Vec3d target) {
+    @Override
+    public void setNextTrailNode(Vec3d target) {
 
-        if (INSTANCE == null) return;
+        if (api == null) return;
 
         if (shouldShowWaypoint(target)) {
 
@@ -55,8 +64,8 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
 
             var dimension = Client.mc().world.getRegistryKey().getValue().toString();
 
-            if (CURRENT_WAYPOINT != null)
-                INSTANCE.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
+            if (currentWaypoint != null)
+                api.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
 
             var waypoint = new Waypoint((int) target.x, (int) target.z,
                     Text.translatable("ardapaths.client.next.trail.waypoint").getString(),
@@ -64,9 +73,9 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
                     ArdaPaths.MOD_ID, dimension,
                     false, new Identifier(ArdaPaths.MOD_ID, "textures/item/path_marker.png"));
 
-            CURRENT_WAYPOINT = target;
+            currentWaypoint = target;
 
-            INSTANCE.getWaypointsApi().addWaypoint(waypoint);
+            api.getWaypointsApi().addWaypoint(waypoint);
         }
     }
 
@@ -76,7 +85,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
      * @param target the target to display
      * @return true if a waypoint should be shown, false otherwise
      */
-    private static boolean shouldShowWaypoint(Vec3d target) {
+    private boolean shouldShowWaypoint(Vec3d target) {
 
         if (!ArdaPathsClient.CONFIG.showTrailWaypoints()) return false;
 
@@ -86,7 +95,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
         // Will not happen client side - sanity check
         if (Client.mc().world == null) return false;
 
-        return !Objects.equals(CURRENT_WAYPOINT, target);
+        return !Objects.equals(currentWaypoint, target);
     }
 
     /**
@@ -98,6 +107,12 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint {
     @Override
     public void onApiReady(ArdaMapsApi ardaMapsApi) {
 
-        INSTANCE = ardaMapsApi;
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
+            log.info("{}, skipping ArdaMaps consumer registration on server side.", ArdaPaths.MOD_ID);
+            return;
+        }
+
+        api = ardaMapsApi;
+        Waypoints.register(this);
     }
 }

@@ -1,11 +1,9 @@
 package space.ajcool.ardapaths.core;
 
 import lombok.extern.slf4j.Slf4j;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.LuckPermsProvider;
-import net.luckperms.api.cacheddata.CachedPermissionData;
-import net.luckperms.api.model.user.User;
-import net.luckperms.api.util.Tristate;
+import me.lucko.fabric.api.permissions.v0.Permissions;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +13,7 @@ import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 
 /**
- * Helper for checking LuckPerms edit permissions with client-side caching.
+ * Helper for checking edit permissions with server-authoritative client-side caching.
  */
 @Slf4j(topic = "ardapaths")
 public class PermissionHelper {
@@ -37,8 +35,8 @@ public class PermissionHelper {
 
     /**
      * Checks whether the given player has the {@code ardapaths.edit} permission.
-     * On the server, queries LuckPerms directly. On the client, sends a permission check packet
-     * to the server with caching to avoid excessive network traffic.
+     * On the server, checks Fabric Permissions API with vanilla operator fallback.
+     * On the client, sends a permission check packet to the server with caching to avoid excessive network traffic.
      *
      * @param player the player to check permissions for, or null
      * @return true if the player has the edit permission, false otherwise
@@ -52,28 +50,42 @@ public class PermissionHelper {
     }
 
     /**
-     * Checks the player's edit permission by querying LuckPerms directly on the server.
+     * Checks the player's edit permission through Fabric Permissions API on the server.
      *
      * @param player the player to check permissions for
      * @return true if the player has the {@code ardapaths.edit} permission, false otherwise
      */
     private static boolean serverEditPermissionCheck(@NotNull PlayerEntity player) {
 
-        if (player instanceof ServerPlayerEntity serverPlayer) {
+        var serverPlayer = resolveServerPlayer(player);
 
-            LuckPerms luckpermsApi = LuckPermsProvider.get();
-            User user = luckpermsApi.getPlayerAdapter(ServerPlayerEntity.class).getUser(serverPlayer);
-
-            CachedPermissionData permissionData = user.getCachedData().getPermissionData();
-            Tristate checkResult = permissionData.checkPermission(ArdaPaths.MOD_EDIT_PERMISSION);
-
-            boolean result = checkResult.asBoolean();
-            log.info("Server check edit permission for player {} - {}", player.getName(), result);
-
-            return result;
+        if (serverPlayer == null) {
+            log.debug("Server check edit permission for player {} - no server player available", player.getName());
+            return false;
         }
 
-        return false;
+        boolean result = Permissions.check(serverPlayer, ArdaPaths.MOD_EDIT_PERMISSION, 2);
+        log.debug("Server check edit permission for player {} - {}", player.getName(), result);
+
+        return result;
+    }
+
+    /**
+     * Resolves the logical-server player matching the given player.
+     * In single player, client-side callers pass a client player entity, which the Fabric Permissions API
+     * cannot check; in that case the counterpart is looked up on the integrated server.
+     *
+     * @param player the player to resolve
+     * @return the matching server player, or null if none could be resolved
+     */
+    private static @Nullable ServerPlayerEntity resolveServerPlayer(@NotNull PlayerEntity player) {
+
+        if (player instanceof ServerPlayerEntity serverPlayer) return serverPlayer;
+
+        // Dedicated servers only ever see real server players, so there is nothing else to resolve
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) return null;
+
+        return Client.getIntegratedServerPlayer(player);
     }
 
     /**

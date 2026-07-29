@@ -30,8 +30,8 @@ package space.ajcool.ardapaths.api;
  *
  * <p>Implement this interface and register your class in your mod's {@code fabric.mod.json}
  * under the {@code ardapaths:api} entrypoint key. Your implementation will be instantiated
- * by Fabric and {@link #onApiReady(ArdaPathsApi)} will be called once ardapaths has fully
- * initialized and the server has started.</p>
+ * by Fabric and {@link #onApiReady(ArdaPathsApi)} will be called during ArdaPaths
+ * initialization.</p>
  *
  * <h2>Registration example ({@code fabric.mod.json})</h2>
  * <pre>{@code
@@ -44,7 +44,7 @@ package space.ajcool.ardapaths.api;
  *
  * <h2>Implementation example</h2>
  * <pre>{@code
- * public class ArdaPathsHook implements ArdaMapsApiEntrypoint {
+ * public class ArdaPathsHook implements ArdaPathsApiEntrypoint {
  *     @Override
  *     public void onApiReady(ArdaPathsApi ardaPathsApi) {
  *         ...;
@@ -55,10 +55,13 @@ package space.ajcool.ardapaths.api;
 public interface ArdaPathsApiEntrypoint {
 
     /**
-     * Called when ardapaths has fully initialized and the Minecraft server has started.
+     * Called when ArdaPaths initializes its client-side API instance.
+     *
+     * <p>API methods that mutate client state, including
+     * {@link ArdaPathsApi#selectPathAndChapter(String, String, boolean, boolean)}, must be
+     * called from the client thread.</p>
      *
      * @param ardaPathsApi the API instance, providing access to ardapaths features and registration methods
      */
     void onApiReady(ArdaPathsApi ardaPathsApi);
 }
-

@@ -7,8 +7,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.ColorHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
+import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
 
 /**

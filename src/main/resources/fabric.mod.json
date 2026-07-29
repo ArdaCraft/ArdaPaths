@@ -36,9 +36,13 @@
     "fabricloader": ">=${loader_version}",
     "fabric": "*",
     "minecraft": "${minecraft_version}",
-    "fabric-permissions-api-v0": "*",
+    "fabric-permissions-api-v0": "*"
+  },
+  "suggests": {
     "arda-regions": "*",
-    "ardamaps": "*"
+    "ardamaps": "*",
+    "huskhomes": "*",
+    "luckperms": "*"
   },
   "custom": {
     "ardapaths:api_entrypoint": "space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint"
