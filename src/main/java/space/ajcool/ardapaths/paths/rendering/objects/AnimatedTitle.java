@@ -1,15 +1,18 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import lombok.Getter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.ColorHelper;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
+import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
+
+import java.util.Objects;
 
 /**
  * An animated title that fades in, holds, and then fades out over time.
@@ -33,6 +36,7 @@ public class AnimatedTitle extends TextRenderable {
     /**
      * The title text to display
      */
+    @Getter
     private final String title;
 
     /**
@@ -199,13 +203,6 @@ public class AnimatedTitle extends TextRenderable {
     }
 
     /**
-     * @return the title text content
-     */
-    public String getTitle() {
-        return title;
-    }
-
-    /**
      * Compares this title with another object for equality based on title text.
      *
      * @param obj the object to compare
@@ -216,5 +213,15 @@ public class AnimatedTitle extends TextRenderable {
         if (!(obj instanceof AnimatedTitle other)) return super.equals(obj);
 
         return title.equals(other.title);
+    }
+
+    /**
+     * Computes a hash code matching title-text equality.
+     *
+     * @return the hash code for this title
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(title);
     }
 }

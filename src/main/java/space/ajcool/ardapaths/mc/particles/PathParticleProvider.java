@@ -8,7 +8,6 @@ import net.minecraft.client.particle.ParticleFactory;
 import net.minecraft.client.particle.SpriteProvider;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 
@@ -17,7 +16,7 @@ import net.minecraft.util.math.MathHelper;
  * Creates particles with dynamic colours, lighting, and velocity for visual effect.
  */
 @Environment(EnvType.CLIENT)
-public class PathParticleProvider implements ParticleFactory<DefaultParticleType> {
+public class PathParticleProvider implements ParticleFactory<PathParticleEffect> {
     /**
      * The sprite provider for particle rendering.
      */
@@ -34,19 +33,19 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
 
     /**
      * Creates a glow particle with trail path colours and animation.
-     * Encodes up to three colours in the double parameters and randomly selects one.
+     * Selects one of the effect colours and randomizes the particle's visual drift.
      *
-     * @param simpleParticleType the particle type (unused)
-     * @param level              the client world
-     * @param x                  the x coordinate
-     * @param y                  the y coordinate
-     * @param z                  the z coordinate
-     * @param encodedColorA      the primary colour encoded as RGB in integer bits
-     * @param encodedColorB      the secondary colour encoded as RGB in integer bits (0 if unused)
-     * @param encodedColorC      the tertiary colour encoded as RGB in integer bits (0 if unused)
+     * @param effect       the path particle colour payload
+     * @param level        the client world
+     * @param x            the x coordinate
+     * @param y            the y coordinate
+     * @param z            the z coordinate
+     * @param ignoredSpeedX the unused x velocity supplied by the particle spawner
+     * @param ignoredSpeedY the unused y velocity supplied by the particle spawner
+     * @param ignoredSpeedZ the unused z velocity supplied by the particle spawner
      * @return the created particle
      */
-    public Particle createParticle(DefaultParticleType simpleParticleType, ClientWorld level, double x, double y, double z, double encodedColorA, double encodedColorB, double encodedColorC) {
+    public Particle createParticle(PathParticleEffect effect, ClientWorld level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ) {
         var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite) {
             @Override
             public int getBrightness(float f) {
@@ -66,21 +65,11 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
             }
         };
 
-        var rand = level.random.nextDouble();
+        int selectedColor = effect.selectColor(level.random);
 
-        float r = ((int) encodedColorA >> 16) & 0x0ff;
-        float g = ((int) encodedColorA >> 8) & 0x0ff;
-        float b = (int) encodedColorA & 0x0ff;
-
-        if (encodedColorB != 0 && rand >= (encodedColorC == 0 ? 0.5 : 0.3333)) {
-            r = ((int) encodedColorB >> 16) & 0x0ff;
-            g = ((int) encodedColorB >> 8) & 0x0ff;
-            b = (int) encodedColorB & 0x0ff;
-        } else if (encodedColorC != 0 && rand > 0.6666) {
-            r = ((int) encodedColorC >> 16) & 0x0ff;
-            g = ((int) encodedColorC >> 8) & 0x0ff;
-            b = (int) encodedColorC & 0x0ff;
-        }
+        float r = (selectedColor >> 16) & 0x0ff;
+        float g = (selectedColor >> 8) & 0x0ff;
+        float b = selectedColor & 0x0ff;
 
         glowParticle.setColor(r / 255, g / 255, b / 255);
 
@@ -95,4 +84,3 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
         return glowParticle;
     }
 }
-

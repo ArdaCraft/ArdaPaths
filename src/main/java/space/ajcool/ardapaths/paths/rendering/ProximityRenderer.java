@@ -52,7 +52,9 @@ public class ProximityRenderer {
      */
     public static void addMessage(@NotNull AnimatedMessage animatedMessage) {
 
-        if (INSTANCE.currentDisplayedMessage != null && INSTANCE.currentDisplayedMessage.equals(animatedMessage)) return;
+        if (INSTANCE.currentDisplayedMessage != null
+                && !INSTANCE.currentDisplayedMessage.isFinished()
+                && INSTANCE.currentDisplayedMessage.equals(animatedMessage)) return;
 
         INSTANCE.addToQueue(animatedMessage);
     }
@@ -67,9 +69,55 @@ public class ProximityRenderer {
 
         var newTitle = new AnimatedTitle(title, color);
 
-        if (INSTANCE.currentDisplayedTitle != null && INSTANCE.currentDisplayedTitle.equals(newTitle)) return;
+        if (INSTANCE.currentDisplayedTitle != null
+                && !INSTANCE.currentDisplayedTitle.isFinished()
+                && INSTANCE.currentDisplayedTitle.equals(newTitle)) return;
 
         INSTANCE.addToQueue(newTitle);
+    }
+
+    /**
+     * Checks whether a message is already displayed or waiting in the render queue.
+     *
+     * @param message the message text to check
+     * @return true when the message is already active or queued
+     */
+    public static boolean isShowingOrQueuedMessage(String message) {
+        if (INSTANCE.currentDisplayedMessage != null
+                && !INSTANCE.currentDisplayedMessage.isFinished()
+                && INSTANCE.currentDisplayedMessage.getMessage().equals(message)) {
+            return true;
+        }
+
+        for (TextRenderable renderable : INSTANCE.renderQueue) {
+            if (renderable instanceof AnimatedMessage animatedMessage && animatedMessage.getMessage().equals(message)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks whether a title is already displayed or waiting in the render queue.
+     *
+     * @param title the title text to check
+     * @return true when the title is already active or queued
+     */
+    public static boolean isShowingOrQueuedTitle(String title) {
+        if (INSTANCE.currentDisplayedTitle != null
+                && !INSTANCE.currentDisplayedTitle.isFinished()
+                && INSTANCE.currentDisplayedTitle.getTitle().equals(title)) {
+            return true;
+        }
+
+        for (TextRenderable renderable : INSTANCE.renderQueue) {
+            if (renderable instanceof AnimatedTitle animatedTitle && animatedTitle.getTitle().equals(title)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -118,17 +166,18 @@ public class ProximityRenderer {
      * to reflect the number of messages currently queued for display, clamped
      * between 1 and 64.
      */
-    @SuppressWarnings("DataFlowIssue")
     private static void updateVisualMessageStack(DrawContext context){
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
 
-        count += Math.max(0, INSTANCE.renderQueue.size() - count);
+        count = Math.max(count, INSTANCE.renderQueue.size());
 
         if (count == 0) return;
 
         var player = Client.player();
+        if (player == null) return;
+
         var activeHand = player.getActiveHand();
         if (activeHand == null) return;
 

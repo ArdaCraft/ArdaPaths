@@ -19,6 +19,16 @@ public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartR
         super("chapter_start_remove", ChapterStartRemovePacket::read);
     }
 
+    /**
+     * Requires edit permission because chapter start removal mutates server path config.
+     *
+     * @return true because this packet changes editable path data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterStartRemovePacket packet, PacketSender sender)
     {

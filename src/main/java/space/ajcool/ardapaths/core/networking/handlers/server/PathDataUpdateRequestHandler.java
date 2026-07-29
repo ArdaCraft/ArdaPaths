@@ -22,6 +22,16 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
         super("path_data_update_request", PathDataUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because path data updates mutate server path config.
+     *
+     * @return true because this packet changes editable path data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathDataUpdatePacket packet, PacketSender sender)
     {

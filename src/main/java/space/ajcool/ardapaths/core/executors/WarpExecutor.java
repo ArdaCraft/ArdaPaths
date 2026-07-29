@@ -1,22 +1,20 @@
 package space.ajcool.ardapaths.core.executors;
 
 import lombok.extern.slf4j.Slf4j;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.william278.huskhomes.api.FabricHuskHomesAPI;
+import space.ajcool.ardapaths.core.integration.WarpService;
 
 /**
  * Server-side executor for warping players to HuskHomes locations.
  * This class integrates with HuskHomes to handle chapter start teleportation.
  */
-@Environment(EnvType.SERVER)
 @Slf4j(topic = "ardapaths")
-public class WarpExecutor {
+public class WarpExecutor implements WarpService {
 
     /**
      * The HuskHomes API instance used to resolve and execute warps.
@@ -37,18 +35,28 @@ public class WarpExecutor {
      * @param server   the Minecraft server instance
      * @param player   the player to warp
      * @param warpName the name of the HuskHomes warp location
+     * @param onFailure fallback action for missing or invalid warp targets
      */
-    public void warpTo(MinecraftServer server, ServerPlayerEntity player, String warpName) {
+    @Override
+    public void warpTo(MinecraftServer server, ServerPlayerEntity player, String warpName, Runnable onFailure) {
 
         this.huskHomesAPI.getWarp(warpName).thenAccept(warp -> {
 
             log.info("Warping {} to {}", player.getUuidAsString(), warpName);
+
+            if (warp.isEmpty()) {
+                log.warn("Warp not found: {}", warpName);
+                server.execute(onFailure);
+                return;
+            }
+
             warp.ifPresent(targetWarp -> {
 
                 final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
 
                 if (worldId == null) {
                     log.warn("Invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
+                    server.execute(onFailure);
                     return;
                 }
 
@@ -56,16 +64,17 @@ public class WarpExecutor {
 
                 if (serverWorld == null) {
                     log.warn("World not found for warp {}: {}", warpName, worldId);
+                    server.execute(onFailure);
                     return;
                 }
 
                 log.info("Warp ongoing for {} to {}", player.getUuidAsString(), targetWarp);
-                player.teleport(serverWorld,
-                        targetWarp.getX(),
-                        targetWarp.getY(),
-                        targetWarp.getZ(),
-                        targetWarp.getYaw(),
-                        targetWarp.getPitch());
+                server.execute(() -> player.teleport(serverWorld,
+                            targetWarp.getX(),
+                            targetWarp.getY(),
+                            targetWarp.getZ(),
+                            targetWarp.getYaw(),
+                            targetWarp.getPitch()));
 
             });
         });

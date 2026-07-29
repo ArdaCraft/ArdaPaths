@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
@@ -11,9 +12,12 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import space.ajcool.ardapaths.core.PermissionHelper;
+import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
+import space.ajcool.ardapaths.core.data.config.shared.Color;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
@@ -66,6 +70,7 @@ public class ArdaPathsClient implements ClientModInitializer {
         ClientWorld.BLOCK_MARKER_ITEMS = Set.copyOf(markerSet);
 
         ModParticles.initClient();
+        registerPathfinderColorProvider();
 
         HudRenderCallback.EVENT.register(ProximityRenderer::render);
 
@@ -75,6 +80,14 @@ public class ArdaPathsClient implements ClientModInitializer {
         {
             CONFIG_MANAGER.updatePathData();
             PermissionHelper.hasEditPermission(client.player);
+        });
+
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+        {
+            RespondablePacketHandler.clearAllResponseConsumers();
+            PermissionHelper.resetClientCache();
+            Paths.clearTickingMarkers();
+            TrailRenderer.clearTrails();
         });
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
@@ -133,8 +146,20 @@ public class ArdaPathsClient implements ClientModInitializer {
 
                 callingForTeleport = false;
             }
-
-            Paths.clearTickingMarkers();
         });
+    }
+
+    /**
+     * Registers the Pathfinder item colour provider once for the client process.
+     */
+    private void registerPathfinderColorProvider() {
+        ColorProviderRegistry.ITEM.register((itemStack, tintIndex) ->
+        {
+            PathData selectedPath = CONFIG.getSelectedPath();
+            if (selectedPath != null) {
+                return selectedPath.getPrimaryColor().asHex();
+            }
+            return Color.fromRgb(100, 100, 100).asHex();
+        }, ModItems.PATH_REVEALER);
     }
 }

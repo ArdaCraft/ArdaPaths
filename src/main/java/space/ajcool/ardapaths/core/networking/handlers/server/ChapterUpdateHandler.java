@@ -21,6 +21,16 @@ public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacke
         super("path_chapter_update", ChapterUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because chapter updates mutate server path config.
+     *
+     * @return true because this packet changes editable path data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterUpdatePacket packet, PacketSender sender)
     {

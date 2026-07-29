@@ -1,8 +1,9 @@
-package space.ajcool.ardapaths.core.consumers;
+package space.ajcool.ardapaths.core.integration;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -14,17 +15,10 @@ import net.fabricmc.api.Environment;
 public final class ArdaRegionsState {
 
     /**
-     * Indicates if Arda Regions is currently displaying
+     * Indicates if Arda Regions is currently displaying some text.
      */
+    @Setter
     @Getter
     private static volatile boolean displaying = false;
 
-    /**
-     * Sets the displaying state of Arda Regions.
-     *
-     * @param value true to indicate Arda Regions is displaying, false otherwise
-     */
-    static void setDisplaying(boolean value) {
-        displaying = value;
-    }
 }

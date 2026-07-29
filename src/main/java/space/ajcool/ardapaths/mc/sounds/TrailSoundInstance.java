@@ -6,88 +6,156 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.MovingSoundInstance;
 import net.minecraft.client.sound.SoundInstance;
 import net.minecraft.sound.SoundCategory;
-import net.minecraft.util.math.Vec3d;
-import space.ajcool.ardapaths.mc.items.ModItems;
-import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
 /**
- * A moving sound instance that plays trail ambience while the player holds the Path Revealer.
- * Follows the animated trail position and fades in/out with configurable volume.
+ * A looping ambient sound that follows the active trail geometry and fades with distance.
  */
 @Environment(value = EnvType.CLIENT)
 public class TrailSoundInstance extends MovingSoundInstance {
     /**
-     * The animated trail this sound follows.
+     * The amount the sound envelope increases per tick while it is fading in.
      */
-    public AnimatedTrail animatedTrail;
+    private static final float FADE_IN_STEP = 0.02f;
 
     /**
-     * The timestamp of the last tick update.
+     * The number of seconds used when fading the sound out while the player is on the trail.
      */
-    public long lastTick;
+    private static final float FADE_OUT_SECONDS = 5.0f;
 
     /**
-     * Total time in milliseconds this sound has been alive.
+     * The amount the sound envelope decreases per tick while it is fading out.
      */
-    public long timeAlive;
+    private static final float FADE_OUT_STEP = 1.0f / (20.0f * FADE_OUT_SECONDS);
 
     /**
-     * Constructs a trail sound instance for the given animated trail.
-     * Initializes volume, position, and repeat settings.
+     * The ambient slider offset that keeps the trail sound below other environmental ambience.
+     */
+    private static final float AMBIENT_VOLUME_OFFSET = 0.5f;
+
+    /**
+     * Temporal volume envelope used to fade the sound in and out without pops.
+     */
+    private float envelope;
+
+    /**
+     * Desired volume envelope set by the trail renderer from proximity to the trail.
+     */
+    private float targetEnvelope;
+
+    /**
+     * Whether the sound should end once its terminal fade reaches silence.
+     */
+    private boolean released;
+
+    /**
+     * Constructs a trail sound instance at the supplied world position.
      *
-     * @param animatedTrail the trail to follow
+     * @param x the world x coordinate
+     * @param y the world y coordinate
+     * @param z the world z coordinate
      */
-    public TrailSoundInstance(AnimatedTrail animatedTrail) {
-        super(ModSounds.TRAIL, SoundCategory.NEUTRAL, SoundInstance.createRandom());
+    public TrailSoundInstance(double x, double y, double z) {
+        super(ModSounds.TRAIL, SoundCategory.AMBIENT, SoundInstance.createRandom());
 
-        this.timeAlive = 0;
-        this.lastTick = System.currentTimeMillis();
-
-        this.animatedTrail = animatedTrail;
         this.repeat = true;
         this.repeatDelay = 0;
-        this.volume = 0.01F;
-
-        Vec3d currentPos = animatedTrail.getCurrentRenderPos();
-
-        this.x = (float) currentPos.x;
-        this.y = (float) currentPos.y;
-        this.z = (float) currentPos.z;
+        this.volume = 0.001F;
+        this.x = (float) x;
+        this.y = (float) y;
+        this.z = (float) z;
+        this.envelope = 0.0F;
+        this.targetEnvelope = 1.0F;
+        this.released = false;
     }
 
+    /**
+     * Updates the world position the sound is emitted from.
+     *
+     * @param x the world x coordinate
+     * @param y the world y coordinate
+     * @param z the world z coordinate
+     */
+    public void updatePosition(double x, double y, double z) {
+        this.x = (float) x;
+        this.y = (float) y;
+        this.z = (float) z;
+    }
+
+    /**
+     * Sets the proximity-driven target envelope this sound should fade toward.
+     *
+     * @param target the target envelope in the range {@code [0, 1]}
+     */
+    public void setTargetEnvelope(float target) {
+        this.released = false;
+        this.targetEnvelope = Math.max(0.0F, Math.min(target, 1.0F));
+    }
+
+    /**
+     * Releases the sound so it fades out and finishes once silent.
+     */
+    public void release() {
+        this.released = true;
+        this.targetEnvelope = 0.0F;
+    }
+
+    /**
+     * Returns whether the trail sound should remain eligible for mixer updates.
+     *
+     * @return {@code true} while a client player exists
+     */
     @Override
     public boolean canPlay() {
-        if (MinecraftClient.getInstance().player == null) return false;
-        var mainHandItem = MinecraftClient.getInstance().player.getMainHandStack();
-
-        return mainHandItem.isOf(ModItems.PATH_REVEALER);
+        return MinecraftClient.getInstance().player != null;
     }
 
+    /**
+     * Keeps the sound manager from discarding this instance between ticks.
+     *
+     * @return {@code true}
+     */
     @Override
     public boolean shouldAlwaysPlay() {
         return true;
     }
 
+    /**
+     * Advances the fade envelope and updates the instance volume for the current ambient slider value.
+     */
     @Override
     public void tick() {
-        var delta = System.currentTimeMillis() - lastTick;
+        if (envelope > targetEnvelope) {
+            envelope = Math.max(targetEnvelope, envelope - FADE_OUT_STEP);
+        } else if (envelope < targetEnvelope) {
+            envelope = Math.min(targetEnvelope, envelope + FADE_IN_STEP);
+        }
 
-        timeAlive += delta;
-        lastTick = System.currentTimeMillis();
-
-        if (volume == 0) {
-            this.setDone();
+        if (released && envelope == 0.0F) {
+            volume = 0.0F;
+            setDone();
             return;
         }
 
-        Vec3d currentPos = animatedTrail.getCurrentRenderPos();
+        float maxVolume = maxVolume();
+        if (maxVolume == 0.0F) {
+            volume = 0.0F;
+            return;
+        }
 
-        this.x = (float) currentPos.x;
-        this.y = (float) currentPos.y;
-        this.z = (float) currentPos.z;
+        volume = Math.max(envelope * maxVolume, 0.001F);
+    }
 
-        if (timeAlive < 2000) volume = Math.max(((float) timeAlive / 2000) * 0.5F, 0.001F);
-        else if (volume > 0) volume = Math.max(volume - 0.02F, 0);
+    /**
+     * Computes the maximum effective instance volume from the current ambient slider setting.
+     *
+     * @return the ambient-corrected maximum volume for this sound
+     */
+    private float maxVolume() {
+        float ambientVolume = MinecraftClient.getInstance().options.getSoundVolume(SoundCategory.AMBIENT);
+        if (ambientVolume <= AMBIENT_VOLUME_OFFSET) {
+            return 0.0F;
+        }
+
+        return Math.min((ambientVolume - AMBIENT_VOLUME_OFFSET) / ambientVolume, 1.0F);
     }
 }
-

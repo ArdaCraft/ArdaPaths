@@ -24,21 +24,28 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
         super("path_marker_update", PathMarkerUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because marker updates mutate marker NBT.
+     *
+     * @return true because this packet changes editable marker data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerUpdatePacket packet, PacketSender sender)
     {
         BlockPos blockPos = packet.position();
         NbtCompound nbt = packet.data();
         log.info("Received NBT : [{}]", nbt.toString());
-        server.execute(() ->
-        {
-            BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
+        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
 
-            if (blockEntity instanceof PathMarkerBlockEntity marker)
-            {
-                marker.readNbt(nbt);
-                marker.markUpdated();
-            }
-        });
+        if (blockEntity instanceof PathMarkerBlockEntity marker)
+        {
+            marker.readNbt(nbt);
+            marker.markUpdated();
+        }
     }
 }

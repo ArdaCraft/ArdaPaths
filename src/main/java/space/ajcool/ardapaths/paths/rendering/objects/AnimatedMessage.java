@@ -1,6 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import lombok.Getter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -9,13 +10,14 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ColorHelper;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.consumers.ArdaRegionsState;
 import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * An animated text message that reveals characters progressively and fades out over time.
@@ -33,6 +35,7 @@ public class AnimatedMessage extends TextRenderable {
     /**
      * The text content to display
      */
+    @Getter
     private final String message;
 
     /**
@@ -90,11 +93,11 @@ public class AnimatedMessage extends TextRenderable {
         this.proximitySpeedMultiplier = ArdaPathsClient.CONFIG_MANAGER.getConfig().getProximityTextSpeedMultiplier();
         this.message = message;
 
-        this.charRevealSpeed = charRevealSpeed;
-        this.fadeDelayOffset = fadeDelayOffset;
-        this.fadeDelayFactor = fadeDelayFactor;
-        this.fadeSpeed = fadeSpeed;
-        this.minOpacity = minOpacity;
+        this.charRevealSpeed = Math.max(0, charRevealSpeed);
+        this.fadeDelayOffset = Math.max(0, fadeDelayOffset);
+        this.fadeDelayFactor = Math.max(0, fadeDelayFactor);
+        this.fadeSpeed = Math.max(1, fadeSpeed);
+        this.minOpacity = Math.max(0, Math.min(255, minOpacity));
     }
 
     /**
@@ -240,13 +243,6 @@ public class AnimatedMessage extends TextRenderable {
     }
 
     /**
-     * @return the text content of this message
-     */
-    public String getMessage() {
-        return message;
-    }
-
-    /**
      * Compares this message with another object for equality based on message content.
      *
      * @param obj the object to compare
@@ -257,5 +253,15 @@ public class AnimatedMessage extends TextRenderable {
         if (!(obj instanceof AnimatedMessage other)) return super.equals(obj);
 
         return message.equals(other.message);
+    }
+
+    /**
+     * Computes a hash code matching message-text equality.
+     *
+     * @return the hash code for this message
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(message);
     }
 }

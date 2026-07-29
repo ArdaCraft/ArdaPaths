@@ -1,7 +1,10 @@
 {
   "trail_sound": {
     "sounds": [
-      "ardapaths:trail_sound"
+      {
+        "name": "ardapaths:trail_sound",
+        "stream": true
+      }
     ]
   }
 }

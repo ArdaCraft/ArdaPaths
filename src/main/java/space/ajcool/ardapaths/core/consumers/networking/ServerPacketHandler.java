@@ -1,10 +1,12 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import space.ajcool.ardapaths.core.PermissionHelper;
 
 import java.util.function.Function;
 
@@ -14,6 +16,7 @@ import java.util.function.Function;
  *
  * @param <T> the type of packet this handler processes
  */
+@Slf4j(topic = "ardapaths")
 public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandler implements IServerPacketHandler<T> {
     /**
      * Function to deserialize the packet from a PacketByteBuf.
@@ -42,7 +45,23 @@ public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandl
      */
     public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender) {
         T packet = reader.apply(buf);
-        handle(server, player, handler, packet, sender);
+        server.execute(() -> {
+            if (requiresEditPermission() && !PermissionHelper.hasEditPermission(player)) {
+                log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getUuidAsString());
+                return;
+            }
+
+            handle(server, player, handler, packet, sender);
+        });
+    }
+
+    /**
+     * Indicates whether this handler requires the sender to have ArdaPaths edit permission.
+     *
+     * @return true when packets handled by this channel mutate editable path state
+     */
+    protected boolean requiresEditPermission() {
+        return false;
     }
 
     /**

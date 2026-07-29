@@ -7,11 +7,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
-import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
-import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerLinksUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.HashMap;
@@ -29,21 +26,27 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         super("path_marker_links_update", PathMarkerLinksUpdatePacket::read);
     }
 
+    /**
+     * Requires edit permission because marker link updates mutate marker NBT.
+     *
+     * @return true because this packet changes editable marker data
+     */
+    @Override
+    protected boolean requiresEditPermission() {
+        return true;
+    }
+
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
     {
         BlockPos blockPos = packet.position();
+        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
 
-        server.execute(() ->
+        if (blockEntity instanceof PathMarkerBlockEntity marker)
         {
-            BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
-
-            if (blockEntity instanceof PathMarkerBlockEntity marker)
-            {
-                marker.applyNbt(syncPathsFromIncoming(marker.toNbt(), packet.data()));
-                marker.markUpdated();
-            }
-        });
+            marker.applyNbt(syncPathsFromIncoming(marker.toNbt(), packet.data()));
+            marker.markUpdated();
+        }
     }
 
     /**
@@ -106,7 +109,6 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         });
 
         // 4. Rebuild the existing NBT in-place
-        NbtCompound rebuilt = new NbtCompound();
         NbtCompound pathsNbt = new NbtCompound();
 
         for (var pathEntry : oldPaths.entrySet()) {

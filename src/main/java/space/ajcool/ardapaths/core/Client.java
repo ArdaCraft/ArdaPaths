@@ -8,6 +8,9 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.integrated.IntegratedServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,6 +65,24 @@ public class Client {
     public static boolean isInSinglePlayer() {
         MinecraftClient client = mc();
         return client.isInSingleplayer();
+    }
+
+    /**
+     * Resolves the logical-server counterpart of a player on the integrated (single player) server.
+     * Client-side code holds a {@link ClientPlayerEntity}, which carries no permission information;
+     * server-side checks need the {@link ServerPlayerEntity} owned by the integrated server.
+     *
+     * @param player the player to resolve, typically the client player
+     * @return The matching player on the integrated server, or null if there is no integrated server
+     * or the player is not connected to it
+     */
+    public static @Nullable ServerPlayerEntity getIntegratedServerPlayer(@Nullable PlayerEntity player) {
+        if (player == null) return null;
+
+        IntegratedServer server = mc().getServer();
+        if (server == null) return null;
+
+        return server.getPlayerManager().getPlayer(player.getUuid());
     }
 
     /**
