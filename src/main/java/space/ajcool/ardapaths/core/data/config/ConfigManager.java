@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -13,11 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Abstract base class for managing JSON-based configuration files.
@@ -70,6 +67,7 @@ public abstract class ConfigManager<T> {
     /**
      * JVM shutdown hook that forces the newest config snapshot to disk.
      */
+    @SuppressWarnings("FieldCanBeLocal")
     private final Thread shutdownHook;
 
     /**
@@ -209,7 +207,7 @@ public abstract class ConfigManager<T> {
          * @return the daemon thread that will run config saves
          */
         @Override
-        public Thread newThread(Runnable runnable) {
+        public Thread newThread(@NotNull Runnable runnable) {
             Thread thread = new Thread(runnable, "ardapaths-config-writer");
             thread.setDaemon(true);
             return thread;

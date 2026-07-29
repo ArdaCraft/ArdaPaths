@@ -1,6 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import lombok.Getter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -33,6 +34,7 @@ public class AnimatedMessage extends TextRenderable {
     /**
      * The text content to display
      */
+    @Getter
     private final String message;
 
     /**
@@ -237,13 +239,6 @@ public class AnimatedMessage extends TextRenderable {
     public boolean isFinished() {
 
         return done && !showing;
-    }
-
-    /**
-     * @return the text content of this message
-     */
-    public String getMessage() {
-        return message;
     }
 
     /**

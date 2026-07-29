@@ -6,10 +6,8 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
-import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 
 /**
  * Handles the deletion of a chapter from a path in the server configuration.

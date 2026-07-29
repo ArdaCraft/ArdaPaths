@@ -30,6 +30,16 @@ public class AnimatedTrail {
     private final Vec3d end;
 
     /**
+     * Center position of the trail start, reused for interpolation.
+     */
+    private final Vec3d startPos;
+
+    /**
+     * Total immutable distance travelled by this trail.
+     */
+    private final double totalDistance;
+
+    /**
      * Whether to render this trail above blocks or following terrain.
      */
     private final boolean aboveBlocks;
@@ -82,6 +92,26 @@ public class AnimatedTrail {
     private double intermediateTicksAlive;
 
     /**
+     * Mutable position reused while resolving terrain height.
+     */
+    private final BlockPos.Mutable mutableScanPos = new BlockPos.Mutable();
+
+    /**
+     * Cached terrain column X for above-block rendering.
+     */
+    private int cachedColumnX = Integer.MIN_VALUE;
+
+    /**
+     * Cached terrain column Z for above-block rendering.
+     */
+    private int cachedColumnZ = Integer.MIN_VALUE;
+
+    /**
+     * Cached render Y resolved for the current terrain column.
+     */
+    private double cachedGroundY = Double.NaN;
+
+    /**
      * Private constructor for trail creation.
      * Use the static factory method {@link #from} instead.
      *
@@ -95,8 +125,10 @@ public class AnimatedTrail {
     private AnimatedTrail(BlockPos start, Vec3d end, boolean aboveBlocks, int primaryColor, int secondaryColor, int tertiaryColor) {
         this.start = start;
         this.end = end;
-        this.currentPos = new Vec3d(start.getX(), start.getY(), start.getZ());
-        this.currentRenderPos = new Vec3d(start.getX(), start.getY(), start.getZ());
+        this.startPos = new Vec3d(start.getX(), start.getY(), start.getZ()).add(0.5, 0.5, 0.5);
+        this.totalDistance = aboveBlocks ? FlattenedDistance(startPos, end) : startPos.distanceTo(end);
+        this.currentPos = startPos;
+        this.currentRenderPos = startPos;
         this.currentIntermediatePos = null;
         this.targetRenderPos = null;
         this.aboveBlocks = aboveBlocks;
@@ -142,43 +174,15 @@ public class AnimatedTrail {
     public void render(ClientWorld level) {
         if (isAtEnd()) ticksAlive = 0;
 
-        Vec3d startPos = new Vec3d(start.getX(), start.getY(), start.getZ()).add(0.5, 0.5, 0.5);
-
-        double totalDistance = aboveBlocks ? FlattenedDistance(startPos, end) : startPos.distanceTo(end);
         double animationPoint = totalDistance == 0 ? 1.0D : (ticksAlive * SPEED) / totalDistance;
         animationPoint = MathHelper.clamp(animationPoint, 0.0D, 1.0D);
 
         currentPos = startPos.lerp(end, animationPoint);
 
         if (aboveBlocks && targetRenderPos == null && currentIntermediatePos == null) {
-            BlockPos currentBlockPos = new BlockPos(
-                    (int) Math.floor(currentPos.x),
-                    (int) Math.floor(currentPos.y),
-                    (int) Math.floor(currentPos.z)
-            );
+            double posY = resolveGroundY(level);
 
-            var currentBlockState = level.getBlockState(currentBlockPos);
-            var inAir = currentBlockState.isAir() || currentBlockState.isOf(ModBlocks.PATH_MARKER);
-
-            for (int i = 0; i <= 10; i++) {
-                var checkPos = currentBlockPos.add(new Vec3i(0, inAir ? -i : i, 0));
-                var checkBlockPos = new BlockPos(checkPos);
-                var checkBlockState = level.getBlockState(checkBlockPos);
-
-                if (inAir && (checkBlockState.isAir() || checkBlockState.isOf(ModBlocks.PATH_MARKER))) continue;
-
-                if (!inAir) {
-                    if (!checkBlockState.isAir() && !checkBlockState.isOf(ModBlocks.PATH_MARKER)) continue;
-
-                    checkBlockPos = new BlockPos(currentBlockPos.add(new Vec3i(0, i - 1, 0)));
-                    checkBlockState = level.getBlockState(checkBlockPos);
-                }
-
-                var voxelShape = checkBlockState.getOutlineShape(level, checkBlockPos);
-                var max = voxelShape.getMax(Direction.Axis.Y);
-
-                var posY = (checkBlockPos.getY() + (max > 0 ? max : 1));
-
+            if (!Double.isNaN(posY)) {
                 boolean intermediateAnim = animationPoint != 0 && (Math.abs(currentRenderPos.y - posY) > 2);
 
                 if (intermediateAnim) {
@@ -187,8 +191,6 @@ public class AnimatedTrail {
                 } else {
                     currentRenderPos = new Vec3d(currentPos.x, posY, currentPos.z);
                 }
-
-                break;
             }
         } else {
             currentRenderPos = new Vec3d(currentPos.x, currentPos.y, currentPos.z);
@@ -220,6 +222,65 @@ public class AnimatedTrail {
                 currentRenderPos.z,
                 primaryColor, secondaryColor, tertiaryColor
         );
+    }
+
+    /**
+     * Resolves and caches the terrain render height for the current XZ column.
+     *
+     * @param level the client world to inspect
+     * @return the render Y for the current column, or NaN if no nearby ground was found
+     */
+    private double resolveGroundY(ClientWorld level) {
+        int columnX = MathHelper.floor(currentPos.x);
+        int columnY = MathHelper.floor(currentPos.y);
+        int columnZ = MathHelper.floor(currentPos.z);
+
+        if (columnX == cachedColumnX && columnZ == cachedColumnZ) {
+            return cachedGroundY;
+        }
+
+        cachedColumnX = columnX;
+        cachedColumnZ = columnZ;
+        cachedGroundY = scanGroundY(level, columnX, columnY, columnZ);
+        return cachedGroundY;
+    }
+
+    /**
+     * Scans near the current trail position to find the top of the terrain column.
+     *
+     * @param level   the client world to inspect
+     * @param columnX the current block column x coordinate
+     * @param columnY the current block y coordinate
+     * @param columnZ the current block column z coordinate
+     * @return the render Y for this terrain column, or NaN if no nearby ground was found
+     */
+    private double scanGroundY(ClientWorld level, int columnX, int columnY, int columnZ) {
+        mutableScanPos.set(columnX, columnY, columnZ);
+
+        var currentBlockState = level.getBlockState(mutableScanPos);
+        var inAir = currentBlockState.isAir() || currentBlockState.isOf(ModBlocks.PATH_MARKER);
+
+        for (int i = 0; i <= 10; i++) {
+            int checkY = columnY + (inAir ? -i : i);
+            mutableScanPos.set(columnX, checkY, columnZ);
+            var checkBlockState = level.getBlockState(mutableScanPos);
+
+            if (inAir && (checkBlockState.isAir() || checkBlockState.isOf(ModBlocks.PATH_MARKER))) continue;
+
+            if (!inAir) {
+                if (!checkBlockState.isAir() && !checkBlockState.isOf(ModBlocks.PATH_MARKER)) continue;
+
+                mutableScanPos.set(columnX, checkY - 1, columnZ);
+                checkBlockState = level.getBlockState(mutableScanPos);
+            }
+
+            var voxelShape = checkBlockState.getOutlineShape(level, mutableScanPos);
+            var max = voxelShape.getMax(Direction.Axis.Y);
+
+            return mutableScanPos.getY() + (max > 0 ? max : 1);
+        }
+
+        return Double.NaN;
     }
 
     /**

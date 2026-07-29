@@ -3,8 +3,6 @@ package space.ajcool.ardapaths.mc.blocks;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.BlockEntityTicker;
-import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.MutableText;
@@ -24,7 +22,6 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
-import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.screens.Screens;
@@ -158,11 +155,5 @@ public class PathMarkerBlock extends BlockWithEntity {
     @Override
     public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new PathMarkerBlockEntity(blockPos, blockState);
-    }
-
-    @Nullable
-    @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World level, BlockState blockState, BlockEntityType<T> blockEntityType) {
-        return level.isClient ? checkType(blockEntityType, ModBlockEntities.PATH_MARKER, PathMarkerBlockEntity::tick) : null;
     }
 }

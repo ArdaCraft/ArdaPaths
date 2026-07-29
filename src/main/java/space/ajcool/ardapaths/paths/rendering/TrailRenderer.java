@@ -24,9 +24,7 @@ import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Responsible for rendering trails in the client world.
@@ -34,6 +32,12 @@ import java.util.List;
 public class TrailRenderer {
 
     private static final List<AnimatedTrail> trails = new ArrayList<>();
+
+    /**
+     * Active trails keyed by their starting marker position.
+     */
+    private static final Map<BlockPos, AnimatedTrail> trailsByStart = new HashMap<>();
+
     public static TrailSoundInstance trailSoundInstance = null;
 
     /**
@@ -71,7 +75,7 @@ public class TrailRenderer {
             else
                 renderPathRevealerMode(player, currentPathId, currentChapterId, currentPathColors);
 
-            renderTrails(level, player, selectedPath, currentChapterId);
+            renderTrails(level, player, selectedPath, currentChapterId, isHoldingRevealer);
         }
     }
 
@@ -82,30 +86,35 @@ public class TrailRenderer {
      * @param player          The client player entity
      * @param selectedPath    The currently selected path data
      * @param currentChapterId The current chapter ID
+     * @param isHoldingRevealer whether the player is holding the Pathfinder
      */
-    private static void renderTrails(ClientWorld level, ClientPlayerEntity player, PathData selectedPath, String currentChapterId) {
+    private static void renderTrails(ClientWorld level, ClientPlayerEntity player, PathData selectedPath, String currentChapterId, boolean isHoldingRevealer) {
 
-        List<AnimatedTrail> trailsSnapshot = new ArrayList<>(trails);
-        List<AnimatedTrail> trailsToRemove = new ArrayList<>();
+        Iterator<AnimatedTrail> iterator = trails.iterator();
+        var playerPosition = player.getPos();
+        List<PathMarkerBlockEntity> markersToStart = null;
 
-        for (AnimatedTrail trail : trailsSnapshot) {
+        while (iterator.hasNext()) {
+            AnimatedTrail trail = iterator.next();
 
-            var playerPosition = player.getPos();
             var distanceToTrail = playerPosition.squaredDistanceTo(trail.getCurrentPos());
 
-            if (distanceToTrail > (player.isHolding(ModItems.PATH_REVEALER) ? 225 : 10000) || trail.isAtEnd()) {
+            if (distanceToTrail > (isHoldingRevealer ? 225 : 10000) || trail.isAtEnd()) {
 
-                trailsToRemove.add(trail);
+                iterator.remove();
+                trailsByStart.remove(trail.getStart());
 
-                if (trail.isAtEnd() && player.isHolding(ModItems.PATH_REVEALER)) {
+                if (trail.isAtEnd() && isHoldingRevealer) {
 
                     var stopPos = BlockPos.ofFloored(trail.getCurrentPos());
                     var optionalMarkerAtPos = level.getBlockEntity(stopPos, ModBlockEntities.PATH_MARKER);
 
-                    optionalMarkerAtPos.ifPresent(marker -> {
-                        marker.createTrail(selectedPath.getId(), currentChapterId, selectedPath.getColors());
-                        trail.render(level);
-                    });
+                    if (optionalMarkerAtPos.isPresent()) {
+                        if (markersToStart == null) {
+                            markersToStart = new ArrayList<>();
+                        }
+                        markersToStart.add(optionalMarkerAtPos.get());
+                    }
                 }
                 continue;
             }
@@ -113,7 +122,11 @@ public class TrailRenderer {
             trail.render(level);
         }
 
-        trails.removeAll(trailsToRemove);
+        if (markersToStart != null) {
+            for (PathMarkerBlockEntity marker : markersToStart) {
+                marker.createTrail(selectedPath.getId(), currentChapterId, selectedPath.getColors());
+            }
+        }
     }
 
     /**
@@ -131,8 +144,7 @@ public class TrailRenderer {
             PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(currentPathId, currentChapterId, false);
             if (data == null) return;
 
-            boolean trailExists = trails.stream().anyMatch(trail -> trail.getStart().equals(marker.getPos()));
-            if (!trailExists)
+            if (!trailsByStart.containsKey(marker.getPos()))
             {
                 marker.createTrail(currentPathId, currentChapterId, currentPathColors);
             }
@@ -190,13 +202,9 @@ public class TrailRenderer {
     private static void setWaypointToNextTrailNode(PathMarkerBlockEntity closestValidMarker) {
 
         if (closestValidMarker != null) {
-
-            for (var trail : trails) {
-
-                if (trail.getStart().equals(closestValidMarker.getPos())) {
-
-                    Waypoints.setNextTrailNode(trail.getEnd());
-                }
+            AnimatedTrail trail = trailsByStart.get(closestValidMarker.getPos());
+            if (trail != null) {
+                Waypoints.setNextTrailNode(trail.getEnd());
             }
         }
     }
@@ -216,38 +224,49 @@ public class TrailRenderer {
         assert selectedPath != null;
 
         ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
+        if (currentChapter == null) return;
 
-        // Filter chapters that are valid for switching - ie chapter start, within range, and not empty ID
-        List<PathMarkerBlockEntity.ChapterNbtData> filteredChapters = marker.getChapters(currentPathId).stream()
-                .filter(data -> !data.getChapterId().isEmpty())
-                .filter(PathMarkerBlockEntity.ChapterNbtData::isChapterStart)
-                .filter(data -> squaredDistance <= MathHelper.square(data.getActivationRange()))
-                .toList();
+        List<PathMarkerBlockEntity.ChapterNbtData> chapters = marker.getChapters(currentPathId, false);
+        if (chapters == null || chapters.isEmpty()) return;
 
-        if (!filteredChapters.isEmpty()) {
+        ChapterData selectedChapter = null;
+        for (var otherChapterData : chapters) {
+            String otherChapterId = otherChapterData.getChapterId();
+            if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
+            if (squaredDistance > MathHelper.square(otherChapterData.getActivationRange())) continue;
 
-            for (var otherChapterData : filteredChapters) {
+            ChapterData chapter = selectedPath.getChapter(otherChapterId);
+            if (chapter == null) continue;
 
-                String otherChapterId = otherChapterData.getChapterId();
-                ChapterData chapter = selectedPath.getChapter(otherChapterId);
+            if ("default".equalsIgnoreCase(currentChapter.getName())) {
 
-                if (currentChapter == null || chapter == null) continue;
+                var targetChapterIsDefault = "default".equalsIgnoreCase(chapter.getName());
 
-                if (!"default".equalsIgnoreCase(currentChapter.getName())) {
-                    if (chapter.getIndex() <= currentChapter.getIndex()) continue;
-                    if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
-                } else {
+                if (targetChapterIsDefault) continue;
 
-                    otherChapterId = filteredChapters.stream()
-                            .map(otherChapterIdentifier -> selectedPath.getChapter(otherChapterIdentifier.getChapterId()))
-                            .min(Comparator.comparingInt(chapterData -> chapterData != null ? chapterData.getIndex() : 0))
-                            .map(ChapterData::getId)
-                            .orElse(otherChapterId);
+                var currentSelectedChapterIsNull = selectedChapter == null;
+                var selectedChapterIsAfter       = !currentSelectedChapterIsNull && (chapter.getIndex() < selectedChapter.getIndex());
+
+                if (currentSelectedChapterIsNull || selectedChapterIsAfter) {
+                    selectedChapter = chapter;
                 }
 
-                ArdaPathsClient.CONFIG.setCurrentChapter(otherChapterId);
-                ArdaPathsClient.CONFIG_MANAGER.save();
+                continue;
             }
+
+            if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+            if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
+
+            selectedChapter = chapter;
+            break;
+        }
+
+        if (selectedChapter == null) return;
+
+        String selectedChapterId = selectedChapter.getId();
+        if (!selectedChapterId.equals(ArdaPathsClient.CONFIG.getCurrentChapterId())) {
+            ArdaPathsClient.CONFIG.setCurrentChapter(selectedChapterId);
+            ArdaPathsClient.CONFIG_MANAGER.save();
         }
     }
 
@@ -275,11 +294,12 @@ public class TrailRenderer {
         if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange())) {
 
             // Render proximity message
-            if (!currentChapterData.getProximityMessage().isEmpty() && renderMessages) {
+            String proximityMessage = currentChapterData.getProximityMessage();
+            if (!proximityMessage.isEmpty() && renderMessages && !ProximityRenderer.isShowingOrQueuedMessage(proximityMessage)) {
 
                 Journal.addProximityMessage(selectedPath.getId(),
                         currentChapterData.getChapterId(),
-                        currentChapterData.getProximityMessage(),
+                        proximityMessage,
                         getPlayerTeleportPacket(player, markerPos));
 
                 ProximityRenderer.addMessage(AnimatedMessage.getAnimatedMessage(currentChapterData));
@@ -296,8 +316,9 @@ public class TrailRenderer {
                         getPlayerTeleportPacket(player, markerPos),
                         currentPathColors[0].asHex());
 
-                if (renderChapterTitles)
-                    ProximityRenderer.addTitle(currentChapterInfo.getName(), currentPathColors[0]);
+                String chapterName = currentChapterInfo.getName();
+                if (renderChapterTitles && !ProximityRenderer.isShowingOrQueuedTitle(chapterName))
+                    ProximityRenderer.addTitle(chapterName, currentPathColors[0]);
 
             }
         }
@@ -348,8 +369,10 @@ public class TrailRenderer {
      * @param trail The trail to render
      */
     public static void registerTrail(AnimatedTrail trail) {
+        if (trailsByStart.containsKey(trail.getStart())) return;
 
         trails.add(trail);
+        trailsByStart.put(trail.getStart(), trail);
 
         if (trailSoundInstance != null) return;
 
@@ -364,6 +387,7 @@ public class TrailRenderer {
 
         Waypoints.clearWaypoints();
         trails.clear();
+        trailsByStart.clear();
         trailSoundInstance = null;
     }
 }

@@ -78,7 +78,12 @@ public class ArdaPathsClient implements ClientModInitializer {
             PermissionHelper.hasEditPermission(client.player);
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RespondablePacketHandler.clearAllResponseConsumers());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+        {
+            RespondablePacketHandler.clearAllResponseConsumers();
+            Paths.clearTickingMarkers();
+            TrailRenderer.clearTrails();
+        });
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
         {
@@ -136,8 +141,6 @@ public class ArdaPathsClient implements ClientModInitializer {
 
                 callingForTeleport = false;
             }
-
-            Paths.clearTickingMarkers();
         });
     }
 }

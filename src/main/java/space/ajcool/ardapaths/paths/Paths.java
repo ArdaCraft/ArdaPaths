@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.paths;
 
+import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
@@ -12,8 +13,10 @@ import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Client-side façade for modifying path selection state and settings.
@@ -33,9 +36,9 @@ public class Paths {
     private static final ClientConfigManager configManager = ArdaPathsClient.CONFIG_MANAGER;
 
     /**
-     * List of path marker block entities currently being ticked for animation updates.
+     * Loaded client-side path marker block entities keyed by position.
      */
-    private static final List<PathMarkerBlockEntity> tickingMarkers = new ArrayList<>();
+    private static final Map<BlockPos, PathMarkerBlockEntity> tickingMarkers = new LinkedHashMap<>();
 
     /**
      * Sets the current selected path, clearing the chapter selection if the path changed.
@@ -126,14 +129,36 @@ public class Paths {
         }
     }
 
+    /**
+     * Registers a loaded client-side marker for rendering queries.
+     *
+     * @param marker the marker block entity to register
+     */
     public static void addTickingMarker(PathMarkerBlockEntity marker) {
-        tickingMarkers.add(marker);
+        tickingMarkers.put(marker.getPos().toImmutable(), marker);
     }
 
-    public static List<PathMarkerBlockEntity> getTickingMarkers() {
-        return List.copyOf(tickingMarkers);
+    /**
+     * Removes a client-side marker from rendering queries.
+     *
+     * @param marker the marker block entity to remove
+     */
+    public static void removeTickingMarker(PathMarkerBlockEntity marker) {
+        tickingMarkers.remove(marker.getPos());
     }
 
+    /**
+     * Returns the currently loaded client-side markers without copying the backing collection.
+     *
+     * @return an unmodifiable live view of loaded markers
+     */
+    public static Collection<PathMarkerBlockEntity> getTickingMarkers() {
+        return Collections.unmodifiableCollection(tickingMarkers.values());
+    }
+
+    /**
+     * Clears all tracked client-side markers, usually because the client left a world.
+     */
     public static void clearTickingMarkers() {
         tickingMarkers.clear();
     }

@@ -1,5 +1,10 @@
 package space.ajcool.ardapaths.mc.blocks.entities;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -10,11 +15,6 @@ import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
@@ -57,16 +57,27 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     }
 
     /**
-     * Called each tick while this block entity is loaded.
-     * Registers the marker for animation/rendering updates.
+     * Assigns this marker to a world and registers client-side instances for rendering.
      *
-     * @param ignoredLevel                 the world
-     * @param ignoredBlockPos              the block position
-     * @param ignoredBlockState            the block state
-     * @param pathMarkerBlockEntity        this entity
+     * @param world the world this marker belongs to
      */
-    public static void tick(World ignoredLevel, BlockPos ignoredBlockPos, BlockState ignoredBlockState, PathMarkerBlockEntity pathMarkerBlockEntity) {
-        Paths.addTickingMarker(pathMarkerBlockEntity);
+    @Override
+    public void setWorld(World world) {
+        super.setWorld(world);
+        if (world.isClient()) {
+            Paths.addTickingMarker(this);
+        }
+    }
+
+    /**
+     * Removes this marker from client-side rendering queries when it unloads.
+     */
+    @Override
+    public void markRemoved() {
+        if (this.world != null && this.world.isClient()) {
+            Paths.removeTickingMarker(this);
+        }
+        super.markRemoved();
     }
 
     /**
@@ -217,10 +228,6 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     public Vec3d getCenterPos() {
         BlockPos position = this.getPos();
         return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
-    }
-
-    public @NotNull List<ChapterNbtData> getChapters(String pathId) {
-        return Objects.requireNonNull(getChapters(pathId, true));
     }
 
     public @Nullable List<ChapterNbtData> getChapters(String pathId, boolean createIfNull) {

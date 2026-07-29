@@ -1,6 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import lombok.Getter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -33,6 +34,7 @@ public class AnimatedTitle extends TextRenderable {
     /**
      * The title text to display
      */
+    @Getter
     private final String title;
 
     /**
@@ -196,13 +198,6 @@ public class AnimatedTitle extends TextRenderable {
      */
     public boolean isFinished() {
         return done && !showing;
-    }
-
-    /**
-     * @return the title text content
-     */
-    public String getTitle() {
-        return title;
     }
 
     /**
