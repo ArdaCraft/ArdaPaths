@@ -31,6 +31,11 @@ import java.util.*;
  */
 public class TrailRenderer {
 
+    /**
+     * Extra distance, in blocks, the player must move beyond a marker's activation range before its text can play again.
+     */
+    private static final double PROXIMITY_EXIT_BUFFER = 2.0;
+
     private static final List<AnimatedTrail> trails = new ArrayList<>();
 
     /**
@@ -38,7 +43,24 @@ public class TrailRenderer {
      */
     private static final Map<BlockPos, AnimatedTrail> trailsByStart = new HashMap<>();
 
+    /**
+     * Markers whose proximity text or chapter title has already played for the current visit.
+     */
+    private static final Map<BlockPos, ProximityActivation> proximityActivations = new HashMap<>();
+
+    /**
+     * Sound instance for the currently audible trail rendering effect.
+     */
     public static TrailSoundInstance trailSoundInstance = null;
+
+    /**
+     * Visit state for a marker whose proximity text or chapter title has already been triggered.
+     *
+     * @param pathId              The path the activation was triggered for
+     * @param chapterId           The chapter the activation was triggered for
+     * @param exitDistanceSquared The squared distance at which the marker can trigger again
+     */
+    private record ProximityActivation(String pathId, String chapterId, double exitDistanceSquared) {}
 
     /**
      * Render all registered trails.
@@ -60,6 +82,7 @@ public class TrailRenderer {
         // If the player is not holding either item, clear trails and messages
         if (!isHoldingRevealer && !isHoldingMarker) {
 
+            pruneProximityActivations(player.getBlockPos());
             clearTrails();
             ProximityRenderer.clear();
 
@@ -165,6 +188,8 @@ public class TrailRenderer {
                                                String currentChapterId, Color[] currentPathColors)
     {
         BlockPos playerPos = player.getBlockPos();
+        pruneProximityActivations(playerPos);
+
         PathMarkerBlockEntity closestValidMarker = null;
         double closestSquaredDistance = Double.MAX_VALUE;
 
@@ -293,9 +318,19 @@ public class TrailRenderer {
         // If we are within activation range
         if (squaredDistance <= MathHelper.square(currentChapterData.getActivationRange())) {
 
+            ProximityActivation existing = proximityActivations.get(markerPos);
+            if (existing != null
+                    && existing.pathId().equals(selectedPath.getId())
+                    && existing.chapterId().equals(currentChapterData.getChapterId())) return;
+
+            proximityActivations.put(markerPos.toImmutable(), new ProximityActivation(
+                    selectedPath.getId(),
+                    currentChapterData.getChapterId(),
+                    MathHelper.square(currentChapterData.getActivationRange() + PROXIMITY_EXIT_BUFFER)));
+
             // Render proximity message
             String proximityMessage = currentChapterData.getProximityMessage();
-            if (!proximityMessage.isEmpty() && renderMessages && !ProximityRenderer.isShowingOrQueuedMessage(proximityMessage)) {
+            if (!proximityMessage.isEmpty() && renderMessages) {
 
                 Journal.addProximityMessage(selectedPath.getId(),
                         currentChapterData.getChapterId(),
@@ -317,9 +352,25 @@ public class TrailRenderer {
                         currentPathColors[0].asHex());
 
                 String chapterName = currentChapterInfo.getName();
-                if (renderChapterTitles && !ProximityRenderer.isShowingOrQueuedTitle(chapterName))
+                if (renderChapterTitles)
                     ProximityRenderer.addTitle(chapterName, currentPathColors[0]);
 
+            }
+        }
+    }
+
+    /**
+     * Re-arm proximity text for any triggered markers the player has moved away from.
+     *
+     * @param playerPos The player's current block position
+     */
+    private static void pruneProximityActivations(BlockPos playerPos) {
+
+        Iterator<Map.Entry<BlockPos, ProximityActivation>> iterator = proximityActivations.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<BlockPos, ProximityActivation> entry = iterator.next();
+            if (playerPos.getSquaredDistance(entry.getKey()) > entry.getValue().exitDistanceSquared()) {
+                iterator.remove();
             }
         }
     }

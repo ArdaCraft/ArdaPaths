@@ -45,7 +45,8 @@ dependencies {
 
     // Optional integrations - compile against them, never require them at runtime.
     modCompileOnly("maven.modrinth:ardaregions:${project.ardaregions_version}")
-    modCompileOnly("maven.modrinth:ardamaps:${project.ardamaps_version}")
+    //modCompileOnly("maven.modrinth:ardamaps:${project.ardamaps_version}")
+    modCompileOnly(files("build/external-libs/ArdaMaps-1.1.0-SNAPSHOT.jar"))
     modCompileOnly("curse.maven:huskhomes-849217:5468607")
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")

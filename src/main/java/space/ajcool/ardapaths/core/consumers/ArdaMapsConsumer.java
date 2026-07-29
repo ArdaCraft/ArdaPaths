@@ -2,13 +2,12 @@ package space.ajcool.ardapaths.core.consumers;
 
 import com.duom.ardamaps.api.ArdaMapsApi;
 import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
+import com.duom.ardamaps.api.waypoints.ApiWaypoint;
 import com.duom.ardamaps.core.Client;
-import com.duom.ardamaps.core.data.map.Waypoint;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
@@ -67,11 +66,11 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
             if (currentWaypoint != null)
                 api.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
 
-            var waypoint = new Waypoint((int) target.x, (int) target.z,
+            var waypoint = new ApiWaypoint((int) target.x, (int) target.z,
                     Text.translatable("ardapaths.client.next.trail.waypoint").getString(),
                     1.0f, 1.0f, 1.0f,
                     ArdaPaths.MOD_ID, dimension,
-                    false, new Identifier(ArdaPaths.MOD_ID, "textures/item/path_marker.png"));
+                    false, ArdaPaths.MOD_ID + "textures/item/path_marker.png");
 
             currentWaypoint = target;
 

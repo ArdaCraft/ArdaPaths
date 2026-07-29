@@ -8,7 +8,6 @@ import net.minecraft.client.particle.ParticleFactory;
 import net.minecraft.client.particle.SpriteProvider;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 
@@ -17,7 +16,7 @@ import net.minecraft.util.math.MathHelper;
  * Creates particles with dynamic colours, lighting, and velocity for visual effect.
  */
 @Environment(EnvType.CLIENT)
-public class PathParticleProvider implements ParticleFactory<DefaultParticleType> {
+public class PathParticleProvider implements ParticleFactory<PathParticleEffect> {
     /**
      * The sprite provider for particle rendering.
      */
@@ -34,19 +33,19 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
 
     /**
      * Creates a glow particle with trail path colours and animation.
-     * Encodes up to three colours in the double parameters and randomly selects one.
+     * Selects one of the effect colours and randomizes the particle's visual drift.
      *
-     * @param simpleParticleType the particle type (unused)
-     * @param level              the client world
-     * @param x                  the x coordinate
-     * @param y                  the y coordinate
-     * @param z                  the z coordinate
-     * @param encodedColorA      the primary colour encoded as RGB in integer bits
-     * @param encodedColorB      the secondary colour encoded as RGB in integer bits (0 if unused)
-     * @param encodedColorC      the tertiary colour encoded as RGB in integer bits (0 if unused)
+     * @param effect       the path particle colour payload
+     * @param level        the client world
+     * @param x            the x coordinate
+     * @param y            the y coordinate
+     * @param z            the z coordinate
+     * @param ignoredSpeedX the unused x velocity supplied by the particle spawner
+     * @param ignoredSpeedY the unused y velocity supplied by the particle spawner
+     * @param ignoredSpeedZ the unused z velocity supplied by the particle spawner
      * @return the created particle
      */
-    public Particle createParticle(DefaultParticleType simpleParticleType, ClientWorld level, double x, double y, double z, double encodedColorA, double encodedColorB, double encodedColorC) {
+    public Particle createParticle(PathParticleEffect effect, ClientWorld level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ) {
         var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite) {
             @Override
             public int getBrightness(float f) {
@@ -66,7 +65,7 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
             }
         };
 
-        int selectedColor = selectColor(level, (int) encodedColorA, (int) encodedColorB, (int) encodedColorC);
+        int selectedColor = effect.selectColor(level.random);
 
         float r = (selectedColor >> 16) & 0x0ff;
         float g = (selectedColor >> 8) & 0x0ff;
@@ -83,31 +82,5 @@ public class PathParticleProvider implements ParticleFactory<DefaultParticleType
         glowParticle.setMaxAge(level.random.nextInt(10) + 10);
 
         return glowParticle;
-    }
-
-    /**
-     * Selects one of the encoded trail colours with equal odds across non-zero options.
-     *
-     * @param level         the client world providing randomness
-     * @param encodedColorA the primary encoded colour
-     * @param encodedColorB the secondary encoded colour, or 0 when absent
-     * @param encodedColorC the tertiary encoded colour, or 0 when absent
-     * @return the selected encoded colour
-     */
-    private int selectColor(ClientWorld level, int encodedColorA, int encodedColorB, int encodedColorC) {
-        if (encodedColorB == 0) {
-            return encodedColorA;
-        }
-
-        double rand = level.random.nextDouble();
-        if (encodedColorC == 0) {
-            return rand < 0.5 ? encodedColorA : encodedColorB;
-        }
-
-        if (rand < (1.0 / 3.0)) {
-            return encodedColorA;
-        }
-
-        return rand < (2.0 / 3.0) ? encodedColorB : encodedColorC;
     }
 }

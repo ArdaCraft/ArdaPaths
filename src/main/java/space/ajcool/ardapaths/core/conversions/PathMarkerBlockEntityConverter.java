@@ -4,6 +4,7 @@ import net.minecraft.nbt.NbtCompound;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.mc.NbtEncodeable;
 
 import java.util.List;
 
@@ -24,20 +25,14 @@ public class PathMarkerBlockEntityConverter {
      * @return the migrated NBT compound with the new structure
      */
     public static NbtCompound convertNbt(NbtCompound oldNbt) {
-        if (oldNbt.contains("paths", 10)) {
+        if (NbtEncodeable.hasCompound(oldNbt, "paths")) {
             return oldNbt;
         }
 
         NbtCompound pathsCompound = new NbtCompound();
 
-        String proximityMessage = "";
-        if (oldNbt.contains("proximityMessage", 8)) { // 8: string
-            proximityMessage = oldNbt.getString("proximityMessage");
-        }
-        int activationRange = 0;
-        if (oldNbt.contains("activationRange", 3)) { // 3: int
-            activationRange = oldNbt.getInt("activationRange");
-        }
+        String proximityMessage = NbtEncodeable.getStringOrEmpty(oldNbt, "proximityMessage");
+        int activationRange = NbtEncodeable.getIntOrZero(oldNbt, "activationRange");
 
         List<PathData> paths = ArdaPaths.amITheServer() ? ArdaPaths.CONFIG.getPaths() : ArdaPathsClient.CONFIG.getPaths();
 
@@ -45,15 +40,11 @@ public class PathMarkerBlockEntityConverter {
 
         for (PathData path : paths) {
             String legacyKey = "targetOffset-" + i;
-            if (oldNbt.contains(legacyKey, 10)) {
+            if (NbtEncodeable.hasCompound(oldNbt, legacyKey)) {
                 NbtCompound dataCompound = new NbtCompound();
-                dataCompound.put("target", oldNbt.getCompound(legacyKey));
-                if (!proximityMessage.isEmpty()) {
-                    dataCompound.putString("proximity_message", proximityMessage);
-                }
-                if (activationRange != 0) {
-                    dataCompound.putInt("activation_range", activationRange);
-                }
+                dataCompound.put("target", NbtEncodeable.getCompound(oldNbt, legacyKey));
+                NbtEncodeable.putStringIfNotEmpty(dataCompound, "proximity_message", proximityMessage);
+                NbtEncodeable.putIntIfNonZero(dataCompound, "activation_range", activationRange);
 
                 NbtCompound defaultChapter = new NbtCompound();
                 defaultChapter.put("default", dataCompound);

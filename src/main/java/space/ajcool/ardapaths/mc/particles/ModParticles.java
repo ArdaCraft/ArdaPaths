@@ -3,8 +3,6 @@ package space.ajcool.ardapaths.mc.particles;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
-import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
-import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -20,10 +18,19 @@ public class ModParticles {
      * The particle type for trail path particles.
      * If adding a new particle, make sure to add it to the {@link ModParticles#initClient} method.
      */
-    public static final DefaultParticleType PATH = register(
+    public static final ParticleType<PathParticleEffect> PATH = register(
             "path",
-            FabricParticleTypes.simple(true)
-    );
+            new ParticleType<>(true, PathParticleEffect.PARAMETERS_FACTORY) {
+                /**
+                 * Returns the structured codec for path particle effect data.
+                 *
+                 * @return the path particle effect codec
+                 */
+                @Override
+                public com.mojang.serialization.Codec<PathParticleEffect> getCodec() {
+                    return PathParticleEffect.CODEC;
+                }
+            });
 
     /**
      * Register a particle type.

@@ -5,7 +5,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.*;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
-import space.ajcool.ardapaths.mc.particles.ModParticles;
+import space.ajcool.ardapaths.mc.particles.PathParticleEffect;
 
 /**
  * An animated trail that renders particle effects along a path from start to end position.
@@ -216,11 +216,11 @@ public class AnimatedTrail {
             ticksAlive++;
         }
 
-        level.addParticle(ModParticles.PATH,
+        level.addParticle(new PathParticleEffect(primaryColor, secondaryColor, tertiaryColor),
                 currentRenderPos.x,
                 currentRenderPos.y + 0.3,
                 currentRenderPos.z,
-                primaryColor, secondaryColor, tertiaryColor
+                0.0, 0.0, 0.0
         );
     }
 
