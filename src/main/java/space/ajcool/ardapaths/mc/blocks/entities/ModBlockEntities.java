@@ -16,8 +16,10 @@ public class ModBlockEntities {
     /**
      * Register a block entity type.
      *
-     * @param id   The ID of the block entity
-     * @param type The block entity type
+     * @param <T> the type of block entity type
+     * @param id the ID of the block entity
+     * @param type the block entity type to register
+     * @return the registered block entity type
      */
     @SuppressWarnings("SameParameterValue")
     private static <T extends BlockEntityType<?>> T register(final String id, final T type) {

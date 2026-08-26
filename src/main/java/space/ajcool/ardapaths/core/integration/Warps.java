@@ -9,6 +9,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.executors.WarpExecutor;
 
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Facade for optional server-side warp integrations.
  */
@@ -45,6 +48,19 @@ public final class Warps {
         WarpService warpService = resolve();
         if (warpService != null) warpService.warpTo(server, player, warpName, onFailure);
         else onFailure.run();
+    }
+
+    /**
+     * Resolves a named warp through the optional service.
+     *
+     * @param server   the server that owns the destination world
+     * @param warpName the configured warp name
+     * @return future optional destination for the named warp
+     */
+    public static CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName) {
+        WarpService warpService = resolve();
+        if (warpService != null) return warpService.resolveWarp(server, warpName);
+        return CompletableFuture.completedFuture(Optional.empty());
     }
 
     /**

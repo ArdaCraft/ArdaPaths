@@ -35,8 +35,10 @@ public class ModItems {
     /**
      * Register an item and add it to an item group.
      *
-     * @param id   The item's ID
-     * @param item The item to register
+     * @param <T> the type of item
+     * @param id the item's ID
+     * @param item the item to register
+     * @return the registered item
      */
     @SuppressWarnings("SameParameterValue")
     private static <T extends Item> T register(final String id, final T item) {

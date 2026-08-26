@@ -15,7 +15,9 @@ import space.ajcool.ardapaths.core.networking.packets.client.ArdaPathsPermission
  */
 public class ArdaPathsPermissionCheckHandler extends RespondablePacketHandler<EmptyPacket, ArdaPathsPermissionCheckResponsePacket> {
 
+    /** Channel identifier for permission check requests from client */
     private static final String REQUEST_CHANNEL = "ardapaths_permission_check_request";
+    /** Channel identifier for permission check responses to client */
     private static final String RESPONSE_CHANNEL = "ardapaths_permission_check_response";
 
     public ArdaPathsPermissionCheckHandler() {

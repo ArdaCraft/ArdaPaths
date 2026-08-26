@@ -6,8 +6,13 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.william278.huskhomes.api.FabricHuskHomesAPI;
+import space.ajcool.ardapaths.core.integration.WarpLocation;
 import space.ajcool.ardapaths.core.integration.WarpService;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Server-side executor for warping players to HuskHomes locations.
@@ -26,6 +31,44 @@ public class WarpExecutor implements WarpService {
      */
     public WarpExecutor() {
         this.huskHomesAPI = FabricHuskHomesAPI.getInstance();
+    }
+
+    /**
+     * Resolves a named HuskHomes warp location without teleporting.
+     *
+     * @param server   the server that owns the destination world
+     * @param warpName the configured warp name
+     * @return future optional destination for the named warp
+     */
+    @Override
+    public CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName) {
+        return this.huskHomesAPI.getWarp(warpName).thenApply(warp -> {
+            if (warp.isEmpty()) {
+                log.warn("Warp not found: {}", warpName);
+                return Optional.<WarpLocation>empty();
+            }
+
+            final var targetWarp = warp.get();
+            final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
+
+            if (worldId == null) {
+                log.warn("Invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
+                return Optional.<WarpLocation>empty();
+            }
+
+            final var worldKey = RegistryKey.of(RegistryKeys.WORLD, worldId);
+            final var serverWorld = server.getWorld(worldKey);
+
+            if (serverWorld == null) {
+                log.warn("World not found for warp {}: {}", warpName, worldId);
+                return Optional.<WarpLocation>empty();
+            }
+
+            return Optional.of(new WarpLocation(worldKey, BlockPos.ofFloored(targetWarp.getX(), targetWarp.getY(), targetWarp.getZ())));
+        }).exceptionally(throwable -> {
+            log.warn("Failed to resolve warp {}", warpName, throwable);
+            return Optional.empty();
+        });
     }
 
     /**

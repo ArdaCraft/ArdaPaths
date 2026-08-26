@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
+import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
@@ -82,8 +83,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Create a trail using the path's target and the given color.
      *
-     * @param pathId The path ID to use when getting the target
-     * @param colors The colors of the trail
+     * @param pathId the path ID to use when getting the target
+     * @param chapterId the chapter ID to use when getting the target
+     * @param colors the colors of the trail
      */
     public void createTrail(@NotNull String pathId, @NotNull String chapterId, @NotNull Color[] colors) {
         if (!this.pathData.containsKey(pathId)) return;
@@ -250,19 +252,23 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     }
 
     /**
-     * Get the NBT data for the given path ID.
+     * Get the NBT data for the given path and chapter IDs.
      *
-     * @param pathId The path ID
+     * @param pathId the path ID
+     * @param chapterId the chapter ID
+     * @return the chapter NBT data, never null
      */
     public @NotNull PathMarkerBlockEntity.ChapterNbtData getChapterData(String pathId, String chapterId) {
         return Objects.requireNonNull(this.getChapterData(pathId, chapterId, true));
     }
 
     /**
-     * Get the NBT data for the given path ID.
+     * Get the NBT data for the given path and chapter IDs.
      *
-     * @param pathId       The path ID
-     * @param createIfNull Whether to create an empty NBT set if no data is found
+     * @param pathId the path ID
+     * @param chapterId the chapter ID
+     * @param createIfNull whether to create an empty NBT set if no data is found
+     * @return the chapter NBT data, or null if not found and createIfNull is false
      */
     public @Nullable PathMarkerBlockEntity.ChapterNbtData getChapterData(String pathId, String chapterId, boolean createIfNull) {
         if (!this.pathData.containsKey(pathId) && createIfNull) {
@@ -291,6 +297,11 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
     public static class ChapterNbtData implements NbtEncodeable {
         /**
+         * Marker value used when optional chapter marker settings are unset.
+         */
+        public static final int UNSET = -1;
+
+        /**
          * The proximity message shown when the player enters this marker's activation range.
          */
         @NotNull
@@ -306,6 +317,12 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          */
         @Nullable
         private BlockPos target;
+
+        /**
+         * Absolute world position this marker asks the player to look at, or null when unset.
+         */
+        @Nullable
+        private BlockPos lookAt;
 
         /**
          * The chapter ID this NBT entry belongs to.
@@ -329,12 +346,39 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         private boolean displayAboveBlocks;
 
         /**
+         * Persisted ordinal of the configured weather type, or {@link #UNSET} when unset.
+         */
+        private int weather;
+
+        /**
+         * Configured time of day in daytime ticks, or {@link #UNSET} when unset.
+         */
+        private int timeOfDay;
+
+        /**
+         * Distance in blocks over which the configured time of day transitions.
+         */
+        private int timeTransitionRange;
+
+        /**
+         * Server-executed teleport target triggered when a player reaches this marker.
+         */
+        @NotNull
+        private String autoTeleportTarget;
+
+        /**
+         * Server-executed item grant triggered when a player reaches this marker.
+         */
+        @NotNull
+        private String giveItem;
+
+        /**
          * Packed proximity message animation values encoded with {@link space.ajcool.ardapaths.core.data.BitPacker}.
          */
         private long packedMessageData;
 
         private ChapterNbtData(NbtCompound nbt) {
-            this("", 0, null, "", false, false, true, 360727776182960136L);
+            this("", 0, null, null, "", false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", 360727776182960136L);
             this.applyNbt(nbt);
         }
 
@@ -346,19 +390,26 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         @Override
         public void applyNbt(NbtCompound nbt) {
             this.target = NbtEncodeable.getBlockPos(nbt, "target").orElse(null);
+            this.lookAt = NbtEncodeable.getBlockPos(nbt, "look_at").orElse(null);
             this.proximityMessage = NbtEncodeable.getStringOrEmpty(nbt, "proximity_message");
             this.activationRange = NbtEncodeable.getIntOrZero(nbt, "activation_range");
             this.chapterId = NbtEncodeable.getStringOrEmpty(nbt, "chapter");
             this.isChapterStart = NbtEncodeable.getBooleanOrDefault(nbt, "chapter_start", false);
             this.isDisplayChapterTitleOnTrail = NbtEncodeable.getBooleanOrDefault(nbt, "display_chapter_title_on_trail", false);
             this.displayAboveBlocks = NbtEncodeable.getBooleanOrDefault(nbt, "display_above_blocks", true);
+            this.weather = NbtEncodeable.getIntOrDefault(nbt, "weather", UNSET);
+            this.timeOfDay = NbtEncodeable.getIntOrDefault(nbt, "time_of_day", UNSET);
+            this.timeTransitionRange = NbtEncodeable.getIntOrDefault(nbt, "time_transition_range", TimeOfDay.DEFAULT_TRANSITION_RANGE);
+            this.autoTeleportTarget = NbtEncodeable.getStringOrEmpty(nbt, "auto_teleport_target");
+            this.giveItem = NbtEncodeable.getStringOrEmpty(nbt, "give_item");
             this.packedMessageData = NbtEncodeable.getLongOrDefault(nbt, "packed_message_data", 360727776182960136L);
         }
 
         /**
          * Create an NBT data object from an NBT compound.
          *
-         * @param nbt The NBT compound
+         * @param nbt the NBT compound to deserialize
+         * @return the chapter NBT data loaded from the compound
          */
         public static ChapterNbtData fromNbt(NbtCompound nbt) {
             return new ChapterNbtData(nbt);
@@ -366,9 +417,12 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
 
         /**
          * Create an empty NBT data object.
+         *
+         * @param chapterId chapter ID for the empty marker data
+         * @return empty marker data for the chapter
          */
         public static ChapterNbtData empty(String chapterId) {
-            return new ChapterNbtData("", 0, null, chapterId, false, false, true, 360727776182960136L);
+            return new ChapterNbtData("", 0, null, null, chapterId, false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", 360727776182960136L);
         }
 
         /**
@@ -379,15 +433,30 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         }
 
         /**
+         * Checks whether this marker has any selected-chapter action data.
+         *
+         * @return true when an auto teleport, item grant, or look-at target is configured
+         */
+        public boolean hasMiscData() {
+            return !autoTeleportTarget.isEmpty() || !giveItem.isEmpty() || lookAt != null;
+        }
+
+        /**
          * @return If the data object is "default" and contains no user defined data.
          */
         public boolean isEmpty() {
             return target == null
+                    && lookAt == null
                     && proximityMessage.isEmpty()
                     && activationRange == 0
                     && !isChapterStart
                     && !isDisplayChapterTitleOnTrail
                     && displayAboveBlocks
+                    && weather == UNSET
+                    && timeOfDay == UNSET
+                    && timeTransitionRange == TimeOfDay.DEFAULT_TRANSITION_RANGE
+                    && autoTeleportTarget.isEmpty()
+                    && giveItem.isEmpty()
                     && packedMessageData == 360727776182960136L; // Default packed value [5,100,5,2,8]
         }
 
@@ -401,12 +470,18 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             nbt = nbt == null ? new NbtCompound() : nbt;
 
             NbtEncodeable.putBlockPosIfPresent(nbt, "target", target);
+            NbtEncodeable.putBlockPosIfPresent(nbt, "look_at", lookAt);
             NbtEncodeable.putStringIfNotEmpty(nbt, "proximity_message", proximityMessage);
             NbtEncodeable.putIntIfNonZero(nbt, "activation_range", activationRange);
             NbtEncodeable.putStringIfNotEmpty(nbt, "chapter", chapterId);
             NbtEncodeable.putBooleanIfTrue(nbt, "chapter_start", isChapterStart);
             NbtEncodeable.putBooleanIfTrue(nbt, "display_chapter_title_on_trail", isDisplayChapterTitleOnTrail);
             NbtEncodeable.putBooleanIfFalse(nbt, "display_above_blocks", displayAboveBlocks);
+            NbtEncodeable.putIntIfNonDefault(nbt, "weather", weather, UNSET);
+            NbtEncodeable.putIntIfNonDefault(nbt, "time_of_day", timeOfDay, UNSET);
+            NbtEncodeable.putIntIfNonDefault(nbt, "time_transition_range", timeTransitionRange, TimeOfDay.DEFAULT_TRANSITION_RANGE);
+            NbtEncodeable.putStringIfNotEmpty(nbt, "auto_teleport_target", autoTeleportTarget);
+            NbtEncodeable.putStringIfNotEmpty(nbt, "give_item", giveItem);
             NbtEncodeable.putLongIfNonDefault(nbt, "packed_message_data", packedMessageData, 360727776182960136L);
 
             return nbt;

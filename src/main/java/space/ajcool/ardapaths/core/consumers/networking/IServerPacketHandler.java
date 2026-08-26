@@ -25,6 +25,12 @@ public interface IServerPacketHandler<T extends IPacket> extends IPacketHandler 
 
     /**
      * Handle an incoming packet on the server.
+     *
+     * @param server the Minecraft server instance
+     * @param player the player sending the packet
+     * @param handler the server play network handler
+     * @param buf the packet byte buffer
+     * @param sender the packet sender
      */
     void handle(MinecraftServer server,
                 ServerPlayerEntity player,

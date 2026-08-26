@@ -10,6 +10,7 @@ import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
+import space.ajcool.ardapaths.screens.layout.ScreenLayout;
 import space.ajcool.ardapaths.screens.widgets.JournalListEntry;
 import space.ajcool.ardapaths.screens.widgets.JournalListWidget;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
@@ -77,24 +78,24 @@ public class JournalScreen extends Screen {
         int maxListHeight = height - 120;
         int listHeight = Math.min(totalContentHeight + 8, maxListHeight);
 
-        // Centre vertically
-        int listTop = (height - listHeight) / 2 + 20;
+        int titleY = 0;
+        int listTop = titleY + 25;
         int listBottom = listTop + listHeight;
+        int verticalOffset = ScreenLayout.verticalCenterOffset(titleY, listBottom, height);
 
-        // Title above list
-        int titleY = listTop - 25;
-        this.addDrawableChild(TextWidget.create()
+        TextWidget titleWidget = TextWidget.create()
                         .setX(center - 75)
-                        .setY(titleY)
+                        .setY(titleY + verticalOffset)
                         .setWidth(150)
                         .setHeight(20)
                         .setMessage(Text.literal(Text.translatable("ardapaths.client.journal.screen.title").getString()))
-                        .build()
-        );
+                        .build();
+        this.addDrawableChild(titleWidget);
 
         JournalListWidget listWidget = new JournalListWidget(
                 this.client, totalUiWidth, listHeight, listTop, listBottom, 32
         );
+        listWidget.offsetY(verticalOffset);
 
         // Centre horizontally
         listWidget.setLeftPos((width - totalUiWidth) / 2);

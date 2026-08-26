@@ -11,6 +11,11 @@ import net.minecraft.network.PacketByteBuf;
 public interface IClientPacketHandler {
     /**
      * Handle an incoming packet on the client.
+     *
+     * @param client the Minecraft client instance
+     * @param handler the client play network handler
+     * @param buf the packet byte buffer
+     * @param sender the packet sender
      */
     void handle(MinecraftClient client, ClientPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender);
 }

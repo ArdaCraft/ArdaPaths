@@ -30,8 +30,10 @@ public class ModBlocks {
     /**
      * Register a block and its respective item.
      *
-     * @param id    The block's ID
-     * @param block The block to register
+     * @param <T> the type of block
+     * @param id the block's ID
+     * @param block the block to register
+     * @return the registered block
      */
     @SuppressWarnings("SameParameterValue")
     private static <T extends Block> T register(final String id, final T block) {

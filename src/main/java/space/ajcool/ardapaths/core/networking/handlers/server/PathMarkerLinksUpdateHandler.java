@@ -1,18 +1,20 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
+import space.ajcool.ardapaths.core.markers.MarkerResolver;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerLinksUpdatePacket;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Handles updates to path-chapter links stored in a marker's NBT data.
@@ -39,14 +41,22 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
     {
-        BlockPos blockPos = packet.position();
-        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
+        BackupJobRunner.submitMarkerWork(server, gate -> {
+            ServerWorld world = gate.call(player::getServerWorld);
+            String dimensionId = world.getRegistryKey().getValue().toString();
+            MarkerResolver resolver = new MarkerResolver(world, dimensionId);
+            BlockPos blockPos = packet.position();
 
-        if (blockEntity instanceof PathMarkerBlockEntity marker)
-        {
-            marker.applyNbt(syncPathsFromIncoming(marker.toNbt(), packet.data()));
-            marker.markUpdated();
-        }
+            gate.call(() -> {
+                Optional<MarkerResolver.ResolvedMarker> resolved = resolver.resolve(blockPos);
+                resolved.ifPresent(marker -> {
+                    marker.liveMarker().applyNbt(syncPathsFromIncoming(marker.liveMarker().toNbt(), packet.data()));
+                    marker.liveMarker().markUpdated();
+                });
+                return null;
+            });
+            return null;
+        });
     }
 
     /**

@@ -1,6 +1,7 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -16,6 +17,7 @@ import space.ajcool.ardapaths.ArdaPaths;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -26,6 +28,7 @@ import java.util.function.Function;
  * @param <T> the type of request packet
  * @param <U> the type of response packet
  */
+@Slf4j(topic = "ardapaths")
 public abstract class RespondablePacketHandler<T extends IPacket, U extends IPacket> extends PacketHandler implements IServerPacketHandler<T>, IClientPacketHandler {
     /**
      * Maximum time a response callback can remain pending before it is evicted.
@@ -115,12 +118,43 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
         UUID requestId = buf.readUuid();
         T packet = reader.apply(buf);
         server.execute(() -> {
-            U responsePacket = handle(server, player, handler, packet, sender);
-            PacketByteBuf responseBuf = PacketByteBufs.create().writeUuid(requestId);
-            PacketByteBuf responsePacketBuf = responsePacket.build();
-            responseBuf.writeBytes(responsePacketBuf);
-            sender.sendPacket(responseChannelId, responseBuf);
+            CompletableFuture<U> responseFuture;
+            try {
+                responseFuture = handleAsync(server, player, handler, packet, sender);
+            } catch (RuntimeException exception) {
+                log.warn("Failed to handle ArdaPaths request on {}", getChannelId(), exception);
+                responseFuture = CompletableFuture.completedFuture(errorResponse());
+            }
+
+            responseFuture.whenComplete((responsePacket, throwable) -> {
+                U packetToSend = responsePacket;
+                if (throwable != null) {
+                    log.warn("Failed to complete ArdaPaths request on {}", getChannelId(), throwable);
+                    packetToSend = errorResponse();
+                }
+
+                U finalPacketToSend = packetToSend;
+                if (finalPacketToSend == null) {
+                    return;
+                }
+
+                server.execute(() -> {
+                    PacketByteBuf responseBuf = PacketByteBufs.create().writeUuid(requestId);
+                    PacketByteBuf responsePacketBuf = finalPacketToSend.build();
+                    responseBuf.writeBytes(responsePacketBuf);
+                    sender.sendPacket(responseChannelId, responseBuf);
+                });
+            });
         });
+    }
+
+    /**
+     * Creates a response packet for exceptional async failures.
+     *
+     * @return error response packet, or null when the handler cannot represent an error
+     */
+    protected U errorResponse() {
+        return null;
     }
 
     /**
@@ -134,7 +168,24 @@ public abstract class RespondablePacketHandler<T extends IPacket, U extends IPac
      * @param sender  the packet sender
      * @return the response packet to send back to the client
      */
-    public abstract U handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, T packet, PacketSender sender);
+    public U handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, T packet, PacketSender sender) {
+        throw new UnsupportedOperationException("Implement handle for synchronous replies, or override handleAsync.");
+    }
+
+    /**
+     * Processes the request packet and returns a future response packet.
+     * Override this for requests that need asynchronous work before replying.
+     *
+     * @param server  the Minecraft server
+     * @param player  the player who sent the request
+     * @param handler the network handler
+     * @param packet  the deserialized request packet
+     * @param sender  the packet sender
+     * @return future response packet to send back to the client
+     */
+    public CompletableFuture<U> handleAsync(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, T packet, PacketSender sender) {
+        return CompletableFuture.completedFuture(handle(server, player, handler, packet, sender));
+    }
 
     /**
      * Internal handler that processes a response packet on the client side.

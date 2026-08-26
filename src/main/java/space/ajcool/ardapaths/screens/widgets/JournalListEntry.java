@@ -16,13 +16,21 @@ import java.util.List;
  */
 public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<JournalListEntry> {
 
+    /** Color of the journal entry text */
     private final int color;
+    /** Heading text displayed for this entry */
     private final Text heading;
+    /** Description text displayed for this entry */
     private final Text description;
+    /** Button widget for teleporting to the entry location */
     private final ButtonWidget teleportButton;
+    /** Minecraft client instance */
     private final MinecraftClient client;
+    /** Wrapped description text lines */
     private List<OrderedText> wrappedDescription;
+    /** Cached width value to avoid unnecessary recalculation */
     private int cachedWidth = -1;
+    /** Calculated height of the entry */
     private int calculatedHeight;
 
     /**

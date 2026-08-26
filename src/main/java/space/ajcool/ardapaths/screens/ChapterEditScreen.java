@@ -16,6 +16,7 @@ import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.screens.layout.ScreenLayout;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
@@ -32,18 +33,31 @@ import java.util.List;
 @Slf4j(topic = "ardapaths")
 public class ChapterEditScreen extends Screen
 {
+    /** Parent screen to return to */
     private final Screen parent;
+    /** Whether this screen is creating a new chapter */
     private boolean creatingNew;
+    /** Dropdown widget for selecting chapters */
     private DropdownWidget<ChapterData> chapterDropdown;
+    /** Input widget for chapter ID */
     private InputBoxWidget idInput;
+    /** Input widget for chapter name */
     private InputBoxWidget nameInput;
+    /** Input widget for chapter date */
     private InputBoxWidget dateInput;
+    /** Input widget for chapter index */
     private InputBoxWidget indexInput;
+    /** Input widget for chapter warp location */
     private InputBoxWidget warpInput;
+    /** Input widget for primary path color */
     private InputBoxWidget pathColorPrimary;
+    /** Input widget for secondary path color */
     private InputBoxWidget pathColorSecondary;
+    /** Input widget for tertiary path color */
     private InputBoxWidget pathColorTertiary;
+    /** Button widget for applying color changes */
     private ButtonWidget applyColorChangesButton;
+    /** Dropdown widget for selecting paths */
     private DropdownWidget<PathData> pathDropdown;
 
     protected ChapterEditScreen(Screen parent)
@@ -57,7 +71,7 @@ public class ChapterEditScreen extends Screen
     public void init()
     {
         int centerX = this.width / 2;
-        int y = 20;
+        int y = 0;
 
         this.addDrawableChild(TextWidget.create()
                         .setX(centerX - 70)
@@ -84,6 +98,15 @@ public class ChapterEditScreen extends Screen
         );
 
         var defaultTextColor = new Color(255, 255, 255);
+
+        this.addDrawableChild(TextWidget.create()
+                .setX(centerX - 139)
+                .setY(y + 25)
+                .setWidth(140)
+                .setHeight(17)
+                .setMessage(Text.translatable("ardapaths.client.marker.configuration.screens.path_colors"))
+                .build()
+        );
 
         pathColorPrimary = buildColorInputBox(centerX - 140, y += 42, pathDropdown.getSelected() != null ? pathDropdown.getSelected().getPrimaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_primary_color");
         pathColorSecondary = buildColorInputBox(centerX - 70, y, pathDropdown.getSelected() != null ? pathDropdown.getSelected().getSecondaryColor() : defaultTextColor, "ardapaths.client.marker.configuration.screens.path_secondary_color");
@@ -291,6 +314,8 @@ public class ChapterEditScreen extends Screen
             indexInput.setText(String.valueOf(chapter.getIndex()));
             warpInput.setText(chapter.getWarp());
         });
+
+        ScreenLayout.centerVertically(this);
     }
 
     private void saveColorsToPath() {
@@ -419,11 +444,6 @@ public class ChapterEditScreen extends Screen
     {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
-
-        int centerX = this.width / 2;
-        int y = 85;
-
-        context.drawTextWithShadow(this.textRenderer, Text.translatable("ardapaths.client.marker.configuration.screens.path_colors"), centerX - 139, y, 0xFFFFFF);
     }
 
     @Override

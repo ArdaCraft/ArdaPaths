@@ -10,6 +10,7 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerLinksUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
+import space.ajcool.ardapaths.screens.layout.ScreenLayout;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.*;
@@ -21,9 +22,17 @@ import java.util.function.Supplier;
  */
 public class MarkerLinksEditScreen extends Screen {
 
+    /** The marker block entity being edited. */
     private final PathMarkerBlockEntity MARKER;
+    /** The original set of path/chapter associations before any changes. */
     private final Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData;
 
+    /**
+     * Initializes a screen for editing marker path and chapter links.
+     *
+     * @param marker the marker block entity to edit
+     * @param originalPathAndChapterData the original path/chapter associations to track for changes
+     */
     protected MarkerLinksEditScreen(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData)
     {
         super(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit"));
@@ -31,11 +40,14 @@ public class MarkerLinksEditScreen extends Screen {
         this.originalPathAndChapterData = originalPathAndChapterData;
     }
 
+    /**
+     * Initializes and lays out all UI elements displaying the marker's linked paths and chapters.
+     */
     @Override
     protected void init() {
 
         int centerX = this.width / 2;
-        int y = 20;
+        int y = 0;
 
         this.addDrawableChild(TextWidget.create()
                         .setX(centerX - 70)
@@ -109,7 +121,7 @@ public class MarkerLinksEditScreen extends Screen {
                                         .setX(pathTitlePositionX)
                                         .setY(pathTitlePositionY)
                                         .setWidth(140)
-                                        .setY(20)
+                                        .setHeight(20)
                                         .setMessage(pathName)
                                         .build());
                     }
@@ -122,13 +134,21 @@ public class MarkerLinksEditScreen extends Screen {
                             .setX(centerX - 70)
                             .setY(y+30)
                             .setWidth(140)
-                            .setY(20)
+                            .setHeight(20)
                             .setMessage(Text.translatable("ardapaths.client.chapter.configuration.screens.marker.links.no_linked_data"))
                             .build()
             );
         }
+
+        ScreenLayout.centerVertically(this);
     }
 
+    /**
+     * Removes the association between the marker and a specific path/chapter combination.
+     *
+     * @param pathEntryKey the ID of the path to unlink
+     * @param chapter the chapter data to unlink
+     */
     private void unlinkMarkerToPathAndChapter(String pathEntryKey, ChapterData chapter) {
 
         MARKER.getPathData().get(pathEntryKey).remove(chapter.getId());
@@ -144,12 +164,23 @@ public class MarkerLinksEditScreen extends Screen {
         MinecraftClient.getInstance().setScreen(new MarkerLinksEditScreen(this.MARKER, originalPathAndChapterData));
     }
 
+    /**
+     * Renders the screen background and all UI elements.
+     *
+     * @param context the draw context for rendering
+     * @param mouseX the current mouse x coordinate
+     * @param mouseY the current mouse y coordinate
+     * @param delta the partial tick delta for animation
+     */
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context);
         super.render(context, mouseX, mouseY, delta);
     }
 
+    /**
+     * Closes this screen and returns to the marker edit screen.
+     */
     @Override
     public void close()
     {

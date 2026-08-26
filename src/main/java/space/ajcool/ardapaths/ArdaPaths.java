@@ -3,6 +3,7 @@ package space.ajcool.ardapaths;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -12,6 +13,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.TypedActionResult;
 import space.ajcool.ardapaths.api.ArdaPathsApi;
 import space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint;
+import space.ajcool.ardapaths.commands.ArdaPathsCommand;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.api.ArdaPathsApiImpl;
@@ -80,6 +82,7 @@ public class ArdaPaths implements ModInitializer {
         ModParticles.init();
         ModSounds.init();
         PacketRegistry.init();
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> ArdaPathsCommand.register(dispatcher));
 
         ArdaPathsApiImpl.initialize();
 

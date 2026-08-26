@@ -35,8 +35,10 @@ public class ModParticles {
     /**
      * Register a particle type.
      *
-     * @param id   The particle's ID
-     * @param type The particle type to register
+     * @param <T> the type of particle type
+     * @param id the particle's ID
+     * @param type the particle type to register
+     * @return the registered particle type
      */
     @SuppressWarnings("SameParameterValue")
     private static <T extends ParticleType<?>> T register(final String id, final T type) {

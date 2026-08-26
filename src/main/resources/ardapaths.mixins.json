@@ -3,6 +3,9 @@
   "package": "space.ajcool.ardapaths.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "RegionBasedStorageAccessor",
+    "StorageIoWorkerAccessor",
+    "VersionedChunkStorageAccessor"
   ],
   "client": [
   ],

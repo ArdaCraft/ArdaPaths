@@ -35,6 +35,7 @@ public interface NbtEncodeable {
     /**
      * Create an empty object.
      *
+     * @param <T> the type of encodeable object
      * @return an empty encodeable placeholder
      */
     @SuppressWarnings("unused")
@@ -115,6 +116,18 @@ public interface NbtEncodeable {
     }
 
     /**
+     * Reads an integer value with a supplied default.
+     *
+     * @param nbt          the parent NBT compound
+     * @param key          the key to read
+     * @param defaultValue the value to return when the key is absent
+     * @return the stored integer, or the supplied default when absent
+     */
+    static int getIntOrDefault(NbtCompound nbt, String key, int defaultValue) {
+        return nbt.contains(key, INT_TYPE) ? nbt.getInt(key) : defaultValue;
+    }
+
+    /**
      * Reads a boolean value with a supplied default.
      *
      * @param nbt          the parent NBT compound
@@ -165,6 +178,20 @@ public interface NbtEncodeable {
     }
 
     /**
+     * Writes an integer value when it differs from a default.
+     *
+     * @param nbt          the parent NBT compound
+     * @param key          the key to write
+     * @param value        the integer value to persist
+     * @param defaultValue the default value that should not be persisted
+     */
+    static void putIntIfNonDefault(NbtCompound nbt, String key, int value, int defaultValue) {
+        if (value != defaultValue) {
+            nbt.putInt(key, value);
+        }
+    }
+
+    /**
      * Writes a true boolean value.
      *
      * @param nbt   the parent NBT compound
@@ -191,7 +218,7 @@ public interface NbtEncodeable {
     }
 
     /**
-     * Writes a long value when it differs from a default and is not zero.
+     * Writes a long value when it differs from a default.
      *
      * @param nbt          the parent NBT compound
      * @param key          the key to write
@@ -199,7 +226,7 @@ public interface NbtEncodeable {
      * @param defaultValue the default value that should not be persisted
      */
     static void putLongIfNonDefault(NbtCompound nbt, String key, long value, long defaultValue) {
-        if (value != defaultValue && value != 0) {
+        if (value != defaultValue) {
             nbt.putLong(key, value);
         }
     }
@@ -223,7 +250,8 @@ public interface NbtEncodeable {
     /**
      * Convert an object to an NBT compound.
      *
-     * @return The NBT compound
+     * @param nbt an existing NBT compound to update, or null to create a new one
+     * @return the NBT compound representation of this object
      */
     NbtCompound toNbt(@Nullable NbtCompound nbt);
 }

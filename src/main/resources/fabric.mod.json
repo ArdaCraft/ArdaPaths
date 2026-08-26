@@ -41,6 +41,8 @@
   "suggests": {
     "arda-regions": "*",
     "ardamaps": "*",
+    "daylightchangerstruggle": "*",
+    "weatherchanger": "*",
     "huskhomes": "*",
     "luckperms": "*"
   },

@@ -46,10 +46,22 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
     }
 
     /**
-     *  Add a journal entry to the list.
+     * Add a journal entry to the list.
+     *
+     * @param entry the journal entry to add
      */
     public void addJournalEntry(JournalListEntry entry) {
         this.addEntry(entry);
+    }
+
+    /**
+     * Moves the list bounds vertically while preserving its height.
+     *
+     * @param offset the number of pixels to add to the list's top and bottom bounds
+     */
+    public void offsetY(int offset) {
+        this.top += offset;
+        this.bottom += offset;
     }
 
     /**
@@ -96,6 +108,7 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * @param y The y position
      * @return  The entry at the given position, or null if none.
      */
+    @SuppressWarnings("unused")
     private JournalListEntry getJournalEntryAtPosition(double x, double y) {
 
         int currentY = this.top + 4 - (int) this.getScrollAmount();

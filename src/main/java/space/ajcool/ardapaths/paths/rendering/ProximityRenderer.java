@@ -26,18 +26,16 @@ import java.util.Queue;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ProximityRenderer {
 
+    /** Singleton instance of the proximity renderer */
     private static final ProximityRenderer INSTANCE = new ProximityRenderer();
 
-    /**
-     * Queue of renderables waiting to be displayed
-     */
+    /** Queue of renderables waiting to be displayed */
     private final Queue<TextRenderable> renderQueue = new ArrayDeque<>();
 
-    /**
-     * The renderable currently being displayed, or null if none
-     */
+    /** The renderable currently being displayed, or null if none */
     private AnimatedMessage currentDisplayedMessage;
 
+    /** The title currently being displayed, or null if none */
     private AnimatedTitle currentDisplayedTitle;
 
     public static void render(DrawContext context, float delta) {
@@ -74,50 +72,6 @@ public class ProximityRenderer {
                 && INSTANCE.currentDisplayedTitle.equals(newTitle)) return;
 
         INSTANCE.addToQueue(newTitle);
-    }
-
-    /**
-     * Checks whether a message is already displayed or waiting in the render queue.
-     *
-     * @param message the message text to check
-     * @return true when the message is already active or queued
-     */
-    public static boolean isShowingOrQueuedMessage(String message) {
-        if (INSTANCE.currentDisplayedMessage != null
-                && !INSTANCE.currentDisplayedMessage.isFinished()
-                && INSTANCE.currentDisplayedMessage.getMessage().equals(message)) {
-            return true;
-        }
-
-        for (TextRenderable renderable : INSTANCE.renderQueue) {
-            if (renderable instanceof AnimatedMessage animatedMessage && animatedMessage.getMessage().equals(message)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks whether a title is already displayed or waiting in the render queue.
-     *
-     * @param title the title text to check
-     * @return true when the title is already active or queued
-     */
-    public static boolean isShowingOrQueuedTitle(String title) {
-        if (INSTANCE.currentDisplayedTitle != null
-                && !INSTANCE.currentDisplayedTitle.isFinished()
-                && INSTANCE.currentDisplayedTitle.getTitle().equals(title)) {
-            return true;
-        }
-
-        for (TextRenderable renderable : INSTANCE.renderQueue) {
-            if (renderable instanceof AnimatedTitle animatedTitle && animatedTitle.getTitle().equals(title)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -165,6 +119,8 @@ public class ProximityRenderer {
      * If the player is holding the Path Revealer item, its stack count is updated
      * to reflect the number of messages currently queued for display, clamped
      * between 1 and 64.
+     *
+     * @param context the drawing context for rendering
      */
     private static void updateVisualMessageStack(DrawContext context){
 

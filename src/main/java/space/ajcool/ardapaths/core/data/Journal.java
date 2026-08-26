@@ -73,7 +73,9 @@ public class Journal {
      * Enum representing the type of journal entry.
      */
     public enum EntryType {
+        /** Entry type for proximity messages */
         PROXIMITY_MESSAGE,
+        /** Entry type for chapter starts */
         CHAPTER_START,
     }
 

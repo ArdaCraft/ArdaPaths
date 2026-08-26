@@ -2,15 +2,20 @@ package space.ajcool.ardapaths;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Item;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
@@ -24,6 +29,10 @@ import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.paths.movement.AutoWalker;
+import space.ajcool.ardapaths.paths.movement.FocusController;
+import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
+import space.ajcool.ardapaths.paths.rendering.FocusPromptRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
@@ -57,6 +66,16 @@ public class ArdaPathsClient implements ClientModInitializer {
     public static LastVisitedTrailNodeData lastVisitedTrailNodeData;
 
     /**
+     * Keybinding used to toggle automatic trail walking.
+     */
+    public static KeyBinding AUTO_WALK_KEY;
+
+    /**
+     * Keybinding used to focus the view on an authored look-at target, or recentre auto-walk.
+     */
+    public static KeyBinding FOCUS_KEY;
+
+    /**
      * Fabric client mod initialization entry point.
      * Initializes client-side systems including UI rendering, event listeners, and particle effects.
      */
@@ -71,10 +90,31 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ModParticles.initClient();
         registerPathfinderColorProvider();
+        AUTO_WALK_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.ardapaths.auto_walk",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_NUM_LOCK,
+                "key.category.ardapaths"
+        ));
+        FOCUS_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.ardapaths.focus",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_LEFT_ALT,
+                "key.category.ardapaths"
+        ));
 
         HudRenderCallback.EVENT.register(ProximityRenderer::render);
+        HudRenderCallback.EVENT.register(FocusPromptRenderer::render);
+        WorldRenderEvents.START.register(context ->
+        {
+            FocusController.renderCameraFrame();
+            AutoWalker.renderCameraFrame();
+            EnvironmentController.renderFrame(context.tickDelta());
+        });
 
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
+
+        ClientTickEvents.START_CLIENT_TICK.register(AutoWalker::tick);
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
@@ -87,7 +127,9 @@ public class ArdaPathsClient implements ClientModInitializer {
             RespondablePacketHandler.clearAllResponseConsumers();
             PermissionHelper.resetClientCache();
             Paths.clearTickingMarkers();
+            EnvironmentController.reset();
             TrailRenderer.clearTrails();
+            FocusController.reset();
         });
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
@@ -109,6 +151,12 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client ->
         {
+            while (AUTO_WALK_KEY.wasPressed()) {
+                AutoWalker.toggle();
+            }
+
+            FocusController.setHeld(FOCUS_KEY.isPressed());
+
             if (callingForTeleport && MinecraftClient.getInstance().player != null) {
                 String currentSelectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId() != null ? ArdaPathsClient.CONFIG.getCurrentChapterId() : "";
 

@@ -2,15 +2,18 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
+import space.ajcool.ardapaths.core.markers.MarkerResolver;
 import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
+
+import java.util.Optional;
 
 /**
  * Handles updates to a path marker block's NBT data from the client.
@@ -37,15 +40,23 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
     @Override
     protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerUpdatePacket packet, PacketSender sender)
     {
-        BlockPos blockPos = packet.position();
-        NbtCompound nbt = packet.data();
-        log.info("Received NBT : [{}]", nbt.toString());
-        BlockEntity blockEntity = player.getWorld().getBlockEntity(blockPos);
+        log.debug("Received marker NBT update for {}", packet.position());
+        BackupJobRunner.submitMarkerWork(server, gate -> {
+            ServerWorld world = gate.call(player::getServerWorld);
+            String dimensionId = world.getRegistryKey().getValue().toString();
+            MarkerResolver resolver = new MarkerResolver(world, dimensionId);
+            BlockPos blockPos = packet.position();
+            NbtCompound nbt = packet.data();
 
-        if (blockEntity instanceof PathMarkerBlockEntity marker)
-        {
-            marker.readNbt(nbt);
-            marker.markUpdated();
-        }
+            gate.call(() -> {
+                Optional<MarkerResolver.ResolvedMarker> resolved = resolver.resolve(blockPos);
+                resolved.ifPresent(marker -> {
+                    marker.liveMarker().readNbt(nbt);
+                    marker.liveMarker().markUpdated();
+                });
+                return null;
+            });
+            return null;
+        });
     }
 }

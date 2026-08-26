@@ -44,6 +44,7 @@ public class Color {
      * @param r Red
      * @param g Green
      * @param b Blue
+     * @return a new Color instance
      */
     public static Color fromRgb(int r, int g, int b) {
         return new Color(r, g, b);
@@ -53,6 +54,7 @@ public class Color {
      * Create a colour from a hex value.
      *
      * @param hex The hex value
+     * @return a new Color instance
      */
     public static Color fromHex(int hex) {
         return new Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
@@ -62,6 +64,7 @@ public class Color {
      * Create a colour from a hex string.
      *
      * @param hex The hex string
+     * @return a new Color instance
      */
     public static Color fromHexString(String hex) {
 
@@ -82,6 +85,8 @@ public class Color {
 
     /**
      * Convert the colour to a hex value.
+     *
+     * @return the hex representation as an integer
      */
     public int asHex() {
         return (r << 16) | (g << 8) | b;
@@ -89,6 +94,8 @@ public class Color {
 
     /**
      * Convert the colour to a hex string value.
+     *
+     * @return the hex representation as a string (e.g., "#RRGGBB")
      */
     public String asHexString() {
         return String.format("#%02X%02X%02X", r, g, b);

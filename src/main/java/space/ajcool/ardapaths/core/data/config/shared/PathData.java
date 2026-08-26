@@ -121,7 +121,8 @@ public class PathData {
     /**
      * Sets a chapter in this path.
      *
-     * @param chapter The chapter data
+     * @param chapter the chapter data to set
+     * @return this PathData instance for chaining
      */
     public PathData setChapter(ChapterData chapter) {
         chapters.put(chapter.getId(), chapter);
@@ -131,7 +132,8 @@ public class PathData {
     /**
      * Removes the chapter with the given ID.
      *
-     * @param id The ID of the chapter
+     * @param id the ID of the chapter to remove
+     * @return this PathData instance for chaining
      */
     @SuppressWarnings("UnusedReturnValue")
     public PathData removeChapter(String id) {

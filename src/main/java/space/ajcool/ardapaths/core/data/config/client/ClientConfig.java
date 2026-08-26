@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.paths.movement.AutoWalker;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
 
@@ -49,15 +50,25 @@ public class ClientConfig {
     private boolean trailWaypoints;
 
     /**
+     * Whether followed trail markers may dynamically change time and weather.
+     */
+    @Setter
+    @SerializedName("dynamic_environment")
+    private boolean dynamicEnvironment;
+
+    /**
      * Speed multiplier for proximity message animation speed (0.0-1.0+).
-     * -- SETTER --
-     * Defines the factor at which the proximity messages are displayed
-     *
-     * @param proximityTextSpeedMultiplier the factor to set
      */
     @Setter
     @SerializedName("proximity_text_speed_multiplier")
     private Double proximityTextSpeedMultiplier;
+
+    /**
+     * Speed factor used by client-side auto-walk movement.
+     */
+    @Setter
+    @SerializedName("auto_walk_speed_factor")
+    private Double autoWalkSpeedFactor;
 
     /**
      * Duration in milliseconds to display chapter titles.
@@ -93,10 +104,23 @@ public class ClientConfig {
         return trailWaypoints;
     }
 
+    /**
+     * @return True if trail markers may change time and weather when matching integrations are available, false otherwise
+     */
+    public boolean useDynamicEnvironment() {
+        return dynamicEnvironment;
+    }
+
+    /**
+     * @return True if chapter titles should be displayed, otherwise false
+     */
     public boolean showChapterTitles() {
         return chapterTitles;
     }
 
+    /**
+     * @return the chapter title display duration in milliseconds
+     */
     public Float getChapterTitleDisplaySpeed() {
         return chapterTitleDisplaySpeed != null ? chapterTitleDisplaySpeed : AnimatedTitle.DEFAULT_CHAPTER_TITLE_DISPLAY_SPEED;
     }
@@ -106,6 +130,13 @@ public class ClientConfig {
      */
     public Double getProximityTextSpeedMultiplier() {
         return proximityTextSpeedMultiplier != null ? proximityTextSpeedMultiplier : AnimatedMessage.DEFAULT_PROXIMITY_TEXT_SPEED_MULTIPLIER;
+    }
+
+    /**
+     * @return the factor applied to auto-walk movement speed
+     */
+    public Double getAutoWalkSpeedFactor() {
+        return autoWalkSpeedFactor != null ? autoWalkSpeedFactor : AutoWalker.DEFAULT_AUTO_WALK_SPEED_FACTOR;
     }
 
     /**

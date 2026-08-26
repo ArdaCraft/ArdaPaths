@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import space.ajcool.ardapaths.core.data.WarpTarget;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
@@ -30,7 +31,10 @@ public class ServerConfig {
     private final Map<String, PositionData> chapterStarts = new HashMap<>();
 
     /**
-     * @return The list of paths available on this server
+     * Get a path by its ID.
+     *
+     * @param id the path ID to look up
+     * @return the path data, or null if not found
      */
     public @Nullable PathData getPath(String id) {
         for (PathData path : paths) {
@@ -56,6 +60,15 @@ public class ServerConfig {
     }
 
     /**
+     * Gets a snapshot of all explicit chapter start positions.
+     *
+     * @return immutable map of {@code pathId:chapterId} keys to positions
+     */
+    public Map<String, PositionData> getChapterStarts() {
+        return Collections.unmodifiableMap(chapterStarts);
+    }
+
+    /**
      * @param pathId    The ID of the path
      * @param chapterId The ID of the chapter
      * @return The chapter start position for the given path
@@ -77,10 +90,7 @@ public class ServerConfig {
 
                 if (warpData != null && !warpData.isBlank()) {
 
-                    // Check if the warp is coordinates
-                    boolean isCoordinates = warpData.matches("^[+-]?\\d+\\s+[+-]?\\d+\\s+[+-]?\\d+$");
-
-                    if (!isCoordinates) {
+                    if (!WarpTarget.isCoordinates(warpData)) {
                         startWarp = Optional.of(warpData.trim());
                     }
                 }
@@ -112,13 +122,7 @@ public class ServerConfig {
 
                 if (warpData != null && !warpData.isBlank()) {
 
-                    // Check if the warp is coordinates
-                    boolean isCoordinates = warpData.matches("^[+-]?\\d+\\s+[+-]?\\d+\\s+[+-]?\\d+$");
-
-                    if (isCoordinates) {
-                        String[] coords = warpData.trim().split("\\s+");
-                        startPosition = new BlockPos(Integer.parseInt(coords[0]), Integer.parseInt(coords[1]), Integer.parseInt(coords[2]));
-                    }
+                    startPosition = WarpTarget.parseCoordinates(warpData);
                 }
             }
         }

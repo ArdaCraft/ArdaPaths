@@ -16,12 +16,15 @@ import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.integration.Waypoints;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
+import space.ajcool.ardapaths.core.networking.packets.server.MarkerActionTriggerPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.entities.ModBlockEntities;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.mc.sounds.TrailSoundInstance;
 import space.ajcool.ardapaths.paths.Paths;
+import space.ajcool.ardapaths.paths.movement.FocusController;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTrail;
 
@@ -36,6 +39,11 @@ public class TrailRenderer {
      * Extra distance, in blocks, the player must move beyond a marker's activation range before its text can play again.
      */
     private static final double PROXIMITY_EXIT_BUFFER = 2.0;
+
+    /**
+     * Minimum distance, in blocks, at which marker actions may trigger even without proximity text range.
+     */
+    private static final int MIN_ACTION_TRIGGER_RANGE = 3;
 
     /**
      * Maximum squared distance at which revealer-mode trail sound remains relevant.
@@ -76,6 +84,11 @@ public class TrailRenderer {
      * Markers whose proximity text or chapter title has already played for the current visit.
      */
     private static final Map<BlockPos, ProximityActivation> proximityActivations = new HashMap<>();
+
+    /**
+     * Markers whose server-executed actions have already triggered for the current visit.
+     */
+    private static final Map<BlockPos, ProximityActivation> markerActionActivations = new HashMap<>();
 
     /**
      * Sound instance for the currently audible trail rendering effect.
@@ -170,8 +183,13 @@ public class TrailRenderer {
         ClientPlayerEntity player = Client.player();
         if (player == null) return;
 
+        AnimatedTrail.updatePlayerSpeed(player);
+
         PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
-        if (selectedPath == null) return;
+        if (selectedPath == null) {
+            FocusController.setCandidate(null);
+            return;
+        }
 
         boolean isHoldingRevealer = player.isHolding(ModItems.PATH_REVEALER);
         boolean isHoldingMarker = player.isHolding(ModItems.PATH_MARKER);
@@ -180,8 +198,10 @@ public class TrailRenderer {
         if (!isHoldingRevealer && !isHoldingMarker) {
 
             pruneProximityActivations(player.getBlockPos());
+            EnvironmentController.releaseControl();
             clearTrails();
             ProximityRenderer.clear();
+            FocusController.setCandidate(null);
 
         // Else, render trails based on the held item
         } else {
@@ -190,10 +210,13 @@ public class TrailRenderer {
             Color[] currentPathColors = selectedPath.getColors();
             String currentChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
 
-            if (isHoldingMarker)
+            if (isHoldingMarker) {
+                EnvironmentController.releaseControl();
+                FocusController.setCandidate(null);
                 renderPathMarkerMode(currentPathId, currentChapterId, currentPathColors);
-            else
-                renderPathRevealerMode(player, currentPathId, currentChapterId, currentPathColors);
+            } else {
+                renderPathRevealerMode(level, player, currentPathId, currentChapterId, currentPathColors);
+            }
 
             renderTrails(level, player, selectedPath, currentChapterId, isHoldingRevealer);
         }
@@ -220,6 +243,8 @@ public class TrailRenderer {
         double nearestZ = 0.0D;
         boolean hasSoundTarget = false;
         List<PathMarkerBlockEntity> markersToStart = null;
+        Map<BlockPos, Double> segmentOvershoots = null;
+        Vec3d playerPos = new Vec3d(playerX, playerY, playerZ);
 
         while (iterator.hasNext()) {
             AnimatedTrail trail = iterator.next();
@@ -242,6 +267,10 @@ public class TrailRenderer {
                             markersToStart = new ArrayList<>();
                         }
                         markersToStart.add(optionalMarkerAtPos.get());
+                        if (segmentOvershoots == null) {
+                            segmentOvershoots = new HashMap<>();
+                        }
+                        segmentOvershoots.put(stopPos.toImmutable(), trail.overshoot());
                     }
                 }
                 continue;
@@ -256,7 +285,7 @@ public class TrailRenderer {
                 continue;
             }
 
-            trail.render(level);
+            trail.render(level, playerPos);
 
             hasSoundTarget = true;
 
@@ -274,6 +303,31 @@ public class TrailRenderer {
                 nearestY = candidateY;
                 nearestZ = candidateZ;
             }
+
+            if (trail.isAtEnd()) {
+                if (isHoldingRevealer) {
+                    rememberAudibleSegment(trail);
+                }
+
+                iterator.remove();
+                trailsByStart.remove(trail.getStart());
+
+                if (isHoldingRevealer) {
+                    BlockPos stopPos = BlockPos.ofFloored(trail.getCurrentPos());
+                    var optionalMarkerAtPos = level.getBlockEntity(stopPos, ModBlockEntities.PATH_MARKER);
+
+                    if (optionalMarkerAtPos.isPresent()) {
+                        if (markersToStart == null) {
+                            markersToStart = new ArrayList<>();
+                        }
+                        markersToStart.add(optionalMarkerAtPos.get());
+                        if (segmentOvershoots == null) {
+                            segmentOvershoots = new HashMap<>();
+                        }
+                        segmentOvershoots.put(stopPos.toImmutable(), trail.overshoot());
+                    }
+                }
+            }
         }
 
         if (markersToStart != null) {
@@ -284,6 +338,9 @@ public class TrailRenderer {
                 if (createdTrail == null) {
                     continue;
                 }
+
+                createdTrail.advanceBy(segmentOvershoots.getOrDefault(marker.getPos(), 0.0D));
+                createdTrail.render(level, playerPos);
 
                 Vec3d startPos = createdTrail.getStartPos();
                 Vec3d endPos = createdTrail.getEnd();
@@ -367,19 +424,23 @@ public class TrailRenderer {
      * Determines the closest valid path marker and creates a trail from it if within range.
      * Switches chapters if the player is within range of a chapter start marker.
      *
+     * @param ignoredLevel             The client world
      * @param player            The client player entity
      * @param currentPathId     The current path ID
      * @param currentChapterId  The current chapter ID
      * @param currentPathColors The colors of the current path
      */
-    private static void renderPathRevealerMode(ClientPlayerEntity player, String currentPathId,
+    private static void renderPathRevealerMode(ClientWorld ignoredLevel, ClientPlayerEntity player, String currentPathId,
                                                String currentChapterId, Color[] currentPathColors)
     {
         BlockPos playerPos = player.getBlockPos();
+        Vec3d precisePlayerPos = player.getPos();
         pruneProximityActivations(playerPos);
 
         PathMarkerBlockEntity closestValidMarker = null;
         double closestSquaredDistance = Double.MAX_VALUE;
+        BlockPos closestFocusTarget = null;
+        double closestFocusSquaredDistance = Double.MAX_VALUE;
 
         for (PathMarkerBlockEntity marker : Paths.getTickingMarkers()) {
 
@@ -389,15 +450,27 @@ public class TrailRenderer {
             if (currentChapterData != null) {
 
                 displayAnimatedText(squaredDistance, currentChapterData, player, marker.getPos(), currentPathColors);
+                processMarkerActions(squaredDistance, currentChapterData, marker.getPos(), currentPathId);
+                EnvironmentController.processMarker(currentChapterData, marker.getPos(), precisePlayerPos, currentPathId);
 
                 if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance) {
                     closestValidMarker = marker;
                     closestSquaredDistance = squaredDistance;
                 }
+
+                if (currentChapterData.getLookAt() != null
+                        && squaredDistance <= FocusController.FOCUS_PROMPT_RANGE_SQUARED
+                        && squaredDistance < closestFocusSquaredDistance) {
+                    closestFocusTarget = currentChapterData.getLookAt();
+                    closestFocusSquaredDistance = squaredDistance;
+                }
             }
 
             processChapterSwitching(marker, currentPathId, squaredDistance);
         }
+
+        FocusController.setCandidate(closestFocusTarget);
+        EnvironmentController.tick(precisePlayerPos);
 
         if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100) {
 
@@ -548,6 +621,37 @@ public class TrailRenderer {
     }
 
     /**
+     * Sends a server action trigger once when the player enters an authored marker action range.
+     *
+     * @param squaredDistance    The squared distance between the player and the path marker
+     * @param currentChapterData The chapter data of the path marker
+     * @param markerPos          The position of the marker
+     * @param currentPathId      The ID of the selected path
+     */
+    private static void processMarkerActions(double squaredDistance,
+                                             PathMarkerBlockEntity.ChapterNbtData currentChapterData,
+                                             BlockPos markerPos,
+                                             String currentPathId) {
+        boolean hasActions = !currentChapterData.getAutoTeleportTarget().isEmpty() || !currentChapterData.getGiveItem().isEmpty();
+        if (!hasActions) return;
+
+        int activationRange = Math.max(currentChapterData.getActivationRange(), MIN_ACTION_TRIGGER_RANGE);
+        if (squaredDistance > MathHelper.square(activationRange)) return;
+
+        ProximityActivation existing = markerActionActivations.get(markerPos);
+        if (existing != null
+                && existing.pathId().equals(currentPathId)
+                && existing.chapterId().equals(currentChapterData.getChapterId())) return;
+
+        markerActionActivations.put(markerPos.toImmutable(), new ProximityActivation(
+                currentPathId,
+                currentChapterData.getChapterId(),
+                MathHelper.square(activationRange + PROXIMITY_EXIT_BUFFER)));
+
+        PacketRegistry.MARKER_ACTION_TRIGGER.send(new MarkerActionTriggerPacket(markerPos, currentPathId, currentChapterData.getChapterId()));
+    }
+
+    /**
      * Re-arm proximity text for any triggered markers the player has moved away from.
      *
      * @param playerPos The player's current block position
@@ -555,6 +659,7 @@ public class TrailRenderer {
     private static void pruneProximityActivations(BlockPos playerPos) {
 
         proximityActivations.entrySet().removeIf(entry -> playerPos.getSquaredDistance(entry.getKey()) > entry.getValue().exitDistanceSquared());
+        markerActionActivations.entrySet().removeIf(entry -> playerPos.getSquaredDistance(entry.getKey()) > entry.getValue().exitDistanceSquared());
     }
 
     /**
@@ -618,6 +723,7 @@ public class TrailRenderer {
         trails.clear();
         trailsByStart.clear();
         audibleSegments.clear();
+        AnimatedTrail.resetPlayerSpeed();
 
         if (trailSoundInstance != null && !trailSoundInstance.isDone()) {
             trailSoundInstance.release();

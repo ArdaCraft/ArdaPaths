@@ -19,7 +19,8 @@ public class ModSounds {
     /**
      * Register a sound.
      *
-     * @param id The sound's ID.
+     * @param id the sound's ID
+     * @return the registered sound event
      */
     @SuppressWarnings("SameParameterValue")
     private static SoundEvent register(final String id) {

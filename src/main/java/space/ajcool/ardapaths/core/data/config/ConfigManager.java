@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -73,6 +74,7 @@ public abstract class ConfigManager<T> {
     /**
      * The current configuration object in memory.
      */
+    @Setter
     @Getter
     protected T config;
 

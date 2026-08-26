@@ -3,10 +3,21 @@ package space.ajcool.ardapaths.core.integration;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 /**
  * First-party bridge for optional chapter-start warp integrations.
  */
 public interface WarpService {
+    /**
+     * Resolves a named warp to a world and block position.
+     *
+     * @param server   the server that owns the destination world
+     * @param warpName the configured warp name
+     * @return future optional destination for the named warp
+     */
+    CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName);
 
     /**
      * Warps a player to a named location, or runs the fallback when no usable warp is available.

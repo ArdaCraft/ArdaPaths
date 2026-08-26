@@ -48,10 +48,10 @@ public class CheckboxWidget extends PressableWidget {
     /**
      * Constructs a CheckboxWidget with the given parameters.
      *
-     * @param x        the x coordinate
-     * @param y        the y coordinate
-     * @param width    the width of the checkbox
-     * @param height   the height of the checkbox
+     * @param x        the x coordinate of the label's left edge
+     * @param y        the y coordinate of the label and checkbox row
+     * @param width    the full component width containing the label, gap, and checkbox square
+     * @param height   the component height and square checkbox size
      * @param text     the label text
      * @param checked  whether the checkbox is initially checked
      * @param enabled  whether the checkbox is enabled
@@ -72,44 +72,47 @@ public class CheckboxWidget extends PressableWidget {
         int x = this.getX();
         int y = this.getY();
         TextRenderer textRenderer = Client.mc().textRenderer;
+        int boxSize = this.height;
+        int boxX = x + this.width - boxSize;
+        int textY = y + (height - textRenderer.fontHeight) / 2;
 
         if (!enabled) {
             MatrixStack matrices = context.getMatrices();
             matrices.push();
             matrices.translate(0, 0, 2);
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.7f);
-            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0xFF48494A);
+            context.fill(boxX, y, boxX + boxSize, y + boxSize, 0xFF48494A);
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
             matrices.pop();
 
-            int textX = x - width - textRenderer.getWidth(text) + 10;
-            int textY = y + (height - textRenderer.fontHeight) / 2;
-            context.drawTextWithShadow(textRenderer, text, textX, textY, 0xFF48494A);
+            context.drawTextWithShadow(textRenderer, text, x, textY, 0xFF48494A);
 
             return;
         }
 
         if (this.isHovered()) {
             if (checked) {
-                context.drawTexture(TEXTURE, x, y, width, height, 20, 20, 20, 20, 64, 64);
+                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 20, 20, 20, 20, 64, 64);
             } else {
-                context.drawTexture(TEXTURE, x, y, width, height, 20, 0, 20, 20, 64, 64);
+                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 20, 0, 20, 20, 64, 64);
             }
         } else {
             if (checked) {
-                context.drawTexture(TEXTURE, x, y, width, height, 0, 20, 20, 20, 64, 64);
+                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 0, 20, 20, 20, 64, 64);
             } else {
-                context.drawTexture(TEXTURE, x, y, width, height, 0, 0, 20, 20, 64, 64);
+                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 0, 0, 20, 20, 64, 64);
             }
         }
 
-        int textX = x - width - textRenderer.getWidth(text) + 10;
-        int textY = y + (height - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, text, textX, textY, 0xFFFFFF);
+        context.drawTextWithShadow(textRenderer, text, x, textY, 0xFFFFFF);
     }
 
     @Override
     public void onPress() {
+        if (!enabled) {
+            return;
+        }
+
         checked = !checked;
         if (onChange != null) {
             onChange.accept(checked);

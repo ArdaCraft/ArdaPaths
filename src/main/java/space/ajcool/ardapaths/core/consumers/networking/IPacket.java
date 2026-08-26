@@ -9,7 +9,9 @@ public interface IPacket {
     /**
      * Convert the packet to an instance of the object.
      *
-     * @param ignoredBuf The packet byte buffer to read
+     * @param <T> the type of object to read
+     * @param ignoredBuf the packet byte buffer to read
+     * @return the object instance
      */
     static <T> T read(PacketByteBuf ignoredBuf) {
         return null;
@@ -17,6 +19,8 @@ public interface IPacket {
 
     /**
      * Build the packet.
+     *
+     * @return the packet as a PacketByteBuf
      */
     PacketByteBuf build();
 }

@@ -98,6 +98,8 @@ public class InputBoxWidget extends EditBoxWidget {
 
     /**
      * Validates the current text. If the text is invalid, stores the error message.
+     *
+     * @return true if validation succeeds, false if validation fails
      */
     public boolean validateText() {
 

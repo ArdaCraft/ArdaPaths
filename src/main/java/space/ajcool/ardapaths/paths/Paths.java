@@ -11,6 +11,7 @@ import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
+import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
 import java.util.Collection;
@@ -99,6 +100,20 @@ public class Paths {
         configManager.save();
     }
 
+    /**
+     * Sets whether trail markers may dynamically change time and weather and persists the preference.
+     *
+     * @param use whether dynamic environmental effects should be enabled
+     */
+    public static void useDynamicEnvironment(final boolean use) {
+        config.setDynamicEnvironment(use);
+        configManager.save();
+
+        if (!use) {
+            EnvironmentController.reset();
+        }
+    }
+
     public static void setChapterTitleDisplaySpeed(final Float miliseconds) {
         config.setChapterTitleDisplaySpeed(miliseconds);
         configManager.save();
@@ -106,6 +121,16 @@ public class Paths {
 
     public static void setProximityMessagesSpeedMultiplier(final Double factor) {
         config.setProximityTextSpeedMultiplier(factor);
+        configManager.save();
+    }
+
+    /**
+     * Sets the auto-walk speed factor and persists it to the client config.
+     *
+     * @param factor the movement speed factor to apply
+     */
+    public static void setAutoWalkSpeedFactor(final Double factor) {
+        config.setAutoWalkSpeedFactor(factor);
         configManager.save();
     }
 

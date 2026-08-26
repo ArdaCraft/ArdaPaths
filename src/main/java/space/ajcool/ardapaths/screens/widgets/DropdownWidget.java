@@ -188,6 +188,13 @@ public class DropdownWidget<T> extends ClickableWidget {
 
     /**
      * Renders an individual option in the dropdown.
+     *
+     * @param context the drawing context
+     * @param x the x coordinate
+     * @param y the y coordinate
+     * @param item the item to render
+     * @param selected whether the item is selected
+     * @param hovered whether the item is hovered
      */
     private void renderItem(DrawContext context, int x, int y, T item, boolean selected, boolean hovered) {
         TextRenderer textRenderer = Client.mc().textRenderer;
@@ -204,6 +211,15 @@ public class DropdownWidget<T> extends ClickableWidget {
 
     /**
      * Renders a box with text. If item is null, "None" is displayed.
+     *
+     * @param context the drawing context
+     * @param x the x coordinate
+     * @param y the y coordinate
+     * @param item the item to render
+     * @param textRenderer the text renderer for drawing text
+     * @param width the width of the box
+     * @param height the height of the box
+     * @param v the v-coordinate for texture mapping
      */
     private void renderBox(DrawContext context, int x, int y, T item, TextRenderer textRenderer,
                            int width, int height, int v) {

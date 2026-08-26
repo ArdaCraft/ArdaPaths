@@ -19,8 +19,10 @@ public class Json {
     /**
      * Convert a JSON string to an object.
      *
-     * @param json The JSON string to convert
-     * @param type The type of the object
+     * @param <T> the type of object to deserialize to
+     * @param json the JSON string to convert
+     * @param type the type of the object
+     * @return the deserialized object
      */
     public static <T> T fromJson(String json, Type type) {
         return GSON.fromJson(json, type);
@@ -29,7 +31,8 @@ public class Json {
     /**
      * Convert an object to a JSON string.
      *
-     * @param object The object to convert
+     * @param object the object to convert
+     * @return the JSON string representation
      */
     public static String toJson(Object object) {
         return GSON.toJson(object);
