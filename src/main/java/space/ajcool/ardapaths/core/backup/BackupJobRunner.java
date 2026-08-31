@@ -1,16 +1,15 @@
 package space.ajcool.ardapaths.core.backup;
 
 import lombok.extern.slf4j.Slf4j;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.Text;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.backup.progress.OperationKind;
 import space.ajcool.ardapaths.core.backup.progress.OperationProgress;
 import space.ajcool.ardapaths.core.backup.progress.ProgressReporter;
 import space.ajcool.ardapaths.core.backup.progress.ProgressSnapshot;
 
-import java.io.IOException;
 import java.util.Locale;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,7 +42,7 @@ public class BackupJobRunner {
      * @param source command source that requested the backup
      * @return launch result with current progress when rejected
      */
-    public JobStartResult tryStartBackup(ServerCommandSource source) {
+    public JobStartResult tryStartBackup(CommandSourceStack source) {
         OperationProgress progress = new OperationProgress(OperationKind.BACKUP);
         ActiveJob job = new ActiveJob(OperationKind.BACKUP, progress);
 
@@ -64,7 +63,7 @@ public class BackupJobRunner {
      * @param hard whether stale markers should be deleted
      * @return launch result with current progress when rejected
      */
-    public JobStartResult tryStartRestore(ServerCommandSource source, String zipName, boolean hard) {
+    public JobStartResult tryStartRestore(CommandSourceStack source, String zipName, boolean hard) {
         OperationProgress progress = new OperationProgress(OperationKind.RESTORE);
         ActiveJob job = new ActiveJob(OperationKind.RESTORE, progress);
 
@@ -86,7 +85,14 @@ public class BackupJobRunner {
      * @return future completed by the shared worker
      */
     public static <T> CompletableFuture<T> submitMarkerWork(MinecraftServer server, Function<ServerGate, T> work) {
-        return CompletableFuture.supplyAsync(() -> work.apply(new SubmitServerGate(server)), WORKER);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return work.apply(new SubmitServerGate(server));
+            } catch (Throwable throwable) {
+                log.error("ArdaPaths marker work failed", throwable);
+                throw throwable;
+            }
+        }, WORKER);
     }
 
     /**
@@ -114,7 +120,7 @@ public class BackupJobRunner {
      * @param source originating command source
      * @param job active job state
      */
-    private void runBackupJob(MinecraftServer server, ServerCommandSource source, ActiveJob job) {
+    private void runBackupJob(MinecraftServer server, CommandSourceStack source, ActiveJob job) {
         long start = System.currentTimeMillis();
         log.info("ArdaPaths backup started");
 
@@ -123,9 +129,9 @@ public class BackupJobRunner {
             long duration = System.currentTimeMillis() - start;
             log.info("ArdaPaths backup completed in {} ms: {}", duration, describeBackup(result));
             sendFeedback(server, source, describeBackup(result));
-        } catch (IOException | CancellationException | CompletionException exception) {
-            log.warn("ArdaPaths backup failed", exception);
-            sendError(server, source, "ArdaPaths backup failed: " + exception.getMessage());
+        } catch (Throwable throwable) {
+            log.error("ArdaPaths backup failed", throwable);
+            sendError(server, source, "ArdaPaths backup failed: " + describeThrowable(throwable));
         } finally {
             ACTIVE.compareAndSet(job, null);
         }
@@ -140,7 +146,7 @@ public class BackupJobRunner {
      * @param hard whether stale markers should be deleted
      * @param job active job state
      */
-    private void runRestoreJob(MinecraftServer server, ServerCommandSource source, String zipName, boolean hard, ActiveJob job) {
+    private void runRestoreJob(MinecraftServer server, CommandSourceStack source, String zipName, boolean hard, ActiveJob job) {
         long start = System.currentTimeMillis();
         log.info("ArdaPaths restore started{}", hard ? " in hard mode" : "");
 
@@ -149,12 +155,24 @@ public class BackupJobRunner {
             long duration = System.currentTimeMillis() - start;
             log.info("ArdaPaths restore completed in {} ms: {}", duration, describeRestore(result));
             sendFeedback(server, source, describeRestore(result));
-        } catch (IOException | CancellationException | CompletionException exception) {
-            log.warn("ArdaPaths restore failed", exception);
-            sendError(server, source, "ArdaPaths restore failed: " + exception.getMessage());
+        } catch (Throwable throwable) {
+            log.error("ArdaPaths restore failed", throwable);
+            sendError(server, source, "ArdaPaths restore failed: " + describeThrowable(throwable));
         } finally {
             ACTIVE.compareAndSet(job, null);
         }
+    }
+
+    /**
+     * Formats a throwable with type information for operator-facing failures.
+     *
+     * @param throwable failure to describe
+     * @return class name and message suitable for command feedback
+     */
+    private String describeThrowable(Throwable throwable) {
+        String message = throwable.getMessage();
+        String type = throwable.getClass().getSimpleName();
+        return message == null || message.isBlank() ? type : type + ": " + message;
     }
 
     /**
@@ -221,9 +239,9 @@ public class BackupJobRunner {
      * @param source  command source
      * @param message feedback message
      */
-    private void sendFeedback(MinecraftServer server, ServerCommandSource source, String message) {
+    private void sendFeedback(MinecraftServer server, CommandSourceStack source, String message) {
         if (!server.isRunning()) return;
-        server.execute(() -> source.sendFeedback(() -> Text.literal(message), true));
+        server.execute(() -> source.sendSuccess(() -> Component.literal(message), true));
     }
 
     /**
@@ -233,9 +251,9 @@ public class BackupJobRunner {
      * @param source command source
      * @param message failure message
      */
-    private void sendError(MinecraftServer server, ServerCommandSource source, String message) {
+    private void sendError(MinecraftServer server, CommandSourceStack source, String message) {
         if (!server.isRunning()) return;
-        server.execute(() -> source.sendError(Text.literal(message)));
+        server.execute(() -> source.sendFailure(Component.literal(message)));
     }
 
     /**
@@ -261,22 +279,10 @@ public class BackupJobRunner {
 
     /**
      * Server gate backed by {@link MinecraftServer#submit(Supplier)}.
+     *
+     * @param server server receiving gated tasks
      */
-    private static class SubmitServerGate implements ServerGate {
-        /**
-         * Server receiving gated tasks.
-         */
-        private final MinecraftServer server;
-
-        /**
-         * Creates a gate for one server.
-         *
-         * @param server server receiving gated tasks
-         */
-        SubmitServerGate(MinecraftServer server) {
-            this.server = server;
-        }
-
+    private record SubmitServerGate(MinecraftServer server) implements ServerGate {
         /**
          * Runs work on the server thread.
          *
@@ -296,17 +302,18 @@ public class BackupJobRunner {
          * @param supplier work to call
          * @return supplier result
          */
+        @SuppressWarnings("resource")
         @Override
         public <T> T call(Supplier<T> supplier) {
-            if (!server.isRunning()) {
+            if (!server().isRunning()) {
                 throw new CancellationException("server is stopping");
             }
 
-            if (server.isOnThread()) {
+            if (server().isSameThread()) {
                 return supplier.get();
             }
 
-            return server.submit(supplier).join();
+            return server().submit(supplier).join();
         }
     }
 

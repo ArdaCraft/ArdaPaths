@@ -1,7 +1,7 @@
 package space.ajcool.ardapaths.core.data;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 /**
@@ -33,13 +33,13 @@ public final class MarkerId {
      */
     public static long parse(String text) throws TextValidationError {
         if (text == null || text.isBlank()) {
-            throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.marker_id.invalid").getString());
+            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.marker_id.invalid").getString());
         }
 
         try {
             return Long.parseLong(text.trim());
         } catch (NumberFormatException e) {
-            throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.marker_id.invalid").getString());
+            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.marker_id.invalid").getString());
         }
     }
 }

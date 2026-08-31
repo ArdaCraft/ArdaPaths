@@ -1,8 +1,8 @@
 package space.ajcool.ardapaths.core.integration;
 
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 
 /**
  * Resolved optional warp destination used as a chapter-start anchor.
@@ -10,5 +10,5 @@ import net.minecraft.world.World;
  * @param worldKey registry key for the destination world
  * @param position block position nearest the warp destination
  */
-public record WarpLocation(RegistryKey<World> worldKey, BlockPos position) {
+public record WarpLocation(ResourceKey<Level> worldKey, BlockPos position) {
 }

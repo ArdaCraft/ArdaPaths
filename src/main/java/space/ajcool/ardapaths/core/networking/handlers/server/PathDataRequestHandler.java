@@ -1,10 +1,12 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.Json;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
@@ -15,13 +17,21 @@ import space.ajcool.ardapaths.core.networking.packets.client.PathDataResponsePac
  */
 public class PathDataRequestHandler extends RespondablePacketHandler<EmptyPacket, PathDataResponsePacket>
 {
+    /**
+     * Channel identifier for client path data requests.
+     */
+    private static final ResourceLocation REQUEST_CHANNEL = ModConstants.modId("path_data_request");
+
+    /**
+     * Creates the path data request handler.
+     */
     public PathDataRequestHandler()
     {
-        super("path_data_request", EmptyPacket::read, "path_data_response", PathDataResponsePacket::read);
+        super(REQUEST_CHANNEL, EmptyPacket::read, PathDataResponsePacket.CHANNEL, PathDataResponsePacket::read);
     }
 
     @Override
-    public PathDataResponsePacket handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, EmptyPacket packet, PacketSender sender)
+    public PathDataResponsePacket handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, EmptyPacket packet, PacketSender sender)
     {
         String json = Json.toJson(ArdaPaths.CONFIG.getPaths());
         return new PathDataResponsePacket(json);

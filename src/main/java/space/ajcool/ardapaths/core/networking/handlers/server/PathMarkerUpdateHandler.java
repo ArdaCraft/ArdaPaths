@@ -2,12 +2,12 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.markers.MarkerResolver;
@@ -24,7 +24,7 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
 {
     public PathMarkerUpdateHandler()
     {
-        super("path_marker_update", PathMarkerUpdatePacket::read);
+        super(PathMarkerUpdatePacket.CHANNEL, PathMarkerUpdatePacket::read);
     }
 
     /**
@@ -38,20 +38,20 @@ public class PathMarkerUpdateHandler extends ServerPacketHandler<PathMarkerUpdat
     }
 
     @Override
-    protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerUpdatePacket packet, PacketSender sender)
+    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerUpdatePacket packet, PacketSender sender)
     {
         log.debug("Received marker NBT update for {}", packet.position());
         BackupJobRunner.submitMarkerWork(server, gate -> {
-            ServerWorld world = gate.call(player::getServerWorld);
-            String dimensionId = world.getRegistryKey().getValue().toString();
+            ServerLevel world = gate.call(player::serverLevel);
+            String dimensionId = world.dimension().location().toString();
             MarkerResolver resolver = new MarkerResolver(world, dimensionId);
             BlockPos blockPos = packet.position();
-            NbtCompound nbt = packet.data();
+            CompoundTag nbt = packet.data();
 
             gate.call(() -> {
                 Optional<MarkerResolver.ResolvedMarker> resolved = resolver.resolve(blockPos);
                 resolved.ifPresent(marker -> {
-                    marker.liveMarker().readNbt(nbt);
+                    marker.liveMarker().loadValidated(nbt);
                     marker.liveMarker().markUpdated();
                 });
                 return null;

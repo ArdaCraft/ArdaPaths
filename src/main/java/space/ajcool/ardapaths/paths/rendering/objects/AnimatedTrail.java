@@ -1,9 +1,13 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import lombok.Getter;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.*;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.particles.PathParticleEffect;
@@ -85,13 +89,13 @@ public class AnimatedTrail {
      * End position (in world coordinates) of this trail segment.
      */
     @Getter
-    private final Vec3d end;
+    private final Vec3 end;
 
     /**
      * Center position of the trail start, reused for interpolation.
      */
     @Getter
-    private final Vec3d startPos;
+    private final Vec3 startPos;
 
     /**
      * Total immutable distance travelled by this trail.
@@ -122,13 +126,13 @@ public class AnimatedTrail {
      * Current animated position along the trail.
      */
     @Getter
-    private Vec3d currentPos;
+    private Vec3 currentPos;
 
     /**
      * Current rendered position, accounting for terrain height adjustments.
      */
     @Getter
-    private Vec3d currentRenderPos;
+    private Vec3 currentRenderPos;
 
     /**
      * Current terrain-following render height for above-block trails.
@@ -171,10 +175,10 @@ public class AnimatedTrail {
      * @param secondaryColor secondary colour as integer
      * @param tertiaryColor  tertiary colour as integer
      */
-    private AnimatedTrail(BlockPos start, Vec3d end, boolean aboveBlocks, int primaryColor, int secondaryColor, int tertiaryColor) {
+    private AnimatedTrail(BlockPos start, Vec3 end, boolean aboveBlocks, int primaryColor, int secondaryColor, int tertiaryColor) {
         this.start = start;
         this.end = end;
-        this.startPos = new Vec3d(start.getX(), start.getY(), start.getZ()).add(0.5, 0.5, 0.5);
+        this.startPos = new Vec3(start.getX(), start.getY(), start.getZ()).add(0.5, 0.5, 0.5);
         this.totalDistance = aboveBlocks ? FlattenedDistance(startPos, end) : startPos.distanceTo(end);
         this.currentPos = startPos;
         this.currentRenderPos = startPos;
@@ -204,7 +208,7 @@ public class AnimatedTrail {
 
         return new AnimatedTrail(
                 start,
-                new Vec3d(
+                new Vec3(
                         start.getX() + offset.getX(),
                         start.getY() + offset.getY(),
                         start.getZ() + offset.getZ()
@@ -221,9 +225,9 @@ public class AnimatedTrail {
      *
      * @param player the client player whose achieved movement should drive trail catch-up speed
      */
-    public static void updatePlayerSpeed(ClientPlayerEntity player) {
-        double horizontalDeltaX = player.getX() - player.prevX;
-        double horizontalDeltaZ = player.getZ() - player.prevZ;
+    public static void updatePlayerSpeed(LocalPlayer player) {
+        double horizontalDeltaX = player.getX() - player.xo;
+        double horizontalDeltaZ = player.getZ() - player.zo;
         PLAYER_SPEED_SAMPLES[playerSpeedSampleIndex] = Math.hypot(horizontalDeltaX, horizontalDeltaZ);
         playerSpeedSampleIndex = (playerSpeedSampleIndex + 1) % PLAYER_SPEED_SAMPLES.length;
 
@@ -266,7 +270,7 @@ public class AnimatedTrail {
         double relativeZ = pz - startPos.z;
         double projection = ((relativeX * segmentX) + (relativeY * segmentY) + (relativeZ * segmentZ)) / segmentLengthSquared;
 
-        return MathHelper.clamp(projection, 0.0D, 1.0D);
+        return Mth.clamp(projection, 0.0D, 1.0D);
     }
 
     /**
@@ -292,7 +296,7 @@ public class AnimatedTrail {
         double relativeZ = pz - sz;
         double projection = ((relativeX * segmentX) + (relativeZ * segmentZ)) / segmentLengthSquared;
 
-        return MathHelper.clamp(projection, 0.0D, 1.0D);
+        return Mth.clamp(projection, 0.0D, 1.0D);
     }
 
     /**
@@ -301,14 +305,14 @@ public class AnimatedTrail {
      * @param level     The client world
      * @param playerPos The current player position used to keep the trail head ahead of movement
      */
-    public void render(ClientWorld level, Vec3d playerPos) {
-        Vec3d previousRenderPos = currentRenderPos;
+    public void render(ClientLevel level, Vec3 playerPos) {
+        Vec3 previousRenderPos = currentRenderPos;
         double thisTickSpeed = speedFor(horizontalDistance(playerPos, currentRenderPos));
 
         distanceTravelled += thisTickSpeed;
 
         double animationPoint = totalDistance == 0 ? 1.0D : distanceTravelled / totalDistance;
-        animationPoint = MathHelper.clamp(animationPoint, 0.0D, 1.0D);
+        animationPoint = Mth.clamp(animationPoint, 0.0D, 1.0D);
 
         currentPos = startPos.lerp(end, animationPoint);
 
@@ -319,15 +323,15 @@ public class AnimatedTrail {
                 if (!renderYInitialized) {
                     renderY = posY;
                     renderYInitialized = true;
-                    previousRenderPos = new Vec3d(previousRenderPos.x, renderY, previousRenderPos.z);
+                    previousRenderPos = new Vec3(previousRenderPos.x, renderY, previousRenderPos.z);
                 } else {
                     renderY = approach(renderY, posY, Math.max(VERTICAL_MIN_STEP, thisTickSpeed * VERTICAL_SPEED_RATIO));
                 }
             }
 
-            currentRenderPos = new Vec3d(currentPos.x, renderY, currentPos.z);
+            currentRenderPos = new Vec3(currentPos.x, renderY, currentPos.z);
         } else {
-            currentRenderPos = new Vec3d(currentPos.x, currentPos.y, currentPos.z);
+            currentRenderPos = new Vec3(currentPos.x, currentPos.y, currentPos.z);
         }
 
         emitParticles(level, previousRenderPos, currentRenderPos);
@@ -360,7 +364,7 @@ public class AnimatedTrail {
     private double speedFor(double lead) {
         double desired = lead >= TARGET_LEAD ? playerSpeed : playerSpeed * SPEED_MARGIN;
 
-        return MathHelper.clamp(Math.max(SPEED, desired), SPEED, MAX_SPEED);
+        return Mth.clamp(Math.max(SPEED, desired), SPEED, MAX_SPEED);
     }
 
     /**
@@ -370,12 +374,12 @@ public class AnimatedTrail {
      * @param previous the previous rendered head position
      * @param current  the current rendered head position
      */
-    private void emitParticles(ClientWorld level, Vec3d previous, Vec3d current) {
+    private void emitParticles(ClientLevel level, Vec3 previous, Vec3 current) {
         double stepDistance = previous.distanceTo(current);
-        int steps = MathHelper.clamp((int) Math.ceil(stepDistance / PARTICLE_SPACING), 1, MAX_PARTICLES_PER_TICK);
+        int steps = Mth.clamp((int) Math.ceil(stepDistance / PARTICLE_SPACING), 1, MAX_PARTICLES_PER_TICK);
 
         for (int i = 1; i <= steps; i++) {
-            Vec3d particlePos = previous.lerp(current, (double) i / steps);
+            Vec3 particlePos = previous.lerp(current, (double) i / steps);
             level.addParticle(new PathParticleEffect(primaryColor, secondaryColor, tertiaryColor),
                     particlePos.x,
                     particlePos.y + 0.3,
@@ -409,7 +413,7 @@ public class AnimatedTrail {
      * @param second the second world position
      * @return the distance across the X and Z axes
      */
-    private double horizontalDistance(Vec3d first, Vec3d second) {
+    private double horizontalDistance(Vec3 first, Vec3 second) {
         return Math.hypot(first.x - second.x, first.z - second.z);
     }
 
@@ -419,10 +423,10 @@ public class AnimatedTrail {
      * @param level the client world to inspect
      * @return the render Y for the current column, or NaN if no nearby ground was found
      */
-    private double resolveGroundY(ClientWorld level) {
-        int columnX = MathHelper.floor(currentPos.x);
-        int columnY = MathHelper.floor(currentPos.y);
-        int columnZ = MathHelper.floor(currentPos.z);
+    private double resolveGroundY(ClientLevel level) {
+        int columnX = Mth.floor(currentPos.x);
+        int columnY = Mth.floor(currentPos.y);
+        int columnZ = Mth.floor(currentPos.z);
 
         if (columnX == cachedColumnX && columnZ == cachedColumnZ) {
             return cachedGroundY;
@@ -443,29 +447,29 @@ public class AnimatedTrail {
      * @param columnZ the current block column z coordinate
      * @return the render Y for this terrain column, or NaN if no nearby ground was found
      */
-    public static double scanGroundY(ClientWorld level, int columnX, int columnY, int columnZ) {
-        BlockPos.Mutable mutableScanPos = new BlockPos.Mutable();
+    public static double scanGroundY(ClientLevel level, int columnX, int columnY, int columnZ) {
+        BlockPos.MutableBlockPos mutableScanPos = new BlockPos.MutableBlockPos();
         mutableScanPos.set(columnX, columnY, columnZ);
 
         var currentBlockState = level.getBlockState(mutableScanPos);
-        var inAir = currentBlockState.isAir() || currentBlockState.isOf(ModBlocks.PATH_MARKER);
+        var inAir = currentBlockState.isAir() || currentBlockState.is(ModBlocks.PATH_MARKER);
 
         for (int i = 0; i <= 10; i++) {
             int checkY = columnY + (inAir ? -i : i);
             mutableScanPos.set(columnX, checkY, columnZ);
             var checkBlockState = level.getBlockState(mutableScanPos);
 
-            if (inAir && (checkBlockState.isAir() || checkBlockState.isOf(ModBlocks.PATH_MARKER))) continue;
+            if (inAir && (checkBlockState.isAir() || checkBlockState.is(ModBlocks.PATH_MARKER))) continue;
 
             if (!inAir) {
-                if (!checkBlockState.isAir() && !checkBlockState.isOf(ModBlocks.PATH_MARKER)) continue;
+                if (!checkBlockState.isAir() && !checkBlockState.is(ModBlocks.PATH_MARKER)) continue;
 
                 mutableScanPos.set(columnX, checkY - 1, columnZ);
                 checkBlockState = level.getBlockState(mutableScanPos);
             }
 
-            var voxelShape = checkBlockState.getOutlineShape(level, mutableScanPos);
-            var max = voxelShape.getMax(Direction.Axis.Y);
+            var voxelShape = checkBlockState.getShape(level, mutableScanPos);
+            var max = voxelShape.max(Direction.Axis.Y);
 
             return mutableScanPos.getY() + (max > 0 ? max : 1);
         }
@@ -487,11 +491,11 @@ public class AnimatedTrail {
      * @param end the ending position
      * @return the flattened distance between the two positions
      */
-    public double FlattenedDistance(Vec3d start, Vec3d end) {
-        var start2D = new Vec2f((float) start.getX(), (float) start.getZ());
-        var end2D = new Vec2f((float) end.getX(), (float) end.getZ());
+    public double FlattenedDistance(Vec3 start, Vec3 end) {
+        var start2D = new Vec2((float) start.x(), (float) start.z());
+        var end2D = new Vec2((float) end.x(), (float) end.z());
 
-        return Math.sqrt(start2D.distanceSquared(end2D));
+        return Math.sqrt(start2D.distanceToSqr(end2D));
     }
 
 }

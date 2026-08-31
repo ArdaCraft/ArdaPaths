@@ -1,10 +1,10 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
-import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
-import space.ajcool.ardapaths.core.data.config.shared.PathData;
 
 /**
  * Packet sent from client to server to request deletion of a chapter from a path.
@@ -16,20 +16,24 @@ public record ChapterDeletePacket(
         String chapterId
 ) implements IPacket
 {
+    /**
+     * Network channel used for chapter deletion requests.
+     */
+    public static final ResourceLocation CHANNEL = ModConstants.modId("path_chapter_delete");
 
     @Override
-    public PacketByteBuf build()
+    public FriendlyByteBuf build()
     {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(pathId);
-        buf.writeString(chapterId);
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeUtf(pathId);
+        buf.writeUtf(chapterId);
         return buf;
     }
 
-    public static ChapterDeletePacket read(PacketByteBuf buf)
+    public static ChapterDeletePacket read(FriendlyByteBuf buf)
     {
-        final String pathId = buf.readString();
-        final String chapterId = buf.readString();
+        final String pathId = buf.readUtf();
+        final String chapterId = buf.readUtf();
         return new ChapterDeletePacket(pathId, chapterId);
     }
 }

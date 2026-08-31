@@ -1,6 +1,5 @@
 package space.ajcool.ardapaths.paths;
 
-import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
@@ -18,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.minecraft.core.BlockPos;
 
 /**
  * Client-side façade for modifying path selection state and settings.
@@ -160,7 +160,7 @@ public class Paths {
      * @param marker the marker block entity to register
      */
     public static void addTickingMarker(PathMarkerBlockEntity marker) {
-        tickingMarkers.put(marker.getPos().toImmutable(), marker);
+        tickingMarkers.put(marker.getBlockPos().immutable(), marker);
     }
 
     /**
@@ -169,7 +169,7 @@ public class Paths {
      * @param marker the marker block entity to remove
      */
     public static void removeTickingMarker(PathMarkerBlockEntity marker) {
-        tickingMarkers.remove(marker.getPos());
+        tickingMarkers.remove(marker.getBlockPos());
     }
 
     /**

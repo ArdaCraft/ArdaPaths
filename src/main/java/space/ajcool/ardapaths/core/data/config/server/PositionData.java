@@ -1,7 +1,7 @@
 package space.ajcool.ardapaths.core.data.config.server;
 
 import com.google.gson.annotations.SerializedName;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 /**
  * Represents a 3D block position (x, y, z) that can be serialized to/from JSON
@@ -20,31 +20,6 @@ public record PositionData(@SerializedName("x") int x, @SerializedName("y") int 
      */
     public static PositionData fromBlockPos(BlockPos pos) {
         return new PositionData(pos.getX(), pos.getY(), pos.getZ());
-    }
-
-    /**
-     * @return The X coordinate
-     */
-    @Override
-    public int x() {
-        return x;
-    }
-
-    /**
-     * @return The Y coordinate
-     */
-    @Override
-    public int y() {
-        return y;
-    }
-
-    /**
-     * @return The Z coordinate
-     */
-    @SuppressWarnings("unused")
-    @Override
-    public int z() {
-        return z;
     }
 
     /**

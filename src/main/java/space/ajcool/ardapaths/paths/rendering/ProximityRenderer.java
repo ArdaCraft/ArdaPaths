@@ -2,9 +2,9 @@ package space.ajcool.ardapaths.paths.rendering;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.Hand;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.InteractionHand;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -38,7 +38,7 @@ public class ProximityRenderer {
     /** The title currently being displayed, or null if none */
     private AnimatedTitle currentDisplayedTitle;
 
-    public static void render(DrawContext context, float delta) {
+    public static void render(GuiGraphics context, float delta) {
         INSTANCE.renderNextItem(context, delta);
         updateVisualMessageStack(context);
     }
@@ -93,7 +93,7 @@ public class ProximityRenderer {
      * @param context the drawing context for rendering
      * @param ignoredDelta   the time delta since last frame
      */
-    private void renderNextItem(DrawContext context, float ignoredDelta) {
+    private void renderNextItem(GuiGraphics context, float ignoredDelta) {
 
         var nextItem = renderQueue.peek();
 
@@ -122,7 +122,7 @@ public class ProximityRenderer {
      *
      * @param context the drawing context for rendering
      */
-    private static void updateVisualMessageStack(DrawContext context){
+    private static void updateVisualMessageStack(GuiGraphics context){
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
@@ -134,25 +134,24 @@ public class ProximityRenderer {
         var player = Client.player();
         if (player == null) return;
 
-        var activeHand = player.getActiveHand();
-        if (activeHand == null) return;
+        var activeHand = player.getUsedItemHand();
 
-        var stackInHand = player.getStackInHand(activeHand);
-        if (stackInHand == null || !stackInHand.isOf(ModItems.PATH_REVEALER)) return;
+        var stackInHand = player.getItemInHand(activeHand);
+        if (!stackInHand.is(ModItems.PATH_REVEALER)) return;
 
         // Get the slot index for the active hand item
-        int slotIndex = activeHand == Hand.MAIN_HAND ? player.getInventory().selectedSlot : 40;
+        int slotIndex = activeHand == InteractionHand.MAIN_HAND ? player.getInventory().selected : 40;
 
         // Calculate screen position (assuming hotbar rendering)
-        int x = context.getScaledWindowWidth() / 2 - 90 + slotIndex * 20 + 18;
-        int y = context.getScaledWindowHeight() - 10;
+        int x = context.guiWidth() / 2 - 90 + slotIndex * 20 + 18;
+        int y = context.guiHeight() - 10;
 
         // Draw the count
         String countText = Integer.toString(count);
-        context.drawText(
-                MinecraftClient.getInstance().textRenderer,
+        context.drawString(
+                Minecraft.getInstance().font,
                 countText,
-                x - MinecraftClient.getInstance().textRenderer.getWidth(countText),
+                x - Minecraft.getInstance().font.width(countText),
                 y,
                 0xFFFFFF,
                 true

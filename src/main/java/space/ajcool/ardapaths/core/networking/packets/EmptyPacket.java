@@ -1,36 +1,52 @@
 package space.ajcool.ardapaths.core.networking.packets;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
-import space.ajcool.ardapaths.core.consumers.networking.IPacket;
+import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
+
+import java.util.UUID;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * A packet with no data payload, used for simple request/response patterns.
  * Useful for notifications that don't require any additional information.
  */
-public record EmptyPacket() implements IPacket {
+public record EmptyPacket(UUID requestId) implements IRespondablePacket<EmptyPacket> {
     /**
-     * Shared empty packet buffer instance for all EmptyPacket instances.
+     * Creates an empty packet before request correlation is assigned.
      */
-    private static final PacketByteBuf EMPTY = PacketByteBufs.create();
+    public EmptyPacket() {
+        this(IRespondablePacket.UNASSIGNED_REQUEST_ID);
+    }
 
     /**
      * Deserializes an EmptyPacket from a PacketByteBuf.
      *
-     * @param ignoredBuf the buffer to read from (contents ignored)
+     * @param buf the buffer containing the request id
      * @return a new EmptyPacket instance
      */
-    public static EmptyPacket read(PacketByteBuf ignoredBuf) {
-        return new EmptyPacket();
+    public static EmptyPacket read(FriendlyByteBuf buf) {
+        return new EmptyPacket(buf.readUUID());
     }
 
     /**
-     * Builds the packet into a PacketByteBuf (returns the empty buffer).
+     * Builds the packet into a fresh PacketByteBuf containing only the request id.
      *
-     * @return the empty packet buffer
+     * @return packet data buffer
      */
     @Override
-    public PacketByteBuf build() {
-        return EMPTY;
+    public FriendlyByteBuf build() {
+        FriendlyByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+        buf.writeUUID(requestId);
+        return buf;
+    }
+
+    /**
+     * Creates an empty packet with the supplied request id.
+     *
+     * @param requestId request correlation id
+     * @return packet carrying the supplied request id
+     */
+    @Override
+    public EmptyPacket withRequestId(UUID requestId) {
+        return new EmptyPacket(requestId);
     }
 }

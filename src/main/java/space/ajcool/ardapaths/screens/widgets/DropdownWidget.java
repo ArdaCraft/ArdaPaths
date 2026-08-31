@@ -1,18 +1,20 @@
 package space.ajcool.ardapaths.screens.widgets;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.screens.GuiTextures;
+import space.ajcool.ardapaths.screens.GuiTextures.PanelState;
+import space.ajcool.ardapaths.screens.GuiTextures.SliceCap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,23 +28,16 @@ import java.util.function.Function;
  * @param <T> the type of options in this dropdown
  */
 @SuppressWarnings({"resource", "unused"})
-public class DropdownWidget<T> extends ClickableWidget {
-    /**
-     * The texture resource for Minecraft UI widgets.
-     */
-    private static final Identifier WIDGETS_TEXTURE = new Identifier("textures/gui/widgets.png");
-
+public class DropdownWidget<T> extends AbstractWidget {
     /**
      * The original width when not expanded.
      */
-    @SuppressWarnings("FieldMayBeFinal")
-    private int originalWidth;
+    private final int originalWidth;
 
     /**
      * The original height when not expanded.
      */
-    @SuppressWarnings("FieldMayBeFinal")
-    private int originalHeight;
+    private final int originalHeight;
 
     /**
      * The list of available options to select from.
@@ -55,7 +50,7 @@ public class DropdownWidget<T> extends ClickableWidget {
      * Function to display options as text.
      */
     @Setter
-    private Function<T, Text> optionDisplay;
+    private Function<T, Component> optionDisplay;
 
     /**
      * The currently selected option, or null if none selected.
@@ -87,8 +82,7 @@ public class DropdownWidget<T> extends ClickableWidget {
     /**
      * Maximum number of options visible at once (for scrolling).
      */
-    @SuppressWarnings("FieldMayBeFinal")
-    private int maxVisibleOptions;
+    private final int maxVisibleOptions;
 
     /**
      * Current scroll offset in the options list.
@@ -117,9 +111,9 @@ public class DropdownWidget<T> extends ClickableWidget {
             int y,
             int width,
             int height,
-            Text title,
+            Component title,
             List<T> options,
-            Function<T, Text> optionDisplay,
+            Function<T, Component> optionDisplay,
             @Nullable T selected,
             Consumer<T> onSelect,
             boolean allowNull,
@@ -139,20 +133,18 @@ public class DropdownWidget<T> extends ClickableWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         // First, draw the button itself.
         super.render(context, mouseX, mouseY, delta);
-        Text title = this.getMessage();
-        if (title != null) {
-            TextRenderer textRenderer = Client.mc().textRenderer;
-            int titleY = getY() - (textRenderer.fontHeight / 2) - 8;
-            context.drawTextWithShadow(textRenderer, title, getX(), titleY, 0xFFFFFF);
-        }
+        Component title = this.getMessage();
+        Font textRenderer = Client.mc().font;
+        int titleY = getY() - (textRenderer.lineHeight / 2) - 8;
+        context.drawString(textRenderer, title, getX(), titleY, 0xFFFFFF);
 
         // If expanded, draw the dropdown list.
         if (expanded) {
-            MatrixStack matrices = context.getMatrices();
-            matrices.push();
+            PoseStack matrices = context.pose();
+            matrices.pushPose();
             matrices.translate(0, 0, 100); // Raise the dropdown above other elements.
 
             int x = getX();
@@ -168,6 +160,7 @@ public class DropdownWidget<T> extends ClickableWidget {
 
             int totalItems = allItems.size();
             int visibleCount = Math.min(totalItems, maxVisibleOptions);
+            int lastVisibleIndex = Math.min(visibleCount, totalItems - scrollOffset) - 1;
             this.height = originalHeight + visibleCount * originalHeight;
 
             // Render each visible option, starting from scrollOffset.
@@ -180,9 +173,9 @@ public class DropdownWidget<T> extends ClickableWidget {
                         mouseY >= y && mouseY <= y + originalHeight;
                 boolean isSelected = (item == null && selected == null)
                         || (item != null && item.equals(selected));
-                renderItem(context, x, y, item, isSelected, hovered);
+                renderItem(context, x, y, item, isSelected, hovered, capFor(i, lastVisibleIndex));
             }
-            matrices.pop();
+            matrices.popPose();
         }
     }
 
@@ -195,18 +188,19 @@ public class DropdownWidget<T> extends ClickableWidget {
      * @param item the item to render
      * @param selected whether the item is selected
      * @param hovered whether the item is hovered
+     * @param cap caps to draw for this row's list position
      */
-    private void renderItem(DrawContext context, int x, int y, T item, boolean selected, boolean hovered) {
-        TextRenderer textRenderer = Client.mc().textRenderer;
+    private void renderItem(GuiGraphics context, int x, int y, T item, boolean selected, boolean hovered,
+                            SliceCap cap) {
+        Font textRenderer = Client.mc().font;
         int width = getWidth();
-
-        int v = 46;
+        PanelState state = PanelState.IDLE;
         if (hovered) {
-            v += 40;
+            state = PanelState.HOVERED;
         } else if (selected) {
-            v += 20;
+            state = PanelState.SELECTED;
         }
-        renderBox(context, x, y, item, textRenderer, width, originalHeight, v);
+        renderBox(context, x, y, item, textRenderer, width, originalHeight, state, cap);
     }
 
     /**
@@ -219,32 +213,32 @@ public class DropdownWidget<T> extends ClickableWidget {
      * @param textRenderer the text renderer for drawing text
      * @param width the width of the box
      * @param height the height of the box
-     * @param v the v-coordinate for texture mapping
+     * @param state visual panel state
+     * @param cap caps to draw for this box
      */
-    private void renderBox(DrawContext context, int x, int y, T item, TextRenderer textRenderer,
-                           int width, int height, int v) {
-        context.drawNineSlicedTexture(WIDGETS_TEXTURE, x, y, width, height, 20, 4, 200, 20, 0, v);
-        Text display = (item == null) ? Text.literal("None") : optionDisplay.apply(item);
+    private void renderBox(GuiGraphics context, int x, int y, T item, Font textRenderer,
+                           int width, int height, PanelState state, SliceCap cap) {
+        GuiTextures.drawPanelSegment(context, x, y, width, height, state, cap);
+        Component display = (item == null) ? Component.literal("None") : optionDisplay.apply(item);
         int textX = x + 4;
-        int textY = y + (height - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, display, textX, textY, 0xFFFFFF);
+        int textY = y + (height - textRenderer.lineHeight) / 2;
+        context.drawString(textRenderer, display, textX, textY, 0xFFFFFF);
     }
 
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
-        TextRenderer textRenderer = Client.mc().textRenderer;
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        Font textRenderer = Client.mc().font;
         int x = getX();
         int y = getY();
 
-        int vScale = (mouseX >= x && mouseX <= x + originalWidth &&
-                mouseY >= y && mouseY <= y + originalHeight) ? 2 : 1;
-        int v = 46 + (vScale * 20);
-        renderBox(context, x, y, selected, textRenderer, originalWidth, originalHeight, v);
+        PanelState state = (mouseX >= x && mouseX <= x + originalWidth
+                && mouseY >= y && mouseY <= y + originalHeight) ? PanelState.HOVERED : PanelState.SELECTED;
+        renderBox(context, x, y, selected, textRenderer, originalWidth, originalHeight, state, SliceCap.FULL);
 
         String arrow = expanded ? "▲" : "▼";
-        int arrowX = x + originalWidth - textRenderer.getWidth(arrow) - 4;
-        int arrowY = y + (originalHeight - textRenderer.fontHeight) / 2;
-        context.drawTextWithShadow(textRenderer, Text.literal(arrow), arrowX, arrowY, 0xFFFFFF);
+        int arrowX = x + originalWidth - textRenderer.width(arrow) - 4;
+        int arrowY = y + (originalHeight - textRenderer.lineHeight) / 2;
+        context.drawString(textRenderer, Component.literal(arrow), arrowX, arrowY, 0xFFFFFF);
     }
 
     /**
@@ -289,7 +283,6 @@ public class DropdownWidget<T> extends ClickableWidget {
                 T item = allItems.get(actualIndex);
                 selected = item;
                 if (onSelect != null) {
-                    System.out.println("Accepting");
                     onSelect.accept(item);
                 }
             }
@@ -324,8 +317,28 @@ public class DropdownWidget<T> extends ClickableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
+        defaultButtonNarrationText(builder);
+    }
+
+    /**
+     * Determines which caps a row should draw inside the visible list window.
+     *
+     * @param visibleIndex row index inside the currently visible window
+     * @param lastVisibleIndex last row index inside the currently visible window
+     * @return cap selection for the row
+     */
+    private SliceCap capFor(int visibleIndex, int lastVisibleIndex) {
+        if (lastVisibleIndex <= 0) {
+            return SliceCap.FULL;
+        }
+        if (visibleIndex == 0) {
+            return SliceCap.TOP;
+        }
+        if (visibleIndex == lastVisibleIndex) {
+            return SliceCap.BOTTOM;
+        }
+        return SliceCap.MIDDLE;
     }
 
     /**
@@ -358,7 +371,7 @@ public class DropdownWidget<T> extends ClickableWidget {
          * Default option text renderer used when no display function is configured.
          */
         @SuppressWarnings("FieldMayBeFinal")
-        private Function<T, Text> optionDisplay = item -> Text.empty();
+        private Function<T, Component> optionDisplay = item -> Component.empty();
 
         /**
          * Default maximum visible option count before scrolling is required.

@@ -2,27 +2,28 @@ package space.ajcool.ardapaths.screens.widgets;
 
 import lombok.Builder;
 import lombok.Setter;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.PressableWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.function.Consumer;
 
 /**
  * Square icon button that toggles between active and inactive states.
  */
-public class IconToggleWidget extends PressableWidget {
+public class IconToggleWidget extends AbstractButton {
     /**
      * Texture displayed while the toggle is active.
      */
-    private final Identifier activeTexture;
+    private final ResourceLocation activeTexture;
 
     /**
      * Texture displayed while the toggle is inactive.
      */
-    private final Identifier inactiveTexture;
+    private final ResourceLocation inactiveTexture;
 
     /**
      * Whether the toggle is currently active.
@@ -54,9 +55,9 @@ public class IconToggleWidget extends PressableWidget {
      * @param onChange        callback invoked when the active state changes
      */
     @Builder(builderClassName = "IconToggleBuilder", builderMethodName = "create", setterPrefix = "set")
-    public IconToggleWidget(int x, int y, int width, int height, Identifier activeTexture, Identifier inactiveTexture,
+    public IconToggleWidget(int x, int y, int width, int height, ResourceLocation activeTexture, ResourceLocation inactiveTexture,
                             boolean active, boolean enabled, Consumer<Boolean> onChange) {
-        super(x, y, width, height, Text.empty());
+        super(x, y, width, height, Component.empty());
         this.activeTexture = activeTexture;
         this.inactiveTexture = inactiveTexture;
         this.active = active;
@@ -65,7 +66,7 @@ public class IconToggleWidget extends PressableWidget {
     }
 
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
         int x = this.getX();
         int y = this.getY();
         int size = Math.min(this.width, this.height);
@@ -76,8 +77,8 @@ public class IconToggleWidget extends PressableWidget {
             context.fill(x, y, x + this.width, y + this.height, 0x33FFFFFF);
         }
 
-        Identifier texture = active ? activeTexture : inactiveTexture;
-        context.drawTexture(texture, x, y, 0, 0, size, size, size, size);
+        ResourceLocation texture = active ? activeTexture : inactiveTexture;
+        GuiTextures.blit(context, texture, x, y, 0, 0, size, size, size, size);
     }
 
     @Override
@@ -93,7 +94,7 @@ public class IconToggleWidget extends PressableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        this.appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
+        this.defaultButtonNarrationText(builder);
     }
 }

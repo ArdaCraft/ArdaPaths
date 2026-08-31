@@ -144,8 +144,8 @@ public final class Weathers {
      * @return enum value matching the supplied name
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Enum<?> enumValue(Class<? extends Enum> enumClass, String name) {
-        return Enum.valueOf(enumClass, name);
+    private static Enum<?> enumValue(Class<?> enumClass, String name) {
+        return Enum.valueOf((Class<? extends Enum>) enumClass, name);
     }
 
     /**
@@ -160,7 +160,7 @@ public final class Weathers {
 
         try {
             Class<?> weatherChanger = Class.forName(WEATHER_CHANGER_CLASS);
-            Class<? extends Enum> wcMode = Class.forName(WC_MODE_CLASS).asSubclass(Enum.class);
+            Class<?> wcMode = Class.forName(WC_MODE_CLASS).asSubclass(Enum.class);
             Method setMode = weatherChanger.getMethod("setMode", wcMode);
 
             reflectionAccess = new ReflectionAccess(setMode, wcMode);
@@ -200,6 +200,6 @@ public final class Weathers {
      * @param setMode method that applies a Weather Changer mode
      * @param wcMode Weather Changer enum class used by {@code setMode}
      */
-    private record ReflectionAccess(Method setMode, Class<? extends Enum> wcMode) {
+    private record ReflectionAccess(Method setMode, Class<?> wcMode) {
     }
 }

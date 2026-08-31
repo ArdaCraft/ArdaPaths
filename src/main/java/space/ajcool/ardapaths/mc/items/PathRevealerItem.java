@@ -2,21 +2,23 @@ package space.ajcool.ardapaths.mc.items;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.item.TooltipContext;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.screens.Screens;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,7 +32,7 @@ public class PathRevealerItem extends Item {
      *
      * @param properties the item settings (max count 1, fireproof, epic rarity)
      */
-    public PathRevealerItem(Settings properties) {
+    public PathRevealerItem(Properties properties) {
         super(properties);
     }
 
@@ -44,10 +46,8 @@ public class PathRevealerItem extends Item {
      */
     @Environment(EnvType.CLIENT)
     @Override
-    public TypedActionResult<ItemStack> use(World level, PlayerEntity player, Hand interactionHand) {
-        if (level.isClient()) {
-            Screens.openSelectionScreen();
-        }
+    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand interactionHand) {
+        openSelectionScreen(level);
 
         return super.use(level, player, interactionHand);
     }
@@ -61,17 +61,41 @@ public class PathRevealerItem extends Item {
      * @param tooltipFlag the tooltip context
      */
     @Override
-    public void appendTooltip(ItemStack itemStack, @Nullable World level, List<Text> list, TooltipContext tooltipFlag) {
-        super.appendTooltip(itemStack, level, list, tooltipFlag);
+    public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> list, TooltipFlag tooltipFlag) {
+        super.appendHoverText(itemStack, level, list, tooltipFlag);
+        list.addAll(createTooltipLines());
+    }
 
+    /**
+     * Opens the selection screen when the item is used on a client world.
+     *
+     * @param level the world where the item was used
+     */
+    @Environment(EnvType.CLIENT)
+    private static void openSelectionScreen(Level level) {
+
+        if (!level.isClientSide())
+            return;
+
+        Screens.openSelectionScreen();
+    }
+
+    /**
+     * Builds the tooltip lines for the Path Revealer item.
+     *
+     * @return tooltip lines to append
+     */
+    private static List<Component> createTooltipLines() {
+        List<Component> lines = new ArrayList<>();
         PathData path = ArdaPathsClient.CONFIG.getSelectedPath();
         if (path != null) {
-            var text = Text.literal("You are currently on ").formatted(Formatting.GRAY).append(Text.literal(path.getName()).fillStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex())));
-            list.add(text);
+            var text = Component.literal("You are currently on ").withStyle(ChatFormatting.GRAY).append(Component.literal(path.getName()).withStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex())));
+            lines.add(text);
         }
 
-        list.add(Text.literal(" "));
-        list.add(Text.literal("Hold ").formatted(Formatting.AQUA).append(Text.literal("this item to start pathfinding.").formatted(Formatting.GRAY)));
-        list.add(Text.literal("Right Click ").formatted(Formatting.AQUA).append(Text.literal("to change your path.").formatted(Formatting.GRAY)));
+        lines.add(Component.literal(" "));
+        lines.add(Component.literal("Hold ").withStyle(ChatFormatting.AQUA).append(Component.literal("this item to start pathfinding.").withStyle(ChatFormatting.GRAY)));
+        lines.add(Component.literal("Right Click ").withStyle(ChatFormatting.AQUA).append(Component.literal("to change your path.").withStyle(ChatFormatting.GRAY)));
+        return lines;
     }
 }

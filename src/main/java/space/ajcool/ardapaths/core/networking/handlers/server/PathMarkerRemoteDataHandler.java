@@ -2,12 +2,12 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
@@ -29,7 +29,7 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      * Constructs the handler and its request and response channels.
      */
     public PathMarkerRemoteDataHandler() {
-        super("path_marker_remote_data", PathMarkerRemoteDataPacket::read, "path_marker_remote_data_response", PathMarkerRemoteDataResponsePacket::read);
+        super(PathMarkerRemoteDataPacket.CHANNEL, PathMarkerRemoteDataPacket::read, PathMarkerRemoteDataResponsePacket.CHANNEL, PathMarkerRemoteDataResponsePacket::read);
     }
 
     /**
@@ -43,10 +43,10 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      * @return future remote path marker data response
      */
     @Override
-    public CompletableFuture<PathMarkerRemoteDataResponsePacket> handleAsync(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerRemoteDataPacket packet, PacketSender sender) {
+    public CompletableFuture<PathMarkerRemoteDataResponsePacket> handleAsync(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerRemoteDataPacket packet, PacketSender sender) {
         if (!PermissionHelper.hasEditPermission(player)) {
-            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getUuidAsString());
-            return CompletableFuture.completedFuture(response(PathMarkerRemoteDataStatus.UNAUTHORIZED, packet.packedPos(), new NbtCompound()));
+            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
+            return CompletableFuture.completedFuture(response(PathMarkerRemoteDataStatus.UNAUTHORIZED, packet.packedPos(), new CompoundTag()));
         }
 
         return BackupJobRunner.submitMarkerWork(server, gate -> resolve(player, packet, gate));
@@ -59,7 +59,7 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      */
     @Override
     protected PathMarkerRemoteDataResponsePacket errorResponse() {
-        return response(PathMarkerRemoteDataStatus.NOT_FOUND, 0L, new NbtCompound());
+        return response(PathMarkerRemoteDataStatus.NOT_FOUND, 0L, new CompoundTag());
     }
 
     /**
@@ -70,16 +70,16 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      * @param gate   gate for server-thread-only work
      * @return remote path marker data response
      */
-    private PathMarkerRemoteDataResponsePacket resolve(ServerPlayerEntity player, PathMarkerRemoteDataPacket packet, BackupJobRunner.ServerGate gate) {
-        ServerWorld world = gate.call(player::getServerWorld);
-        String dimensionId = world.getRegistryKey().getValue().toString();
+    private PathMarkerRemoteDataResponsePacket resolve(ServerPlayer player, PathMarkerRemoteDataPacket packet, BackupJobRunner.ServerGate gate) {
+        ServerLevel world = gate.call(player::serverLevel);
+        String dimensionId = world.dimension().location().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
-        Optional<ResolvedMarker> marker = gate.call(() -> resolver.resolve(BlockPos.fromLong(packet.packedPos())));
+        Optional<ResolvedMarker> marker = gate.call(() -> resolver.resolve(BlockPos.of(packet.packedPos())));
         if (marker.isEmpty()) {
-            return response(PathMarkerRemoteDataStatus.NOT_FOUND, packet.packedPos(), new NbtCompound());
+            return response(PathMarkerRemoteDataStatus.NOT_FOUND, packet.packedPos(), new CompoundTag());
         }
 
-        NbtCompound data = gate.call(() -> marker.get().liveMarker().toNbt());
+        CompoundTag data = gate.call(() -> marker.get().liveMarker().toNbt());
         return response(PathMarkerRemoteDataStatus.OK, packet.packedPos(), data);
     }
 
@@ -91,7 +91,7 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      * @param data      response marker NBT
      * @return response packet
      */
-    private PathMarkerRemoteDataResponsePacket response(PathMarkerRemoteDataStatus status, long packedPos, NbtCompound data) {
+    private PathMarkerRemoteDataResponsePacket response(PathMarkerRemoteDataStatus status, long packedPos, CompoundTag data) {
         return new PathMarkerRemoteDataResponsePacket(status, packedPos, data);
     }
 }

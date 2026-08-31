@@ -4,14 +4,14 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
@@ -77,9 +77,14 @@ public final class EnvironmentController {
     private static TimeSource controllingSource;
 
     /**
-     * Marker-entry time captured for radial interpolation.
+     * Marker-entry time captured for one-way radial interpolation.
      */
     private static Integer capturedRadialStartTime;
+
+    /**
+     * Highest transition progress reached for the controlling radial source, so approach progress is never given back.
+     */
+    private static double reachedRadialProgress;
 
     /**
      * Segment start time captured for computed segments whose start marker has no authored time.
@@ -114,7 +119,7 @@ public final class EnvironmentController {
     /**
      * Client world key associated with the currently tracked marker positions.
      */
-    private static RegistryKey<World> currentWorldKey;
+    private static ResourceKey<Level> currentWorldKey;
 
     /**
      * Visit state for a marker whose weather command has already been triggered.
@@ -187,7 +192,7 @@ public final class EnvironmentController {
      */
     public static void processMarker(PathMarkerBlockEntity.ChapterNbtData data,
                                      BlockPos markerPos,
-                                     Vec3d playerPos,
+                                     Vec3 playerPos,
                                      String pathId) {
         double squaredDistance = environmentDistanceSquared(playerPos, markerPos);
         processWeather(data, markerPos, squaredDistance, pathId);
@@ -199,10 +204,10 @@ public final class EnvironmentController {
      *
      * @param playerPos precise player position
      */
-    public static void tick(Vec3d playerPos) {
-        ClientWorld world = Client.world();
+    public static void tick(Vec3 playerPos) {
+        ClientLevel world = Client.world();
         if (world != null) {
-            RegistryKey<World> worldKey = world.getRegistryKey();
+            ResourceKey<Level> worldKey = world.dimension();
             if (currentWorldKey != null && !currentWorldKey.equals(worldKey)) {
                 reset();
             }
@@ -234,9 +239,9 @@ public final class EnvironmentController {
             return;
         }
 
-        ClientPlayerEntity player = Client.player();
+        LocalPlayer player = Client.player();
         if (player != null && controllingSource != null) {
-            desiredTime = desiredTimeFor(controllingSource, player.getLerpedPos(tickDelta));
+            desiredTime = desiredTimeFor(controllingSource, player.getPosition(tickDelta));
         }
 
         double frameSeconds = frameDeltaSeconds(System.nanoTime());
@@ -278,8 +283,8 @@ public final class EnvironmentController {
      *
      * @param playerPos precise player position
      */
-    private static void selectTimeSource(Vec3d playerPos) {
-        if (timeNodes.isEmpty() || influenceDistanceSquared(playerPos) > MathHelper.square(INFLUENCE_RANGE)) {
+    private static void selectTimeSource(Vec3 playerPos) {
+        if (timeNodes.isEmpty() || influenceDistanceSquared(playerPos) > Mth.square(INFLUENCE_RANGE)) {
             releaseControl();
             return;
         }
@@ -293,6 +298,7 @@ public final class EnvironmentController {
         if (selected == null) {
             controllingSource = null;
             capturedRadialStartTime = null;
+            reachedRadialProgress = 0.0D;
             capturedSegmentStartTime = null;
             return;
         }
@@ -302,6 +308,7 @@ public final class EnvironmentController {
         if (changedSource) {
             controllingSource = selected;
             capturedRadialStartTime = null;
+            reachedRadialProgress = 0.0D;
             capturedSegmentStartTime = null;
         }
 
@@ -324,7 +331,7 @@ public final class EnvironmentController {
         if (!ArdaPathsClient.CONFIG.useDynamicEnvironment()
                 || !Weathers.isAvailable()
                 || data.getWeather() == PathMarkerBlockEntity.ChapterNbtData.UNSET
-                || squaredDistance > MathHelper.square(activationRange)) {
+                || squaredDistance > Mth.square(activationRange)) {
             return;
         }
 
@@ -341,10 +348,10 @@ public final class EnvironmentController {
         }
 
         Weathers.setClientWeather(weather);
-        weatherActivations.put(markerPos.toImmutable(), new WeatherActivation(
+        weatherActivations.put(markerPos.immutable(), new WeatherActivation(
                 pathId,
                 data.getChapterId(),
-                MathHelper.square(activationRange + EXIT_BUFFER)));
+                Mth.square(activationRange + EXIT_BUFFER)));
     }
 
     /**
@@ -356,8 +363,8 @@ public final class EnvironmentController {
     private static void collectTimeNode(PathMarkerBlockEntity.ChapterNbtData data, BlockPos markerPos) {
         BlockPos nextPos = data.getTarget() == null
                 ? null
-                : markerPos.add(data.getTarget()).toImmutable();
-        timeNodes.put(markerPos.toImmutable(), new TimeNode(
+                : markerPos.offset(data.getTarget()).immutable();
+        timeNodes.put(markerPos.immutable(), new TimeNode(
                 data.getTimeOfDay(),
                 nextPos,
                 data.getActivationRange(),
@@ -369,7 +376,7 @@ public final class EnvironmentController {
      *
      * @param playerPos precise player position
      */
-    private static void pruneWeatherActivations(Vec3d playerPos) {
+    private static void pruneWeatherActivations(Vec3 playerPos) {
         weatherActivations.entrySet().removeIf(entry -> environmentDistanceSquared(playerPos, entry.getKey()) > entry.getValue().exitDistanceSquared());
     }
 
@@ -379,7 +386,7 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      * @return nearest radial candidate, or null when none contains the player
      */
-    private static TimeCandidate nearestRadialCandidate(Vec3d playerPos) {
+    private static TimeCandidate nearestRadialCandidate(Vec3 playerPos) {
         TimeCandidate nearest = null;
 
         for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
@@ -390,7 +397,7 @@ public final class EnvironmentController {
 
             double distanceSquared = environmentDistanceSquared(playerPos, entry.getKey());
             double outerRadius = node.activationRange() + Math.max(TimeOfDay.DEFAULT_TRANSITION_RANGE, node.transitionRange());
-            if (distanceSquared <= MathHelper.square(outerRadius)
+            if (distanceSquared <= Mth.square(outerRadius)
                     && (nearest == null || distanceSquared < nearest.distanceSquared())) {
                 nearest = new TimeCandidate(new TimeSource(TimeSourceType.RADIAL, entry.getKey(), null, node, null), distanceSquared);
             }
@@ -405,7 +412,7 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      * @return nearest computed candidate, or null when none is available
      */
-    private static TimeCandidate nearestComputedCandidate(Vec3d playerPos) {
+    private static TimeCandidate nearestComputedCandidate(Vec3 playerPos) {
         TimeCandidate nearest = null;
 
         for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
@@ -436,7 +443,7 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      * @return squared distance to the trail's area of influence
      */
-    private static double influenceDistanceSquared(Vec3d playerPos) {
+    private static double influenceDistanceSquared(Vec3 playerPos) {
         double nearest = Double.MAX_VALUE;
 
         for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
@@ -457,7 +464,7 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      * @return desired daytime ticks for the source
      */
-    private static int desiredTimeFor(TimeSource source, Vec3d playerPos) {
+    private static int desiredTimeFor(TimeSource source, Vec3 playerPos) {
         return switch (source.type()) {
             case RADIAL -> radialDesiredTime(source, playerPos);
             case COMPUTED -> computedDesiredTime(source, playerPos);
@@ -465,13 +472,13 @@ public final class EnvironmentController {
     }
 
     /**
-     * Computes a radial marker's target time from player distance.
+     * Computes a radial marker's target time from the closest player approach reached during this visit.
      *
      * @param source radial source
      * @param playerPos precise player position
      * @return desired daytime ticks for the radial source
      */
-    private static int radialDesiredTime(TimeSource source, Vec3d playerPos) {
+    private static int radialDesiredTime(TimeSource source, Vec3 playerPos) {
         TimeNode node = source.startNode();
         if (node == null || node.timeOfDay() == TimeOfDay.UNSET) {
             return (int) Math.round(appliedTime);
@@ -480,7 +487,7 @@ public final class EnvironmentController {
         ensureAppliedTime();
         int targetTime = Math.floorMod(node.timeOfDay(), DAY_TICKS);
         int transitionRange = Math.max(TimeOfDay.DEFAULT_TRANSITION_RANGE, node.transitionRange());
-        if (transitionRange <= 0) {
+        if (transitionRange == 0) {
             return targetTime;
         }
 
@@ -490,8 +497,9 @@ public final class EnvironmentController {
 
         double outerRadius = node.activationRange() + transitionRange;
         double distance = Math.sqrt(environmentDistanceSquared(playerPos, source.markerPos()));
-        double progress = MathHelper.clamp((outerRadius - distance) / transitionRange, 0.0D, 1.0D);
-        return interpolatedTime(capturedRadialStartTime, targetTime, progress);
+        double progress = Mth.clamp((outerRadius - distance) / transitionRange, 0.0D, 1.0D);
+        reachedRadialProgress = Math.max(reachedRadialProgress, progress);
+        return interpolatedTime(capturedRadialStartTime, targetTime, reachedRadialProgress);
     }
 
     /**
@@ -501,7 +509,7 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      * @return desired daytime ticks for the computed source
      */
-    private static int computedDesiredTime(TimeSource source, Vec3d playerPos) {
+    private static int computedDesiredTime(TimeSource source, Vec3 playerPos) {
         TimeNode startNode = source.startNode();
         TimeNode endNode = source.endNode();
         if (startNode == null || endNode == null || endNode.timeOfDay() == TimeOfDay.UNSET) {
@@ -545,6 +553,7 @@ public final class EnvironmentController {
     private static void clearTimeControlState() {
         controllingSource = null;
         capturedRadialStartTime = null;
+        reachedRadialProgress = 0.0D;
         capturedSegmentStartTime = null;
         desiredTime = 0.0D;
         appliedTime = 0.0D;
@@ -566,10 +575,10 @@ public final class EnvironmentController {
      * Reads the current client world time into the frame smoother state.
      */
     private static void seedAppliedTime() {
-        ClientWorld world = Client.world();
+        ClientLevel world = Client.world();
         appliedTime = world == null
                 ? 0.0D
-                : Math.floorMod(world.getTimeOfDay(), DAY_TICKS);
+                : Math.floorMod(world.getDayTime(), DAY_TICKS);
         desiredTime = appliedTime;
         hasAppliedTime = true;
     }
@@ -581,8 +590,8 @@ public final class EnvironmentController {
      * @param markerPos marker block position
      * @return squared distance to the marker block box
      */
-    private static double environmentDistanceSquared(Vec3d playerPos, BlockPos markerPos) {
-        Box markerBox = new Box(markerPos);
+    private static double environmentDistanceSquared(Vec3 playerPos, BlockPos markerPos) {
+        AABB markerBox = new AABB(markerPos);
         double x = axisOverrun(playerPos.x, markerBox.minX, markerBox.maxX);
         double y = axisOverrun(playerPos.y, markerBox.minY, markerBox.maxY);
         double z = axisOverrun(playerPos.z, markerBox.minZ, markerBox.maxZ);
@@ -617,19 +626,19 @@ public final class EnvironmentController {
      * @param endPos segment end marker position
      * @return clamped projection progress and squared distance to the segment
      */
-    private static SegmentProjection projectOntoSegment(Vec3d playerPos, BlockPos startPos, BlockPos endPos) {
-        Vec3d start = Vec3d.ofCenter(startPos);
-        Vec3d end = Vec3d.ofCenter(endPos);
-        Vec3d segment = end.subtract(start);
-        double lengthSquared = segment.lengthSquared();
+    private static SegmentProjection projectOntoSegment(Vec3 playerPos, BlockPos startPos, BlockPos endPos) {
+        Vec3 start = Vec3.atCenterOf(startPos);
+        Vec3 end = Vec3.atCenterOf(endPos);
+        Vec3 segment = end.subtract(start);
+        double lengthSquared = segment.lengthSqr();
         if (lengthSquared <= 0.0D) {
-            double distanceSquared = playerPos.squaredDistanceTo(start);
+            double distanceSquared = playerPos.distanceToSqr(start);
             return new SegmentProjection(0.0D, distanceSquared);
         }
 
-        double progress = MathHelper.clamp(playerPos.subtract(start).dotProduct(segment) / lengthSquared, 0.0D, 1.0D);
-        Vec3d projected = start.add(segment.multiply(progress));
-        return new SegmentProjection(progress, playerPos.squaredDistanceTo(projected));
+        double progress = Mth.clamp(playerPos.subtract(start).dot(segment) / lengthSquared, 0.0D, 1.0D);
+        Vec3 projected = start.add(segment.scale(progress));
+        return new SegmentProjection(progress, playerPos.distanceToSqr(projected));
     }
 
     /**

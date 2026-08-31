@@ -7,14 +7,13 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.item.Item;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
@@ -35,7 +34,7 @@ import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
 import space.ajcool.ardapaths.paths.rendering.FocusPromptRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
-
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -68,12 +67,12 @@ public class ArdaPathsClient implements ClientModInitializer {
     /**
      * Keybinding used to toggle automatic trail walking.
      */
-    public static KeyBinding AUTO_WALK_KEY;
+    public static KeyMapping AUTO_WALK_KEY;
 
     /**
      * Keybinding used to focus the view on an authored look-at target, or recentre auto-walk.
      */
-    public static KeyBinding FOCUS_KEY;
+    public static KeyMapping FOCUS_KEY;
 
     /**
      * Fabric client mod initialization entry point.
@@ -84,21 +83,21 @@ public class ArdaPathsClient implements ClientModInitializer {
         CONFIG_MANAGER = new ClientConfigManager("./config/arda-paths/config.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
-        List<Item> markerSet = new ArrayList<>(ClientWorld.BLOCK_MARKER_ITEMS);
+        List<Item> markerSet = new ArrayList<>(ClientLevel.MARKER_PARTICLE_ITEMS);
         markerSet.add(ModItems.PATH_MARKER);
-        ClientWorld.BLOCK_MARKER_ITEMS = Set.copyOf(markerSet);
+        ClientLevel.MARKER_PARTICLE_ITEMS = Set.copyOf(markerSet);
 
         ModParticles.initClient();
         registerPathfinderColorProvider();
-        AUTO_WALK_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        AUTO_WALK_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.ardapaths.auto_walk",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_NUM_LOCK,
                 "key.category.ardapaths"
         ));
-        FOCUS_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        FOCUS_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.ardapaths.focus",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_LEFT_ALT,
                 "key.category.ardapaths"
         ));
@@ -134,14 +133,14 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ClientTickEvents.START_WORLD_TICK.register(level ->
         {
-            if (PathMarkerBlock.selectedBlockPosition != null && MinecraftClient.getInstance().player != null && !MinecraftClient.getInstance().player.getMainHandStack().isOf(ModItems.PATH_MARKER)) {
+            if (PathMarkerBlock.selectedBlockPosition != null && Minecraft.getInstance().player != null && !Minecraft.getInstance().player.getMainHandItem().is(ModItems.PATH_MARKER)) {
                 PathMarkerBlock.selectedBlockPosition = null;
 
-                var message = Text.empty()
-                        .append(Text.translatable("ardapaths.client.message.ardapaths").formatted(Formatting.DARK_AQUA))
-                        .append(Text.translatable("ardapaths.client.message.deselected_origin_block").formatted(Formatting.RED));
+                var message = Component.empty()
+                        .append(Component.translatable("ardapaths.client.message.ardapaths").withStyle(ChatFormatting.DARK_AQUA))
+                        .append(Component.translatable("ardapaths.client.message.deselected_origin_block").withStyle(ChatFormatting.RED));
 
-                MinecraftClient.getInstance().player.sendMessage(message);
+                Minecraft.getInstance().player.sendSystemMessage(message);
 
             } else if (PathMarkerBlock.selectedBlockPosition != null) {
                 var random = level.random;
@@ -151,13 +150,13 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client ->
         {
-            while (AUTO_WALK_KEY.wasPressed()) {
+            while (AUTO_WALK_KEY.consumeClick()) {
                 AutoWalker.toggle();
             }
 
-            FocusController.setHeld(FOCUS_KEY.isPressed());
+            FocusController.setHeld(FOCUS_KEY.isDown());
 
-            if (callingForTeleport && MinecraftClient.getInstance().player != null) {
+            if (callingForTeleport && Minecraft.getInstance().player != null) {
                 String currentSelectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId() != null ? ArdaPathsClient.CONFIG.getCurrentChapterId() : "";
 
                 if (lastVisitedTrailNodeData != null) {
@@ -171,15 +170,15 @@ public class ArdaPathsClient implements ClientModInitializer {
                         callingForTeleport = false;
                         return;
                     } else {
-                        var message = Text.empty()
-                                .append(Text.translatable("ardapaths.client.message.trail_does_not_belong_to_chapter").formatted(Formatting.DARK_AQUA));
-                        MinecraftClient.getInstance().player.sendMessage(message);
+                        var message = Component.empty()
+                                .append(Component.translatable("ardapaths.client.message.trail_does_not_belong_to_chapter").withStyle(ChatFormatting.DARK_AQUA));
+                        Minecraft.getInstance().player.sendSystemMessage(message);
                     }
                 } else {
 
-                    var message = Text.empty()
-                            .append(Text.translatable("ardapaths.client.message.no_trail_data").formatted(Formatting.DARK_AQUA));
-                    MinecraftClient.getInstance().player.sendMessage(message);
+                    var message = Component.empty()
+                            .append(Component.translatable("ardapaths.client.message.no_trail_data").withStyle(ChatFormatting.DARK_AQUA));
+                    Minecraft.getInstance().player.sendSystemMessage(message);
                 }
 
                 if (!currentSelectedChapterId.isBlank()) {
@@ -187,9 +186,9 @@ public class ArdaPathsClient implements ClientModInitializer {
                     Paths.gotoChapter(currentSelectedChapterId, true);
                 } else {
 
-                    var message = Text.empty()
-                            .append(Text.translatable("ardapaths.client.message.no_chapter_selected").formatted(Formatting.DARK_AQUA));
-                    MinecraftClient.getInstance().player.sendMessage(message);
+                    var message = Component.empty()
+                            .append(Component.translatable("ardapaths.client.message.no_chapter_selected").withStyle(ChatFormatting.DARK_AQUA));
+                    Minecraft.getInstance().player.sendSystemMessage(message);
                 }
 
                 callingForTeleport = false;

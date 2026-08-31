@@ -1,12 +1,12 @@
 package space.ajcool.ardapaths.core.executors;
 
 import lombok.extern.slf4j.Slf4j;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.william278.huskhomes.api.FabricHuskHomesAPI;
 import space.ajcool.ardapaths.core.integration.WarpLocation;
 import space.ajcool.ardapaths.core.integration.WarpService;
@@ -44,27 +44,27 @@ public class WarpExecutor implements WarpService {
     public CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName) {
         return this.huskHomesAPI.getWarp(warpName).thenApply(warp -> {
             if (warp.isEmpty()) {
-                log.warn("Warp not found: {}", warpName);
+                log.warn("resolveWarp: warp not found: {}", warpName);
                 return Optional.<WarpLocation>empty();
             }
 
             final var targetWarp = warp.get();
-            final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
+            final var worldId = ResourceLocation.tryParse(targetWarp.getWorld().getName());
 
             if (worldId == null) {
-                log.warn("Invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
+                log.warn("resolveWarp: invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
                 return Optional.<WarpLocation>empty();
             }
 
-            final var worldKey = RegistryKey.of(RegistryKeys.WORLD, worldId);
-            final var serverWorld = server.getWorld(worldKey);
+            final var worldKey = ResourceKey.create(Registries.DIMENSION, worldId);
+            final var serverWorld = server.getLevel(worldKey);
 
             if (serverWorld == null) {
-                log.warn("World not found for warp {}: {}", warpName, worldId);
+                log.warn("resolveWarp: world not found for warp {}: {}", warpName, worldId);
                 return Optional.<WarpLocation>empty();
             }
 
-            return Optional.of(new WarpLocation(worldKey, BlockPos.ofFloored(targetWarp.getX(), targetWarp.getY(), targetWarp.getZ())));
+            return Optional.of(new WarpLocation(worldKey, BlockPos.containing(targetWarp.getX(), targetWarp.getY(), targetWarp.getZ())));
         }).exceptionally(throwable -> {
             log.warn("Failed to resolve warp {}", warpName, throwable);
             return Optional.empty();
@@ -81,38 +81,38 @@ public class WarpExecutor implements WarpService {
      * @param onFailure fallback action for missing or invalid warp targets
      */
     @Override
-    public void warpTo(MinecraftServer server, ServerPlayerEntity player, String warpName, Runnable onFailure) {
+    public void warpTo(MinecraftServer server, ServerPlayer player, String warpName, Runnable onFailure) {
 
         this.huskHomesAPI.getWarp(warpName).thenAccept(warp -> {
 
-            log.info("Warping {} to {}", player.getUuidAsString(), warpName);
+            log.info("Warping {} to {}", player.getStringUUID(), warpName);
 
             if (warp.isEmpty()) {
-                log.warn("Warp not found: {}", warpName);
+                log.warn("warpTo: warp not found: {}", warpName);
                 server.execute(onFailure);
                 return;
             }
 
             warp.ifPresent(targetWarp -> {
 
-                final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
+                final var worldId = ResourceLocation.tryParse(targetWarp.getWorld().getName());
 
                 if (worldId == null) {
-                    log.warn("Invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
+                    log.warn("warpTo: invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
                     server.execute(onFailure);
                     return;
                 }
 
-                final var serverWorld = server.getWorld(RegistryKey.of(RegistryKeys.WORLD, worldId));
+                final var serverWorld = server.getLevel(ResourceKey.create(Registries.DIMENSION, worldId));
 
                 if (serverWorld == null) {
-                    log.warn("World not found for warp {}: {}", warpName, worldId);
+                    log.warn("warpTo: world not found for warp {}: {}", warpName, worldId);
                     server.execute(onFailure);
                     return;
                 }
 
-                log.info("Warp ongoing for {} to {}", player.getUuidAsString(), targetWarp);
-                server.execute(() -> player.teleport(serverWorld,
+                log.info("Warp ongoing for {} to {}", player.getStringUUID(), targetWarp);
+                server.execute(() -> player.teleportTo(serverWorld,
                             targetWarp.getX(),
                             targetWarp.getY(),
                             targetWarp.getZ(),

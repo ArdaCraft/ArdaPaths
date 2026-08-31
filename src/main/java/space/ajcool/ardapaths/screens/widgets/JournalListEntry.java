@@ -1,12 +1,13 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.AlwaysSelectedEntryListWidget;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -14,20 +15,20 @@ import java.util.List;
 /**
  * A custom list entry for displaying journal entries with variable heights.
  */
-public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<JournalListEntry> {
+public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry> {
 
     /** Color of the journal entry text */
     private final int color;
     /** Heading text displayed for this entry */
-    private final Text heading;
+    private final Component heading;
     /** Description text displayed for this entry */
-    private final Text description;
+    private final Component description;
     /** Button widget for teleporting to the entry location */
-    private final ButtonWidget teleportButton;
+    private final Button teleportButton;
     /** Minecraft client instance */
-    private final MinecraftClient client;
+    private final Minecraft client;
     /** Wrapped description text lines */
-    private List<OrderedText> wrappedDescription;
+    private List<FormattedCharSequence> wrappedDescription;
     /** Cached width value to avoid unnecessary recalculation */
     private int cachedWidth = -1;
     /** Calculated height of the entry */
@@ -42,17 +43,17 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
      * @param color        The color of the entry
      * @param onPress     The action to perform when the button is pressed
      */
-    public JournalListEntry(Text heading, Text description, Text buttonText, int color, ButtonWidget.PressAction onPress) {
+    public JournalListEntry(Component heading, Component description, Component buttonText, int color, Button.OnPress onPress) {
 
-        this.client = MinecraftClient.getInstance();
+        this.client = Minecraft.getInstance();
         this.heading = heading;
         this.description = description;
         this.color = color;
 
-        if (!buttonText.equals(Text.empty())) {
+        if (!buttonText.equals(Component.empty())) {
 
-            this.teleportButton = ButtonWidget.builder(buttonText, onPress)
-                    .dimensions(0, 0, 60, 20)
+            this.teleportButton = Button.builder(buttonText, onPress)
+                    .bounds(0, 0, 60, 20)
                     .build();
         } else {
             this.teleportButton = null;
@@ -83,16 +84,16 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
      * @param entryWidth The width available for the entry
      */
     private void recalculateHeight(int entryWidth) {
-        TextRenderer textRenderer = client.textRenderer;
+        Font textRenderer = client.font;
         int textWidth = entryWidth - 80; // leave space for button
 
         if (description != null) {
-            wrappedDescription = textRenderer.wrapLines(description, textWidth);
+            wrappedDescription = textRenderer.split(description, textWidth);
         } else {
             wrappedDescription = Collections.emptyList();
         }
 
-        int lineHeight = textRenderer.fontHeight + 2;
+        int lineHeight = textRenderer.lineHeight + 2;
         int typeHeight = 14;
         int descriptionHeight = wrappedDescription.size() * lineHeight;
         int padding = 8;
@@ -115,22 +116,22 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
      * @param tickDelta   The partial tick
      */
     @Override
-    public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight,
+    public void render(GuiGraphics context, int index, int y, int x, int entryWidth, int entryHeight,
                        int mouseX, int mouseY, boolean hovered, float tickDelta) {
-        TextRenderer textRenderer = client.textRenderer;
+        Font textRenderer = client.font;
 
         // Recalculate if width changed
         getHeight(entryWidth);
 
         // Draw type
-        context.drawText(textRenderer, heading, x + 5, y + 2, 0xFFFFFF, false);
+        context.drawString(textRenderer, heading, x + 5, y + 2, 0xFFFFFF, false);
 
         // Draw wrapped description
         if (wrappedDescription != null && !wrappedDescription.isEmpty()) {
             int lineY = y + 14;
-            int lineHeight = textRenderer.fontHeight + 2;
-            for (OrderedText line : wrappedDescription) {
-                context.drawText(textRenderer, line, x + 5, lineY, color, false);
+            int lineHeight = textRenderer.lineHeight + 2;
+            for (FormattedCharSequence line : wrappedDescription) {
+                context.drawString(textRenderer, line, x + 5, lineY, color, false);
                 lineY += lineHeight;
             }
         }
@@ -166,7 +167,7 @@ public class JournalListEntry extends AlwaysSelectedEntryListWidget.Entry<Journa
      * @return The narration text
      */
     @Override
-    public Text getNarration() {
-        return Text.literal(heading.getString());
+    public @NotNull Component getNarration() {
+        return Component.literal(heading.getString());
     }
 }

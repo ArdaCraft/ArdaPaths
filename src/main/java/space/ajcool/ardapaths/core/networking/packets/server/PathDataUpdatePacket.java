@@ -1,7 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
 /**
@@ -20,26 +22,30 @@ public record PathDataUpdatePacket(
         int tertiaryColor
 ) implements IPacket
 {
+    /**
+     * Network channel used for path metadata updates.
+     */
+    public static final ResourceLocation CHANNEL = ModConstants.modId("path_data_update_request");
 
     @Override
-    public PacketByteBuf build()
+    public FriendlyByteBuf build()
     {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(id);
-        buf.writeString(name);
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeUtf(id);
+        buf.writeUtf(name);
         buf.writeInt(primaryColor);
         buf.writeInt(secondaryColor);
         buf.writeInt(tertiaryColor);
         return buf;
     }
 
-    public static space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket read(PacketByteBuf buf)
+    public static PathDataUpdatePacket read(FriendlyByteBuf buf)
     {
-        final String pathId = buf.readString();
-        final String pathName = buf.readString();
+        final String pathId = buf.readUtf();
+        final String pathName = buf.readUtf();
         final int pathPrimaryColor = buf.readInt();
         final int pathSecondaryColor = buf.readInt();
         final int pathTertiaryColor = buf.readInt();
-        return new space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket(pathId, pathName, pathPrimaryColor, pathSecondaryColor, pathTertiaryColor);
+        return new PathDataUpdatePacket(pathId, pathName, pathPrimaryColor, pathSecondaryColor, pathTertiaryColor);
     }
 }

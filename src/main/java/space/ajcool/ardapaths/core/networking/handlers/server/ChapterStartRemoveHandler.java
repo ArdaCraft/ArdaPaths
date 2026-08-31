@@ -2,10 +2,11 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
+import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 
 /**
@@ -16,7 +17,7 @@ public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartR
 {
     public ChapterStartRemoveHandler()
     {
-        super("chapter_start_remove", ChapterStartRemovePacket::read);
+        super(ChapterStartRemovePacket.CHANNEL, ChapterStartRemovePacket::read);
     }
 
     /**
@@ -30,11 +31,15 @@ public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartR
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterStartRemovePacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartRemovePacket packet, PacketSender sender)
     {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
-        ArdaPaths.CONFIG.removeChapterStart(pathId, chapterId);
-        ArdaPaths.CONFIG_MANAGER.save();
+        PositionData recordedStart = ArdaPaths.CONFIG.getChapterStarts().get(pathId + ":" + chapterId);
+        PositionData requestedPosition = PositionData.fromBlockPos(packet.position());
+        if (requestedPosition.equals(recordedStart)) {
+            ArdaPaths.CONFIG.removeChapterStart(pathId, chapterId);
+            ArdaPaths.CONFIG_MANAGER.save();
+        }
     }
 }

@@ -1,26 +1,24 @@
 package space.ajcool.ardapaths.screens.widgets;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Builder;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.screens.GuiTextures;
+import space.ajcool.ardapaths.screens.GuiTextures.PanelState;
+import space.ajcool.ardapaths.screens.GuiTextures.SliceCap;
 
 import java.util.List;
 
 /**
  * Floating menu used by screens to offer row-scoped contextual actions.
  */
-public class ContextMenuWidget extends ClickableWidget {
-    /**
-     * Texture resource used by vanilla button-like widgets.
-     */
-    private static final Identifier WIDGETS_TEXTURE = new Identifier("textures/gui/widgets.png");
+public class ContextMenuWidget extends AbstractWidget {
 
     /**
      * Height in pixels for each context menu item.
@@ -51,7 +49,7 @@ public class ContextMenuWidget extends ClickableWidget {
      */
     @Builder(builderClassName = "ContextMenuBuilder", builderMethodName = "create", setterPrefix = "set")
     public ContextMenuWidget(int x, int y, List<Item> items) {
-        super(x, y, widthFor(items), items.size() * ITEM_HEIGHT, Text.empty());
+        super(x, y, widthFor(items), items.size() * ITEM_HEIGHT, Component.empty());
         this.items = List.copyOf(items);
     }
 
@@ -63,10 +61,10 @@ public class ContextMenuWidget extends ClickableWidget {
      */
     @SuppressWarnings("resource")
     private static int widthFor(List<Item> items) {
-        TextRenderer textRenderer = Client.mc().textRenderer;
+        Font textRenderer = Client.mc().font;
         int width = MIN_WIDTH;
         for (Item item : items) {
-            width = Math.max(width, textRenderer.getWidth(item.label()) + 16);
+            width = Math.max(width, textRenderer.width(item.label()) + 16);
         }
         return Math.min(MAX_WIDTH, width);
     }
@@ -80,12 +78,12 @@ public class ContextMenuWidget extends ClickableWidget {
      * @param delta   partial tick delta
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        MatrixStack matrices = context.getMatrices();
-        matrices.push();
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        PoseStack matrices = context.pose();
+        matrices.pushPose();
         matrices.translate(0, 0, 200);
         super.render(context, mouseX, mouseY, delta);
-        matrices.pop();
+        matrices.popPose();
     }
 
     /**
@@ -98,19 +96,40 @@ public class ContextMenuWidget extends ClickableWidget {
      */
     @SuppressWarnings("resource")
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
         for (int index = 0; index < items.size(); index++) {
             Item item = items.get(index);
             int itemY = getY() + index * ITEM_HEIGHT;
             boolean hovered = mouseX >= getX() && mouseX <= getX() + getWidth() && mouseY >= itemY && mouseY <= itemY + ITEM_HEIGHT;
-            int v = hovered ? 86 : 46;
+            PanelState state = hovered ? PanelState.HOVERED : PanelState.IDLE;
+            SliceCap cap = capFor(index, items.size() - 1);
             int color = item.enabled() ? 0xFFFFFF : 0x777777;
-            context.drawNineSlicedTexture(WIDGETS_TEXTURE, getX(), itemY, getWidth(), ITEM_HEIGHT, 20, 4, 200, 20, 0, v);
-            context.drawTextWithShadow(Client.mc().textRenderer, item.label(), getX() + 4, itemY + 6, color);
+            GuiTextures.drawPanelSegment(context, getX(), itemY, getWidth(), ITEM_HEIGHT, state, cap);
+            context.drawString(Client.mc().font, item.label(), getX() + 4, itemY + 6, color);
             if (hovered && item.tooltip() != null) {
-                setTooltip(Tooltip.of(item.tooltip()));
+                setTooltip(Tooltip.create(item.tooltip()));
             }
         }
+    }
+
+    /**
+     * Determines which caps a row should draw inside the menu.
+     *
+     * @param index row index
+     * @param lastIndex final row index
+     * @return cap selection for the row
+     */
+    private SliceCap capFor(int index, int lastIndex) {
+        if (lastIndex <= 0) {
+            return SliceCap.FULL;
+        }
+        if (index == 0) {
+            return SliceCap.TOP;
+        }
+        if (index == lastIndex) {
+            return SliceCap.BOTTOM;
+        }
+        return SliceCap.MIDDLE;
     }
 
     /**
@@ -140,7 +159,7 @@ public class ContextMenuWidget extends ClickableWidget {
      * @param builder narration builder
      */
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
     }
 
     /**
@@ -151,6 +170,6 @@ public class ContextMenuWidget extends ClickableWidget {
      * @param enabled whether the row can run its action
      * @param action  work to run when the row is clicked
      */
-    public record Item(Text label, Text tooltip, boolean enabled, Runnable action) {
+    public record Item(Component label, Component tooltip, boolean enabled, Runnable action) {
     }
 }

@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.backup;
 
-import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.Map;
+import net.minecraft.core.BlockPos;
 
 /**
  * Marker data discovered while scanning saved region files.

@@ -3,14 +3,14 @@ package space.ajcool.ardapaths.core;
 import lombok.experimental.UtilityClass;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.integrated.IntegratedServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +26,7 @@ public class Client {
     /**
      * @return The client's player, or null if not available
      */
-    public static @Nullable ClientPlayerEntity player() {
+    public static @Nullable LocalPlayer player() {
         return mc().player;
     }
 
@@ -37,66 +37,66 @@ public class Client {
      *
      * @return The Minecraft client instance
      */
-    public static @NotNull MinecraftClient mc() {
-        return MinecraftClient.getInstance();
+    public static @NotNull Minecraft mc() {
+        return Minecraft.getInstance();
     }
 
     /**
      * @return The address of the current server, or an empty string if the client is in single player mode
      */
     public static String getServerAddress() {
-        MinecraftClient client = mc();
-        if (client.isInSingleplayer()) return "";
-        ServerInfo server = client.getCurrentServerEntry();
+        Minecraft client = mc();
+        if (client.isLocalServer()) return "";
+        ServerData server = client.getCurrentServer();
         if (server == null) return "";
-        return server.address;
+        return server.ip;
     }
 
     /**
      * @return The player's UUID as a string, or an empty string if not available
      */
     public static String getUuidString() {
-        return mc().getSession().getUuid();
+        return mc().getUser().getUuid();
     }
 
     /**
      * @return True if the client is in a single player world, otherwise false
      */
     public static boolean isInSinglePlayer() {
-        MinecraftClient client = mc();
-        return client.isInSingleplayer();
+        Minecraft client = mc();
+        return client.isLocalServer();
     }
 
     /**
      * Resolves the logical-server counterpart of a player on the integrated (single player) server.
-     * Client-side code holds a {@link ClientPlayerEntity}, which carries no permission information;
-     * server-side checks need the {@link ServerPlayerEntity} owned by the integrated server.
+     * Client-side code holds a {@link LocalPlayer}, which carries no permission information;
+     * server-side checks need the {@link ServerPlayer} owned by the integrated server.
      *
      * @param player the player to resolve, typically the client player
      * @return The matching player on the integrated server, or null if there is no integrated server
      * or the player is not connected to it
      */
-    public static @Nullable ServerPlayerEntity getIntegratedServerPlayer(@Nullable PlayerEntity player) {
+    public static @Nullable ServerPlayer getIntegratedServerPlayer(@Nullable Player player) {
         if (player == null) return null;
 
-        IntegratedServer server = mc().getServer();
+        IntegratedServer server = mc().getSingleplayerServer();
         if (server == null) return null;
 
-        return server.getPlayerManager().getPlayer(player.getUuid());
+        return server.getPlayerList().getPlayer(player.getUUID());
     }
 
     /**
      * @return True if the client is holding the control key, otherwise false
      */
     public static boolean isCtrlDown() {
-        ClientWorld level = world();
-        return level != null && level.isClient() && Screen.hasControlDown();
+        ClientLevel level = world();
+        return level != null && level.isClientSide() && Screen.hasControlDown();
     }
 
     /**
      * @return The client's world, or null if not available
      */
-    public static @Nullable ClientWorld world() {
-        return mc().world;
+    public static @Nullable ClientLevel world() {
+        return mc().level;
     }
 }

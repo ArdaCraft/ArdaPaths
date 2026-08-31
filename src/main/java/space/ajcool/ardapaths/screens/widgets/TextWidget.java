@@ -1,14 +1,14 @@
 package space.ajcool.ardapaths.screens.widgets;
 
 import lombok.Builder;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.Client;
 
 /**
  * A wrapper around Minecraft's TextWidget that provides a convenient setText method.
  * Used for displaying static or dynamic text labels in custom UI screens.
  */
-public class TextWidget extends net.minecraft.client.gui.widget.TextWidget {
+public class TextWidget extends net.minecraft.client.gui.components.StringWidget {
     /**
      * Constructs a TextWidget with the given parameters.
      *
@@ -20,8 +20,8 @@ public class TextWidget extends net.minecraft.client.gui.widget.TextWidget {
      */
     @Builder(builderClassName = "TextBuilder", builderMethodName = "create", setterPrefix = "set")
     @SuppressWarnings("resource")
-    public TextWidget(int x, int y, int width, int height, Text message) {
-        super(x, y, width, height, message, Client.mc().textRenderer);
+    public TextWidget(int x, int y, int width, int height, Component message) {
+        super(x, y, width, height, message, Client.mc().font);
     }
 
     /**
@@ -29,7 +29,7 @@ public class TextWidget extends net.minecraft.client.gui.widget.TextWidget {
      *
      * @param message the new text message
      */
-    public void setText(Text message) {
+    public void setText(Component message) {
         this.setMessage(message);
     }
 }

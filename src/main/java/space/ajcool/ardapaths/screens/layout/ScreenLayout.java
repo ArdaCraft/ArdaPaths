@@ -1,10 +1,9 @@
 package space.ajcool.ardapaths.screens.layout;
 
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ClickableWidget;
-
 import java.util.Collection;
 import java.util.List;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.Screen;
 
 /**
  * Stateless helpers for measuring and repositioning screen widget groups.
@@ -23,7 +22,7 @@ public final class ScreenLayout {
      * @param widgets the widgets to measure
      * @return the distance between the highest top edge and lowest bottom edge, or zero when empty
      */
-    public static int contentHeight(Collection<? extends ClickableWidget> widgets)
+    public static int contentHeight(Collection<? extends AbstractWidget> widgets)
     {
         if (widgets.isEmpty()) {
             return 0;
@@ -31,7 +30,7 @@ public final class ScreenLayout {
 
         int minTop = Integer.MAX_VALUE;
         int maxBottom = Integer.MIN_VALUE;
-        for (ClickableWidget widget : widgets) {
+        for (AbstractWidget widget : widgets) {
             minTop = Math.min(minTop, widget.getY());
             maxBottom = Math.max(maxBottom, widget.getY() + widget.getHeight());
         }
@@ -59,19 +58,19 @@ public final class ScreenLayout {
      * @param widgets      the widgets to reposition
      * @param screenHeight the height of the containing screen
      */
-    public static void centerVertically(Collection<? extends ClickableWidget> widgets, int screenHeight)
+    public static void centerVertically(Collection<? extends AbstractWidget> widgets, int screenHeight)
     {
         if (widgets.isEmpty()) {
             return;
         }
 
         int minTop = Integer.MAX_VALUE;
-        for (ClickableWidget widget : widgets) {
+        for (AbstractWidget widget : widgets) {
             minTop = Math.min(minTop, widget.getY());
         }
 
         int offset = verticalCenterOffset(minTop, minTop + contentHeight(widgets), screenHeight);
-        for (ClickableWidget widget : widgets) {
+        for (AbstractWidget widget : widgets) {
             widget.setY(widget.getY() + offset);
         }
     }
@@ -83,9 +82,9 @@ public final class ScreenLayout {
      */
     public static void centerVertically(Screen screen)
     {
-        List<ClickableWidget> widgets = screen.children().stream()
-                .filter(ClickableWidget.class::isInstance)
-                .map(ClickableWidget.class::cast)
+        List<AbstractWidget> widgets = screen.children().stream()
+                .filter(AbstractWidget.class::isInstance)
+                .map(AbstractWidget.class::cast)
                 .toList();
 
         centerVertically(widgets, screen.height);

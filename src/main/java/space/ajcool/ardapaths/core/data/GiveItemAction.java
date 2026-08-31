@@ -2,9 +2,9 @@ package space.ajcool.ardapaths.core.data;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import net.minecraft.item.Item;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -39,9 +39,9 @@ public final class GiveItemAction {
         String trimmed = value.trim();
         if (trimmed.isEmpty() || isClear(trimmed)) return null;
 
-        Identifier id = Identifier.tryParse(trimmed);
+        ResourceLocation id = ResourceLocation.tryParse(trimmed);
         if (id == null) return null;
 
-        return Registries.ITEM.getOrEmpty(id).orElse(null);
+        return BuiltInRegistries.ITEM.getOptional(id).orElse(null);
     }
 }

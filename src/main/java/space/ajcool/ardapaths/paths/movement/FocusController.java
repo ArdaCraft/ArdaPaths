@@ -2,10 +2,10 @@ package space.ajcool.ardapaths.paths.movement;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.mc.items.ModItems;
 
@@ -21,11 +21,8 @@ public final class FocusController {
     /** Wall-clock duration used for focus easing. */
     private static final long FOCUS_EASE_MILLIS = 250;
 
-    /** Exponential camera response rate per second while holding focus. */
-    private static final double CAMERA_RESPONSIVENESS = 10.0D;
-
-    /** Maximum elapsed frame time used by hold-phase camera easing after a pause or hitch. */
-    private static final double MAX_CAMERA_FRAME_SECONDS = 0.1D;
+    /** Render-frame clock used for exponential focus holding. */
+    private static final FrameClock FRAME_CLOCK = new FrameClock();
 
     /** Current phase of the focus camera state machine. */
     private static Phase phase = Phase.IDLE;
@@ -56,16 +53,13 @@ public final class FocusController {
     /** Player pitch captured at focus key-down for the return ease. */
     private static float returnPitch = 0.0F;
 
-    /** Monotonic timestamp of the last rendered camera frame. */
-    private static long lastFrameNanos = 0L;
-
     /**
      * Updates the current marker focus candidate.
      *
      * @param nextCandidate nearest in-range look-at position, or null when none is available
      */
     public static void setCandidate(@Nullable BlockPos nextCandidate) {
-        candidate = nextCandidate == null ? null : nextCandidate.toImmutable();
+        candidate = nextCandidate == null ? null : nextCandidate.immutable();
         if (held && (phase == Phase.EASING_IN || phase == Phase.HOLDING) && !samePosition(candidate, focusTarget)) {
             beginEaseOut();
         }
@@ -121,7 +115,7 @@ public final class FocusController {
         phaseStartPitch = 0.0F;
         returnYaw = 0.0F;
         returnPitch = 0.0F;
-        lastFrameNanos = 0L;
+        FRAME_CLOCK.reset();
     }
 
     /**
@@ -130,8 +124,8 @@ public final class FocusController {
     public static void renderCameraFrame() {
         if (phase == Phase.IDLE) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientPlayerEntity player = client.player;
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
         if (player == null) {
             reset();
             return;
@@ -147,57 +141,56 @@ public final class FocusController {
         }
 
         long now = System.currentTimeMillis();
-        long frameNanos = System.nanoTime();
-        double frameSeconds = frameDeltaSeconds(frameNanos);
+        double frameSeconds = FRAME_CLOCK.deltaSeconds();
         Aim aim = aimAt(player, focusTarget);
         double progress = (now - phaseStartMillis) / (double) FOCUS_EASE_MILLIS;
         float nextYaw;
         float nextPitch;
 
         if (phase == Phase.EASING_IN) {
-            float eased = (float) (Math.min(1.0D, progress) * Math.min(1.0D, progress));
-            nextYaw = phaseStartYaw + (MathHelper.wrapDegrees(aim.yaw() - phaseStartYaw) * eased);
-            nextPitch = phaseStartPitch + (MathHelper.wrapDegrees(aim.pitch() - phaseStartPitch) * eased);
+            float eased = (float) CameraEasing.easeInAlpha(progress);
+            nextYaw = CameraEasing.blend(phaseStartYaw, aim.yaw(), eased);
+            nextPitch = CameraEasing.blend(phaseStartPitch, aim.pitch(), eased);
             if (progress >= 1.0D) {
                 phase = Phase.HOLDING;
             }
         } else if (phase == Phase.HOLDING) {
-            float alpha = (float) (1.0D - Math.exp(-CAMERA_RESPONSIVENESS * frameSeconds));
-            nextYaw = player.getYaw() + (MathHelper.wrapDegrees(aim.yaw() - player.getYaw()) * alpha);
-            nextPitch = player.getPitch() + (MathHelper.wrapDegrees(aim.pitch() - player.getPitch()) * alpha);
+            float alpha = (float) CameraEasing.exponentialAlpha(frameSeconds);
+            nextYaw = CameraEasing.blend(player.getYRot(), aim.yaw(), alpha);
+            nextPitch = CameraEasing.blend(player.getXRot(), aim.pitch(), alpha);
         } else {
-            float eased = (float) (1.0D - ((1.0D - Math.min(1.0D, progress)) * (1.0D - Math.min(1.0D, progress))));
-            nextYaw = phaseStartYaw + (MathHelper.wrapDegrees(returnYaw - phaseStartYaw) * eased);
-            nextPitch = phaseStartPitch + (MathHelper.wrapDegrees(returnPitch - phaseStartPitch) * eased);
+            float eased = (float) CameraEasing.easeOutAlpha(progress);
+            nextYaw = CameraEasing.blend(phaseStartYaw, returnYaw, eased);
+            nextPitch = CameraEasing.blend(phaseStartPitch, returnPitch, eased);
             if (progress >= 1.0D) {
-                applyCamera(player, nextYaw, nextPitch);
+                CameraEasing.applyCamera(player, nextYaw, nextPitch);
                 phase = Phase.IDLE;
                 focusTarget = null;
-                lastFrameNanos = 0L;
+                FRAME_CLOCK.reset();
                 return;
             }
         }
 
-        applyCamera(player, nextYaw, nextPitch);
+        CameraEasing.applyCamera(player, nextYaw, nextPitch);
     }
 
     /**
      * Begins either an authored focus or an immediate auto-walk recenter.
      */
     private static void beginFocusOrRecenter() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientPlayerEntity player = client.player;
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
         if (player == null) return;
-        if (client.currentScreen != null || !player.isHolding(ModItems.PATH_REVEALER)) return;
+        if (client.screen != null || !player.isHolding(ModItems.PATH_REVEALER)) return;
 
         if (candidate != null) {
-            returnYaw = player.getYaw();
-            returnPitch = player.getPitch();
-            focusTarget = candidate.toImmutable();
+            returnYaw = player.getYRot();
+            returnPitch = player.getXRot();
+            focusTarget = candidate.immutable();
             phaseStartYaw = returnYaw;
             phaseStartPitch = returnPitch;
             phaseStartMillis = System.currentTimeMillis();
-            lastFrameNanos = 0L;
+            FRAME_CLOCK.reset();
             phase = Phase.EASING_IN;
         } else if (AutoWalker.isActive()) {
             AutoWalker.requestImmediateRecenter();
@@ -210,17 +203,17 @@ public final class FocusController {
     private static void beginEaseOut() {
         if (phase == Phase.IDLE || phase == Phase.EASING_OUT) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientPlayerEntity player = client.player;
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
         if (player == null) {
             reset();
             return;
         }
 
-        phaseStartYaw = player.getYaw();
-        phaseStartPitch = player.getPitch();
+        phaseStartYaw = player.getYRot();
+        phaseStartPitch = player.getXRot();
         phaseStartMillis = System.currentTimeMillis();
-        lastFrameNanos = 0L;
+        FRAME_CLOCK.reset();
         phase = Phase.EASING_OUT;
     }
 
@@ -231,9 +224,9 @@ public final class FocusController {
      * @param player current client player
      * @return true when focus should ease out
      */
-    private static boolean shouldReleaseFocus(MinecraftClient client, ClientPlayerEntity player) {
+    private static boolean shouldReleaseFocus(Minecraft client, LocalPlayer player) {
         return !held
-                || client.currentScreen != null
+                || client.screen != null
                 || !player.isHolding(ModItems.PATH_REVEALER)
                 || !samePosition(candidate, focusTarget);
     }
@@ -257,7 +250,7 @@ public final class FocusController {
      * @param target target block position
      * @return aim angles for the target
      */
-    private static Aim aimAt(ClientPlayerEntity player, BlockPos target) {
+    private static Aim aimAt(LocalPlayer player, BlockPos target) {
         double tx = target.getX() + 0.5D;
         double ty = target.getY() + 0.5D;
         double tz = target.getZ() + 0.5D;
@@ -265,44 +258,9 @@ public final class FocusController {
         double dy = ty - player.getEyeY();
         double dz = tz - player.getZ();
         double horizontal = Math.sqrt((dx * dx) + (dz * dz));
-        float aimYaw = (float) (MathHelper.atan2(dz, dx) * (180.0D / Math.PI)) - 90.0F;
-        float aimPitch = (float) (-(MathHelper.atan2(dy, horizontal) * (180.0D / Math.PI)));
+        float aimYaw = (float) (Mth.atan2(dz, dx) * (180.0D / Math.PI)) - 90.0F;
+        float aimPitch = (float) (-(Mth.atan2(dy, horizontal) * (180.0D / Math.PI)));
         return new Aim(aimYaw, aimPitch);
-    }
-
-    /**
-     * Applies a camera orientation to the player and matching previous-frame fields.
-     *
-     * @param player current client player
-     * @param yaw    yaw to apply
-     * @param pitch  pitch to apply
-     */
-    private static void applyCamera(ClientPlayerEntity player, float yaw, float pitch) {
-        player.setYaw(yaw);
-        player.bodyYaw = yaw;
-        player.headYaw = yaw;
-        player.setPitch(pitch);
-        player.prevYaw = yaw;
-        player.prevBodyYaw = yaw;
-        player.prevHeadYaw = yaw;
-        player.prevPitch = pitch;
-    }
-
-    /**
-     * Calculates elapsed render-frame time used for frame-rate-independent focus holding.
-     *
-     * @param frameNanos current monotonic frame timestamp
-     * @return clamped elapsed time in seconds
-     */
-    private static double frameDeltaSeconds(long frameNanos) {
-        if (lastFrameNanos == 0L) {
-            lastFrameNanos = frameNanos;
-            return 1.0D / 60.0D;
-        }
-
-        long elapsedNanos = Math.max(0L, frameNanos - lastFrameNanos);
-        lastFrameNanos = frameNanos;
-        return Math.min(MAX_CAMERA_FRAME_SECONDS, elapsedNanos / 1_000_000_000.0D);
     }
 
     /**

@@ -2,10 +2,10 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.integration.Warps;
@@ -23,11 +23,11 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
 {
     public ChapterPlayerTeleportHandler()
     {
-        super("chapter_player_teleport", ChapterPlayerTeleportPacket::read);
+        super(ChapterPlayerTeleportPacket.CHANNEL, ChapterPlayerTeleportPacket::read);
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterPlayerTeleportPacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPlayerTeleportPacket packet, PacketSender sender)
     {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
@@ -38,12 +38,12 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
 
             if (start != null)
             {
-                player.requestTeleport(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
+                player.teleportTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
             }
         };
 
         if (startWarp.isPresent() && Warps.isAvailable()) {
-            log.info("Attempting to warp player {} at {}", player.getUuidAsString(), startWarp.get());
+            log.info("Attempting to warp player {} at {}", player.getStringUUID(), startWarp.get());
             Warps.warpTo(server, player, startWarp.get(), fallback);
         } else {
             fallback.run();

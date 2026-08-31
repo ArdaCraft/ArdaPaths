@@ -4,13 +4,13 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.Text;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 
-import static net.minecraft.server.command.CommandManager.argument;
-import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.commands.Commands.argument;
+import static net.minecraft.commands.Commands.literal;
 
 /**
  * Registers and handles ArdaPaths server commands.
@@ -26,7 +26,7 @@ public class ArdaPathsCommand {
      *
      * @param dispatcher command dispatcher for the active server
      */
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("ardapaths")
                 .requires(source -> Permissions.check(source, ArdaPaths.MOD_EDIT_PERMISSION, 2))
                 .then(literal("backup")
@@ -51,15 +51,15 @@ public class ArdaPathsCommand {
      * @param context command context
      * @return command result
      */
-    private static int backup(CommandContext<ServerCommandSource> context) {
+    private static int backup(CommandContext<CommandSourceStack> context) {
         BackupJobRunner.JobStartResult result = BACKUP_RUNNER.tryStartBackup(context.getSource());
 
         if (!result.started()) {
-            context.getSource().sendFeedback(() -> Text.literal("An ArdaPaths job is already in progress: " + result.snapshot().format()), false);
+            context.getSource().sendSuccess(() -> Component.literal("An ArdaPaths job is already in progress: " + result.snapshot().format()), false);
             return 0;
         }
 
-        context.getSource().sendFeedback(() -> Text.literal("ArdaPaths backup started; progress in server log."), false);
+        context.getSource().sendSuccess(() -> Component.literal("ArdaPaths backup started; progress in server log."), false);
         return 1;
     }
 
@@ -71,15 +71,15 @@ public class ArdaPathsCommand {
      * @param hard    whether stale markers should be deleted
      * @return command result
      */
-    private static int restore(CommandContext<ServerCommandSource> context, String file, boolean hard) {
+    private static int restore(CommandContext<CommandSourceStack> context, String file, boolean hard) {
         BackupJobRunner.JobStartResult result = BACKUP_RUNNER.tryStartRestore(context.getSource(), file, hard);
 
         if (!result.started()) {
-            context.getSource().sendFeedback(() -> Text.literal("An ArdaPaths job is already in progress: " + result.snapshot().format()), false);
+            context.getSource().sendSuccess(() -> Component.literal("An ArdaPaths job is already in progress: " + result.snapshot().format()), false);
             return 0;
         }
 
-        context.getSource().sendFeedback(() -> Text.literal("ArdaPaths restore started" + (hard ? " in hard mode" : "") + "; progress in server log."), false);
+        context.getSource().sendSuccess(() -> Component.literal("ArdaPaths restore started" + (hard ? " in hard mode" : "") + "; progress in server log."), false);
         return 1;
     }
 }

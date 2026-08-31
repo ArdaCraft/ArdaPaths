@@ -2,12 +2,12 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.ChunkPos;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
@@ -37,7 +37,7 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * Constructs the handler and its request and response channels.
      */
     public MarkerBulkClearHandler() {
-        super("marker_bulk_clear", MarkerBulkClearPacket::read, "marker_bulk_clear_response", MarkerBulkClearResponsePacket::read);
+        super(MarkerBulkClearPacket.CHANNEL, MarkerBulkClearPacket::read, MarkerBulkClearResponsePacket.CHANNEL, MarkerBulkClearResponsePacket::read);
     }
 
     /**
@@ -51,9 +51,9 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * @return status result for the client editor
      */
     @Override
-    public CompletableFuture<MarkerBulkClearResponsePacket> handleAsync(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, MarkerBulkClearPacket packet, PacketSender sender) {
+    public CompletableFuture<MarkerBulkClearResponsePacket> handleAsync(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, MarkerBulkClearPacket packet, PacketSender sender) {
         if (!PermissionHelper.hasEditPermission(player)) {
-            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getUuidAsString());
+            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
             return CompletableFuture.completedFuture(response(TimeSpreadStatus.UNAUTHORIZED, 0));
         }
 
@@ -100,9 +100,9 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * @param gate         gate for server-thread-only work
      * @return final response packet
      */
-    private MarkerBulkClearResponsePacket applyClear(ServerPlayerEntity player, List<Long> positions, String pathId, String chapterId, boolean clearTime, boolean clearWeather, BackupJobRunner.ServerGate gate) {
-        ServerWorld world = gate.call(player::getServerWorld);
-        String dimensionId = world.getRegistryKey().getValue().toString();
+    private MarkerBulkClearResponsePacket applyClear(ServerPlayer player, List<Long> positions, String pathId, String chapterId, boolean clearTime, boolean clearWeather, BackupJobRunner.ServerGate gate) {
+        ServerLevel world = gate.call(player::serverLevel);
+        String dimensionId = world.dimension().location().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         int updated = 0;
 
@@ -111,7 +111,7 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
                     positions,
                     batchStart,
                     ignored -> dimensionId,
-                    packedPosition -> new ChunkPos(BlockPos.fromLong(packedPosition)).toLong()
+                    packedPosition -> new ChunkPos(BlockPos.of(packedPosition)).toLong()
             );
             int fromIndex = batchStart;
             BatchClearResult result = gate.call(() -> applyClearBatch(resolver, positions.subList(fromIndex, toIndex), pathId, chapterId, clearTime, clearWeather));
@@ -142,7 +142,7 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
         int updated = 0;
 
         for (Long packedPosition : positions) {
-            Optional<ResolvedMarker> marker = resolver.resolve(BlockPos.fromLong(packedPosition));
+            Optional<ResolvedMarker> marker = resolver.resolve(BlockPos.of(packedPosition));
             if (marker.isEmpty()) {
                 return new BatchClearResult(false, updated);
             }

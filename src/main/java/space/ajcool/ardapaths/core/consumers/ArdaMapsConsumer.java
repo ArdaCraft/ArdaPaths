@@ -7,8 +7,8 @@ import com.duom.ardamaps.core.Client;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.integration.WaypointProvider;
@@ -31,7 +31,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
     /**
      * The currently displayed next waypoint, or null if no waypoint is shown.
      */
-    private Vec3d currentWaypoint = null;
+    private Vec3 currentWaypoint = null;
 
     /**
      * Clears all waypoints created by ArdaPaths from the ArdaMaps display.
@@ -53,21 +53,21 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
      * @param target the position of the next trail node
      */
     @Override
-    public void setNextTrailNode(Vec3d target) {
+    public void setNextTrailNode(Vec3 target) {
 
         if (api == null) return;
 
         if (shouldShowWaypoint(target)) {
 
-            assert Client.mc().world != null;
+            assert Client.mc().level != null;
 
-            var dimension = Client.mc().world.getRegistryKey().getValue().toString();
+            var dimension = Client.mc().level.dimension().location().toString();
 
             if (currentWaypoint != null)
                 api.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);
 
             var waypoint = new ApiWaypoint((int) target.x, (int) target.z,
-                    Text.translatable("ardapaths.client.next.trail.waypoint").getString(),
+                    Component.translatable("ardapaths.client.next.trail.waypoint").getString(),
                     1.0f, 1.0f, 1.0f,
                     ArdaPaths.MOD_ID, dimension,
                     false, ArdaPaths.MOD_ID + ":textures/item/path_marker.png");
@@ -84,7 +84,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
      * @param target the target to display
      * @return true if a waypoint should be shown, false otherwise
      */
-    private boolean shouldShowWaypoint(Vec3d target) {
+    private boolean shouldShowWaypoint(Vec3 target) {
 
         if (!ArdaPathsClient.CONFIG.showTrailWaypoints()) return false;
 
@@ -92,7 +92,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
         if (target == null) return false;
 
         // Will not happen client side - sanity check
-        if (Client.mc().world == null) return false;
+        if (Client.mc().level == null) return false;
 
         return !Objects.equals(currentWaypoint, target);
     }

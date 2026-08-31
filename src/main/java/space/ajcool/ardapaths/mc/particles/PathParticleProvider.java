@@ -2,32 +2,32 @@ package space.ajcool.ardapaths.mc.particles;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.GlowParticle;
 import net.minecraft.client.particle.Particle;
-import net.minecraft.client.particle.ParticleFactory;
-import net.minecraft.client.particle.SpriteProvider;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.particle.ParticleProvider;
+import net.minecraft.client.particle.SpriteSet;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 
 /**
  * Factory for creating custom glow particles used in ArdaPaths trail rendering.
  * Creates particles with dynamic colours, lighting, and velocity for visual effect.
  */
 @Environment(EnvType.CLIENT)
-public class PathParticleProvider implements ParticleFactory<PathParticleEffect> {
+public class PathParticleProvider implements ParticleProvider<PathParticleEffect> {
     /**
      * The sprite provider for particle rendering.
      */
-    private final SpriteProvider sprite;
+    private final SpriteSet sprite;
 
     /**
      * Constructs a PathParticleProvider with the given sprite provider.
      *
      * @param spriteSet the sprite provider for particle textures
      */
-    public PathParticleProvider(SpriteProvider spriteSet) {
+    public PathParticleProvider(SpriteSet spriteSet) {
         this.sprite = spriteSet;
     }
 
@@ -45,17 +45,17 @@ public class PathParticleProvider implements ParticleFactory<PathParticleEffect>
      * @param ignoredSpeedZ the unused z velocity supplied by the particle spawner
      * @return the created particle
      */
-    public Particle createParticle(PathParticleEffect effect, ClientWorld level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ) {
+    public Particle createParticle(PathParticleEffect effect, ClientLevel level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ) {
         var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite) {
             @Override
-            public int getBrightness(float f) {
+            public int getLightColor(float f) {
                 BlockPos blockPos = new BlockPos((int) this.x, (int) this.y, (int) this.z);
-                var lightColor = WorldRenderer.getLightmapCoordinates(this.world, blockPos);
+                var lightColor = LevelRenderer.getLightColor(this.level, blockPos);
 
                 int j = lightColor & 0xFF;
                 int k = lightColor >> 16 & 0xFF;
 
-                float brightness = MathHelper.clamp(((float) this.maxAge - ((float) this.age + f)) / (float) this.maxAge, 0.0f, 1.0f);
+                float brightness = Mth.clamp(((float) this.lifetime - ((float) this.age + f)) / (float) this.lifetime, 0.0f, 1.0f);
 
                 if ((j += (int) (brightness * 240)) > 240) {
                     j = 240;
@@ -78,8 +78,8 @@ public class PathParticleProvider implements ParticleFactory<PathParticleEffect>
         double ySpeed = ((level.random.nextDouble() * 2) - 1) * SPEED_FACTOR;
         double zSpeed = ((level.random.nextDouble() * 2) - 1) * SPEED_FACTOR;
 
-        glowParticle.setVelocity(xSpeed, ySpeed, zSpeed);
-        glowParticle.setMaxAge(level.random.nextInt(10) + 10);
+        glowParticle.setParticleSpeed(xSpeed, ySpeed, zSpeed);
+        glowParticle.setLifetime(level.random.nextInt(10) + 10);
 
         return glowParticle;
     }

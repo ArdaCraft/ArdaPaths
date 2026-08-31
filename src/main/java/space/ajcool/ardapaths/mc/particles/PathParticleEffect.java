@@ -4,11 +4,12 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.particle.ParticleType;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.math.random.Random;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.util.RandomSource;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 
@@ -19,7 +20,7 @@ import java.util.Locale;
  * @param secondaryColor the secondary trail colour encoded as RGB integer bits, or zero when unused
  * @param tertiaryColor  the tertiary trail colour encoded as RGB integer bits, or zero when unused
  */
-public record PathParticleEffect(int primaryColor, int secondaryColor, int tertiaryColor) implements ParticleEffect {
+public record PathParticleEffect(int primaryColor, int secondaryColor, int tertiaryColor) implements ParticleOptions {
     /**
      * Codec used by particle registries and data-driven particle serialization.
      */
@@ -33,7 +34,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
      * Command and network parameter factory for path particles on Minecraft 1.20.1.
      */
     @SuppressWarnings("deprecation")
-    public static final ParticleEffect.Factory<PathParticleEffect> PARAMETERS_FACTORY = new ParticleEffect.Factory<>() {
+    public static final ParticleOptions.Deserializer<PathParticleEffect> PARAMETERS_FACTORY = new ParticleOptions.Deserializer<>() {
         /**
          * Reads a path particle effect from a command argument stream.
          *
@@ -43,7 +44,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
          * @throws CommandSyntaxException when one of the expected colour values is missing or invalid
          */
         @Override
-        public PathParticleEffect read(ParticleType<PathParticleEffect> type, StringReader reader) throws CommandSyntaxException {
+        public @NotNull PathParticleEffect fromCommand(ParticleType<PathParticleEffect> type, StringReader reader) throws CommandSyntaxException {
             reader.expect(' ');
             int primaryColor = reader.readInt();
             reader.expect(' ');
@@ -61,7 +62,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
          * @return the decoded particle effect
          */
         @Override
-        public PathParticleEffect read(ParticleType<PathParticleEffect> type, PacketByteBuf buf) {
+        public @NotNull PathParticleEffect fromNetwork(ParticleType<PathParticleEffect> type, FriendlyByteBuf buf) {
             return new PathParticleEffect(buf.readInt(), buf.readInt(), buf.readInt());
         }
     };
@@ -72,7 +73,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
      * @param random the random source used for colour selection
      * @return the selected RGB colour
      */
-    public int selectColor(Random random) {
+    public int selectColor(RandomSource random) {
         if (secondaryColor == 0) {
             return primaryColor;
         }
@@ -95,7 +96,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
      * @return the path particle type
      */
     @Override
-    public ParticleType<?> getType() {
+    public @NotNull ParticleType<?> getType() {
         return ModParticles.PATH;
     }
 
@@ -105,7 +106,7 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
      * @param buf the packet buffer to write to
      */
     @Override
-    public void write(PacketByteBuf buf) {
+    public void writeToNetwork(FriendlyByteBuf buf) {
         buf.writeInt(primaryColor);
         buf.writeInt(secondaryColor);
         buf.writeInt(tertiaryColor);
@@ -117,9 +118,9 @@ public record PathParticleEffect(int primaryColor, int secondaryColor, int terti
      * @return the particle type id followed by the encoded colour values
      */
     @Override
-    public String asString() {
+    public @NotNull String writeToString() {
         return String.format(Locale.ROOT, "%s %d %d %d",
-                Registries.PARTICLE_TYPE.getId(getType()),
+                BuiltInRegistries.PARTICLE_TYPE.getKey(getType()),
                 primaryColor,
                 secondaryColor,
                 tertiaryColor

@@ -2,14 +2,14 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.registry.RegistryKey;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.World;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
@@ -50,7 +50,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * Constructs the handler and its request and response channels.
      */
     public ChapterPathMarkersHandler() {
-        super("chapter_path_markers", ChapterPathMarkersPacket::read, "chapter_path_markers_response", ChapterPathMarkersResponsePacket::read);
+        super(ChapterPathMarkersPacket.CHANNEL, ChapterPathMarkersPacket::read, ChapterPathMarkersResponsePacket.CHANNEL, ChapterPathMarkersResponsePacket::read);
     }
 
     /**
@@ -64,9 +64,9 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @return future marker list response
      */
     @Override
-    public CompletableFuture<ChapterPathMarkersResponsePacket> handleAsync(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterPathMarkersPacket packet, PacketSender sender) {
+    public CompletableFuture<ChapterPathMarkersResponsePacket> handleAsync(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPathMarkersPacket packet, PacketSender sender) {
         if (!PermissionHelper.hasEditPermission(player)) {
-            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getUuidAsString());
+            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
             return CompletableFuture.completedFuture(response(ChapterMarkersStatus.UNAUTHORIZED, List.of()));
         }
 
@@ -87,9 +87,10 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param packet marker-list request
      * @return future optional anchor
      */
-    private CompletableFuture<Optional<Anchor>> resolveAnchor(MinecraftServer server, ServerPlayerEntity player, ChapterPathMarkersPacket packet) {
+    @SuppressWarnings("resource")
+    private CompletableFuture<Optional<Anchor>> resolveAnchor(MinecraftServer server, ServerPlayer player, ChapterPathMarkersPacket packet) {
         Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(packet.pathId(), packet.chapterId());
-        RegistryKey<World> fallbackWorldKey = player.getServerWorld().getRegistryKey();
+        ResourceKey<Level> fallbackWorldKey = player.serverLevel().dimension();
         if (startWarp.isPresent() && Warps.isAvailable()) {
             return Warps.resolveWarp(server, startWarp.get()).thenApply(warp -> warp
                     .map(location -> new Anchor(location.worldKey(), location.position()))
@@ -106,7 +107,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param packet marker-list request
      * @return optional coordinate anchor
      */
-    private Optional<Anchor> coordinateAnchor(RegistryKey<World> worldKey, ChapterPathMarkersPacket packet) {
+    private Optional<Anchor> coordinateAnchor(ResourceKey<Level> worldKey, ChapterPathMarkersPacket packet) {
         BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(packet.pathId(), packet.chapterId());
         if (start == null) return Optional.empty();
         return Optional.of(new Anchor(worldKey, start));
@@ -141,12 +142,12 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             return response(ChapterMarkersStatus.NO_CHAPTER_START, List.of());
         }
 
-        ServerWorld world = gate.call(() -> server.getWorld(anchor.get().worldKey()));
+        ServerLevel world = gate.call(() -> server.getLevel(anchor.get().worldKey()));
         if (world == null) {
             return response(ChapterMarkersStatus.INVALID_DATA, List.of());
         }
 
-        String dimensionId = world.getRegistryKey().getValue().toString();
+        String dimensionId = world.dimension().location().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         Optional<ResolvedMarker> start = findNearestChapterStart(resolver, anchor.get().position(), packet.pathId(), packet.chapterId(), gate);
         if (start.isEmpty()) {
@@ -182,7 +183,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             return response(ChapterMarkersStatus.OK, chapterChain);
         }
 
-        Optional<ResolvedMarker> current = gate.call(() -> resolver.resolve(BlockPos.fromLong(packet.currentPackedPos())));
+        Optional<ResolvedMarker> current = gate.call(() -> resolver.resolve(BlockPos.of(packet.currentPackedPos())));
         if (current.isEmpty()) {
             return response(ChapterMarkersStatus.INVALID_DATA, List.of());
         }
@@ -210,7 +211,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
                     return data != null && data.isChapterStart();
                 })
                 .min(Comparator
-                        .comparingDouble((ResolvedMarker marker) -> marker.position().getSquaredDistance(anchor))
+                        .comparingDouble((ResolvedMarker marker) -> marker.position().distSqr(anchor))
                         .thenComparingLong(marker -> marker.position().asLong()));
     }
 
@@ -224,8 +225,8 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @return resolved markers inside the search cube
      */
     private List<ResolvedMarker> collectMarkersInCube(MarkerResolver resolver, BlockPos centre, int radius, BackupJobRunner.ServerGate gate) {
-        ChunkPos minChunk = new ChunkPos(centre.add(-radius, 0, -radius));
-        ChunkPos maxChunk = new ChunkPos(centre.add(radius, 0, radius));
+        ChunkPos minChunk = new ChunkPos(centre.offset(-radius, 0, -radius));
+        ChunkPos maxChunk = new ChunkPos(centre.offset(radius, 0, radius));
         List<ResolvedMarker> markers = new ArrayList<>();
         int inspectedChunks = 0;
 
@@ -268,7 +269,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
 
         for (ChapterMarkerCandidate candidate : chapterMarkers) {
             if (candidate.data().getTarget() != null) {
-                targeted.add(candidate.marker().position().add(candidate.data().getTarget()).asLong());
+                targeted.add(candidate.marker().position().offset(candidate.data().getTarget()).asLong());
             }
         }
 
@@ -284,7 +285,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
                 .filter(marker -> !visited.contains(marker.position().asLong()))
                 .filter(marker -> !targeted.contains(marker.position().asLong()))
                 .min(Comparator
-                        .comparingDouble((ResolvedMarker marker) -> marker.position().getSquaredDistance(end))
+                        .comparingDouble((ResolvedMarker marker) -> marker.position().distSqr(end))
                         .thenComparingLong(marker -> marker.position().asLong()));
         log.debug(
                 "Chapter {}:{} detached probe at {} found {} same-chapter markers, excluded {} visited and {} targeted, chose {}",
@@ -366,7 +367,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
                 return new ChainSegment(markers, current.position());
             }
 
-            BlockPos nextPos = current.position().add(data.getTarget());
+            BlockPos nextPos = current.position().offset(data.getTarget());
             Optional<ResolvedMarker> next = gate.call(() -> resolver.resolve(nextPos));
             if (next.isEmpty()) {
                 return new ChainSegment(markers, current.position());
@@ -400,7 +401,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param worldKey world containing the search anchor
      * @param position configured anchor position
      */
-    private record Anchor(RegistryKey<World> worldKey, BlockPos position) {
+    private record Anchor(ResourceKey<Level> worldKey, BlockPos position) {
     }
 
     /**

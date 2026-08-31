@@ -9,8 +9,10 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.TypedActionResult;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import space.ajcool.ardapaths.api.ArdaPathsApi;
 import space.ajcool.ardapaths.api.ArdaPathsApiEntrypoint;
 import space.ajcool.ardapaths.commands.ArdaPathsCommand;
@@ -92,24 +94,35 @@ public class ArdaPaths implements ModInitializer {
         {
             var blockEntity = world.getBlockEntity(hitResult.getBlockPos());
 
-            if ((blockEntity instanceof PathMarkerBlockEntity || player.getStackInHand(hand).isOf(ModBlocks.PATH_MARKER.asItem())) && !PermissionHelper.hasEditPermission(player))
-                return ActionResult.FAIL;
+            if ((blockEntity instanceof PathMarkerBlockEntity || player.getItemInHand(hand).is(ModBlocks.PATH_MARKER.asItem())) && !PermissionHelper.hasEditPermission(player))
+                return InteractionResult.FAIL;
 
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         });
 
         UseItemCallback.EVENT.register((player, world, hand) ->
         {
-            var itemsStack = player.getStackInHand(hand);
+            var itemsStack = player.getItemInHand(hand);
 
-            if (itemsStack.isOf(ModBlocks.PATH_MARKER.asItem()) && !PermissionHelper.hasEditPermission(player))
-                return TypedActionResult.fail(itemsStack);
+            if (!canUsePathMarkerItem(player, itemsStack))
+                return InteractionResultHolder.fail(itemsStack);
 
-            return TypedActionResult.pass(itemsStack);
+            return InteractionResultHolder.pass(itemsStack);
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
                 !(blockEntity instanceof PathMarkerBlockEntity) || PermissionHelper.hasEditPermission(player));
+    }
+
+    /**
+     * Checks whether a path marker item use should be allowed.
+     *
+     * @param player    player using the item
+     * @param itemStack item stack being used
+     * @return true when the interaction may continue
+     */
+    private static boolean canUsePathMarkerItem(Player player, ItemStack itemStack) {
+        return !itemStack.is(ModBlocks.PATH_MARKER.asItem()) || PermissionHelper.hasEditPermission(player);
     }
 
     /**

@@ -1,37 +1,19 @@
 package space.ajcool.ardapaths.mc;
 
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtHelper;
 import org.jetbrains.annotations.Nullable;
-
-import net.minecraft.util.math.BlockPos;
-
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.ByteTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.LongTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.StringTag;
 
 /**
  * Interface for objects that can be serialized to and deserialized from NBT (Named Binary Tag).
  */
 public interface NbtEncodeable {
-    /**
-     * NBT type id for compound values.
-     */
-    int COMPOUND_TYPE = 10;
-
-    /**
-     * NBT type id for string values.
-     */
-    int STRING_TYPE = 8;
-
-    /**
-     * NBT type id for integer values.
-     */
-    int INT_TYPE = 3;
-
-    /**
-     * NBT type id for long values.
-     */
-    int LONG_TYPE = 4;
-
     /**
      * Create an empty object.
      *
@@ -50,8 +32,8 @@ public interface NbtEncodeable {
      * @param key the key to inspect
      * @return true when the key contains a nested compound
      */
-    static boolean hasCompound(NbtCompound nbt, String key) {
-        return nbt.contains(key, COMPOUND_TYPE);
+    static boolean hasCompound(CompoundTag nbt, String key) {
+        return nbt.get(key) instanceof CompoundTag;
     }
 
     /**
@@ -61,7 +43,7 @@ public interface NbtEncodeable {
      * @param key the key to read
      * @return the nested compound, or an empty compound when the key is absent
      */
-    static NbtCompound getCompound(NbtCompound nbt, String key) {
+    static CompoundTag getCompound(CompoundTag nbt, String key) {
         return nbt.getCompound(key);
     }
 
@@ -72,12 +54,12 @@ public interface NbtEncodeable {
      * @param key the key containing a block position compound
      * @return the decoded position, or empty when no position exists
      */
-    static Optional<BlockPos> getBlockPos(NbtCompound nbt, String key) {
+    static Optional<BlockPos> getBlockPos(CompoundTag nbt, String key) {
         if (!hasCompound(nbt, key)) {
             return Optional.empty();
         }
 
-        return Optional.of(NbtHelper.toBlockPos(nbt.getCompound(key)));
+        return Optional.of(NbtUtils.readBlockPos(nbt.getCompound(key)));
     }
 
     /**
@@ -87,9 +69,9 @@ public interface NbtEncodeable {
      * @param key the key to write
      * @param pos the position to encode, or null when absent
      */
-    static void putBlockPosIfPresent(NbtCompound nbt, String key, @Nullable BlockPos pos) {
+    static void putBlockPosIfPresent(CompoundTag nbt, String key, @Nullable BlockPos pos) {
         if (pos != null) {
-            nbt.put(key, NbtHelper.fromBlockPos(pos));
+            nbt.put(key, NbtUtils.writeBlockPos(pos));
         }
     }
 
@@ -100,8 +82,8 @@ public interface NbtEncodeable {
      * @param key the key to read
      * @return the stored string, or an empty string when absent
      */
-    static String getStringOrEmpty(NbtCompound nbt, String key) {
-        return nbt.contains(key, STRING_TYPE) ? nbt.getString(key) : "";
+    static String getStringOrEmpty(CompoundTag nbt, String key) {
+        return nbt.get(key) instanceof StringTag ? nbt.getString(key) : "";
     }
 
     /**
@@ -111,8 +93,8 @@ public interface NbtEncodeable {
      * @param key the key to read
      * @return the stored integer, or zero when absent
      */
-    static int getIntOrZero(NbtCompound nbt, String key) {
-        return nbt.contains(key, INT_TYPE) ? nbt.getInt(key) : 0;
+    static int getIntOrZero(CompoundTag nbt, String key) {
+        return getIntOrDefault(nbt, key, 0);
     }
 
     /**
@@ -123,8 +105,8 @@ public interface NbtEncodeable {
      * @param defaultValue the value to return when the key is absent
      * @return the stored integer, or the supplied default when absent
      */
-    static int getIntOrDefault(NbtCompound nbt, String key, int defaultValue) {
-        return nbt.contains(key, INT_TYPE) ? nbt.getInt(key) : defaultValue;
+    static int getIntOrDefault(CompoundTag nbt, String key, int defaultValue) {
+        return nbt.get(key) instanceof IntTag ? nbt.getInt(key) : defaultValue;
     }
 
     /**
@@ -135,8 +117,8 @@ public interface NbtEncodeable {
      * @param defaultValue the value to return when the key is absent
      * @return the stored boolean, or the supplied default when absent
      */
-    static boolean getBooleanOrDefault(NbtCompound nbt, String key, boolean defaultValue) {
-        return nbt.contains(key) ? nbt.getBoolean(key) : defaultValue;
+    static boolean getBooleanOrDefault(CompoundTag nbt, String key, boolean defaultValue) {
+        return nbt.get(key) instanceof ByteTag ? nbt.getBoolean(key) : defaultValue;
     }
 
     /**
@@ -147,8 +129,8 @@ public interface NbtEncodeable {
      * @param defaultValue the value to return when the key is absent
      * @return the stored long, or the supplied default when absent
      */
-    static long getLongOrDefault(NbtCompound nbt, String key, long defaultValue) {
-        return nbt.contains(key, LONG_TYPE) ? nbt.getLong(key) : defaultValue;
+    static long getLongOrDefault(CompoundTag nbt, String key, long defaultValue) {
+        return nbt.get(key) instanceof LongTag ? nbt.getLong(key) : defaultValue;
     }
 
     /**
@@ -158,7 +140,7 @@ public interface NbtEncodeable {
      * @param key   the key to write
      * @param value the string value to persist
      */
-    static void putStringIfNotEmpty(NbtCompound nbt, String key, String value) {
+    static void putStringIfNotEmpty(CompoundTag nbt, String key, String value) {
         if (!value.isEmpty()) {
             nbt.putString(key, value);
         }
@@ -171,7 +153,7 @@ public interface NbtEncodeable {
      * @param key   the key to write
      * @param value the integer value to persist
      */
-    static void putIntIfNonZero(NbtCompound nbt, String key, int value) {
+    static void putIntIfNonZero(CompoundTag nbt, String key, int value) {
         if (value != 0) {
             nbt.putInt(key, value);
         }
@@ -185,7 +167,7 @@ public interface NbtEncodeable {
      * @param value        the integer value to persist
      * @param defaultValue the default value that should not be persisted
      */
-    static void putIntIfNonDefault(NbtCompound nbt, String key, int value, int defaultValue) {
+    static void putIntIfNonDefault(CompoundTag nbt, String key, int value, int defaultValue) {
         if (value != defaultValue) {
             nbt.putInt(key, value);
         }
@@ -198,7 +180,7 @@ public interface NbtEncodeable {
      * @param key   the key to write
      * @param value the boolean value to persist
      */
-    static void putBooleanIfTrue(NbtCompound nbt, String key, boolean value) {
+    static void putBooleanIfTrue(CompoundTag nbt, String key, boolean value) {
         if (value) {
             nbt.putBoolean(key, true);
         }
@@ -211,7 +193,7 @@ public interface NbtEncodeable {
      * @param key   the key to write
      * @param value the boolean value to persist
      */
-    static void putBooleanIfFalse(NbtCompound nbt, String key, boolean value) {
+    static void putBooleanIfFalse(CompoundTag nbt, String key, boolean value) {
         if (!value) {
             nbt.putBoolean(key, false);
         }
@@ -225,7 +207,7 @@ public interface NbtEncodeable {
      * @param value        the long value to persist
      * @param defaultValue the default value that should not be persisted
      */
-    static void putLongIfNonDefault(NbtCompound nbt, String key, long value, long defaultValue) {
+    static void putLongIfNonDefault(CompoundTag nbt, String key, long value, long defaultValue) {
         if (value != defaultValue) {
             nbt.putLong(key, value);
         }
@@ -236,14 +218,14 @@ public interface NbtEncodeable {
      *
      * @param nbt The NBT compound
      */
-    void applyNbt(NbtCompound nbt);
+    void applyNbt(CompoundTag nbt);
 
     /**
      * Convert an object to an NBT compound.
      *
      * @return The NBT compound
      */
-    default NbtCompound toNbt() {
+    default CompoundTag toNbt() {
         return toNbt(null);
     }
 
@@ -253,5 +235,5 @@ public interface NbtEncodeable {
      * @param nbt an existing NBT compound to update, or null to create a new one
      * @return the NBT compound representation of this object
      */
-    NbtCompound toNbt(@Nullable NbtCompound nbt);
+    CompoundTag toNbt(@Nullable CompoundTag nbt);
 }

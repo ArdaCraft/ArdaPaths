@@ -4,11 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import lombok.extern.slf4j.Slf4j;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.backup.dto.*;
@@ -64,6 +64,33 @@ public class BackupManager {
     private static final Path BACKUP_DIR = Path.of("./config/arda-paths/data-backups");
 
     /**
+     * Accessor for version-specific chunk storage operations.
+     */
+    private final ChunkStorageAccess storageAccess;
+
+    /**
+     * Scanner used to discover persisted marker block entities.
+     */
+    private final MarkerScanner markerScanner;
+
+    /**
+     * Creates a manager backed by Minecraft 1.20.1 chunk storage access.
+     */
+    public BackupManager() {
+        this(new Minecraft120ChunkStorageAccess());
+    }
+
+    /**
+     * Creates a manager with explicit chunk storage access.
+     *
+     * @param storageAccess version-specific chunk storage operations
+     */
+    BackupManager(ChunkStorageAccess storageAccess) {
+        this.storageAccess = storageAccess;
+        this.markerScanner = new MarkerScanner(storageAccess);
+    }
+
+    /**
      * Scans and writes the current full ArdaPaths data export with explicit threading control.
      *
      * @param server   server whose config and worlds are exported
@@ -76,10 +103,10 @@ public class BackupManager {
         reporter.phase("saving");
         gate.run(() -> {
             ArdaPaths.CONFIG_MANAGER.flush();
-            server.saveAll(true, true, true);
+            server.saveEverything(true, true, true);
         });
 
-        MarkerScanner.ScanResult scanResult = new MarkerScanner().scan(server, reporter);
+        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate);
         List<ScannedMarkerData> markers = scanResult.markers();
         reporter.phase("serializing");
         BackupSnapshot snapshot = createSnapshot(markers);
@@ -141,7 +168,7 @@ public class BackupManager {
             gate.run(() -> restoreServerConfig(backup.paths()));
 
             reporter.phase("saving");
-            gate.run(() -> server.saveAll(true, true, true));
+            gate.run(() -> server.saveEverything(true, true, true));
             reporter.phase("planning");
             List<PlannedMarker> plannedMarkers = new MarkerRestorer().plan(backup.markerIndex(), backup.paths());
             RestoreApplyResult applyResult = applyMarkersInBatches(server, plannedMarkers, reporter, gate);
@@ -149,7 +176,7 @@ public class BackupManager {
 
             reporter.phase("saving");
             gate.run(() -> {
-                server.saveAll(true, true, true);
+                server.saveEverything(true, true, true);
                 PacketRegistry.syncPathDataToClients(server);
             });
             if (temporaryDirectory != null) {
@@ -184,7 +211,7 @@ public class BackupManager {
                     plannedMarkers,
                     batchStart,
                     PlannedMarker::dimensionId,
-                    marker -> new ChunkPos(BlockPos.fromLong(marker.packedPos())).toLong()
+                    marker -> new ChunkPos(BlockPos.of(marker.packedPos())).toLong()
             );
             int fromIndex = batchStart;
             result = result.plus(gate.call(() -> applyMarkerBatch(server, plannedMarkers.subList(fromIndex, toIndex))));
@@ -207,13 +234,13 @@ public class BackupManager {
         RestoreApplyResult result = RestoreApplyResult.empty();
 
         for (PlannedMarker marker : batch) {
-            ServerWorld world = getWorld(server, marker.dimensionId());
+            ServerLevel world = getWorld(server, marker.dimensionId());
             if (world == null) {
                 result = result.withFailed();
                 continue;
             }
 
-            BlockPos position = BlockPos.fromLong(marker.packedPos());
+            BlockPos position = BlockPos.of(marker.packedPos());
             ChunkPos chunkPos = new ChunkPos(position);
             if (!chunkExists(world, chunkPos)) {
                 result = result.missing(new ChunkKey(marker.dimensionId(), chunkPos.toLong()));
@@ -243,9 +270,11 @@ public class BackupManager {
      */
     private int deleteStaleMarkers(MinecraftServer server, MarkerIndexDto markerIndex, ProgressReporter reporter, BackupJobRunner.ServerGate gate) {
         reporter.phase("saving");
-        gate.run(() -> server.saveAll(true, true, true));
+        gate.run(() -> server.saveEverything(true, true, true));
 
-        List<ScannedMarkerData> currentMarkers = new MarkerScanner().scan(server, reporter).markers();
+        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate);
+        List<ScannedMarkerData> currentMarkers = new ArrayList<>(scanResult.markers());
+        currentMarkers.addAll(scanResult.emptyMarkers());
         Set<String> backupLocations = markerLocations(markerIndex);
         List<ScannedMarkerData> staleMarkers = currentMarkers.stream()
                 .filter(marker -> !backupLocations.contains(markerLocation(marker.dimensionId(), marker.position().asLong())))
@@ -283,13 +312,13 @@ public class BackupManager {
      * @param chunkPos chunk position to inspect
      * @return true when the chunk already exists in vanilla storage
      */
-    private boolean chunkExists(ServerWorld world, ChunkPos chunkPos) {
-        if (world.getChunkManager().isChunkLoaded(chunkPos.x, chunkPos.z)) {
+    private boolean chunkExists(ServerLevel world, ChunkPos chunkPos) {
+        if (storageAccess.isChunkLoaded(world, chunkPos)) {
             return true;
         }
 
         try {
-            return world.getChunkManager().threadedAnvilChunkStorage.getNbt(chunkPos).join().isPresent();
+            return storageAccess.readChunkNbt(world, chunkPos).isPresent();
         } catch (CompletionException exception) {
             log.warn("Failed to probe ArdaPaths restore chunk {}", chunkPos, exception);
             return false;
@@ -307,7 +336,7 @@ public class BackupManager {
         int deleted = 0;
 
         for (ScannedMarkerData marker : batch) {
-            ServerWorld world = getWorld(server, marker.dimensionId());
+            ServerLevel world = getWorld(server, marker.dimensionId());
             if (world == null) continue;
 
             if (MarkerRestorer.delete(world, marker.position())) {
@@ -480,7 +509,7 @@ public class BackupManager {
      * @param marker    scanned marker
      * @return exported node, or empty when the marker is unrelated
      */
-    private Optional<PathNodeDto> createNode(String pathId, String chapterId, ScannedMarkerData marker) {
+    Optional<PathNodeDto> createNode(String pathId, String chapterId, ScannedMarkerData marker) {
         Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = marker.pathData().get(pathId);
         if (chapters == null) return Optional.empty();
 
@@ -488,7 +517,7 @@ public class BackupManager {
         if (chapterNbtData == null) return Optional.empty();
 
         BlockPos target = chapterNbtData.getTarget();
-        Long next = target == null ? null : marker.position().add(target).asLong();
+        Long next = target == null ? null : marker.position().offset(target).asLong();
         long packedMessageData = chapterNbtData.getPackedMessageData();
 
         return Optional.of(new PathNodeDto(
@@ -666,7 +695,7 @@ public class BackupManager {
             for (PathChapterDto chapterFile : pathFile.chapters()) {
                 pathData.setChapter(new ChapterData(chapterFile.id(), chapterFile.name(), chapterFile.date(), chapterFile.index(), chapterFile.warp()));
                 if (chapterFile.startPos() != null) {
-                    serverConfig.setChapterStart(pathFile.id(), chapterFile.id(), PositionData.fromBlockPos(BlockPos.fromLong(chapterFile.startPos())));
+                    serverConfig.setChapterStart(pathFile.id(), chapterFile.id(), PositionData.fromBlockPos(BlockPos.of(chapterFile.startPos())));
                 }
             }
 
@@ -958,9 +987,9 @@ public class BackupManager {
      * @param dimensionId dimension identifier
      * @return matching server world, or null when unavailable
      */
-    private @Nullable ServerWorld getWorld(MinecraftServer server, String dimensionId) {
-        for (ServerWorld world : server.getWorlds()) {
-            if (world.getRegistryKey().getValue().toString().equals(dimensionId)) {
+    private @Nullable ServerLevel getWorld(MinecraftServer server, String dimensionId) {
+        for (ServerLevel world : server.getAllLevels()) {
+            if (world.dimension().location().toString().equals(dimensionId)) {
                 return world;
             }
         }

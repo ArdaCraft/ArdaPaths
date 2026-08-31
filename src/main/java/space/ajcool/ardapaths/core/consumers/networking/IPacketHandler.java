@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Base interface for packet handlers that process network packets.
@@ -11,5 +11,5 @@ public interface IPacketHandler {
      *
      * @return the channel identifier
      */
-    Identifier getChannelId();
+    ResourceLocation getChannelId();
 }

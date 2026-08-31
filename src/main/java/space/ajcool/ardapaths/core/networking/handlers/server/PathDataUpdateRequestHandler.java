@@ -3,8 +3,8 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -19,7 +19,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
 {
     public PathDataUpdateRequestHandler()
     {
-        super("path_data_update_request", PathDataUpdatePacket::read);
+        super(PathDataUpdatePacket.CHANNEL, PathDataUpdatePacket::read);
     }
 
     /**
@@ -33,7 +33,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathDataUpdatePacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathDataUpdatePacket packet, PacketSender sender)
     {
         final String pathId = packet.id();
         final String name = packet.name();

@@ -1,12 +1,12 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.markers.MarkerResolver;
@@ -25,7 +25,7 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
 {
     public PathMarkerLinksUpdateHandler()
     {
-        super("path_marker_links_update", PathMarkerLinksUpdatePacket::read);
+        super(PathMarkerLinksUpdatePacket.CHANNEL, PathMarkerLinksUpdatePacket::read);
     }
 
     /**
@@ -39,11 +39,11 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     }
 
     @Override
-    protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
+    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
     {
         BackupJobRunner.submitMarkerWork(server, gate -> {
-            ServerWorld world = gate.call(player::getServerWorld);
-            String dimensionId = world.getRegistryKey().getValue().toString();
+            ServerLevel world = gate.call(player::serverLevel);
+            String dimensionId = world.dimension().location().toString();
             MarkerResolver resolver = new MarkerResolver(world, dimensionId);
             BlockPos blockPos = packet.position();
 
@@ -64,16 +64,16 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
      * @param nbt the NBT compound containing a "paths" key with nested chapter data
      * @return a map of path IDs to maps of chapter IDs and their NBT data
      */
-    private Map<String, Map<String, NbtCompound>> getPaths(NbtCompound nbt) {
-        Map<String, Map<String, NbtCompound>> result = new HashMap<>();
+    private Map<String, Map<String, CompoundTag>> getPaths(CompoundTag nbt) {
+        Map<String, Map<String, CompoundTag>> result = new HashMap<>();
 
-        NbtCompound paths = nbt.getCompound("paths");
+        CompoundTag paths = nbt.getCompound("paths");
 
-        for (String pathKey : paths.getKeys()) {
-            NbtCompound chapters = paths.getCompound(pathKey);
+        for (String pathKey : paths.getAllKeys()) {
+            CompoundTag chapters = paths.getCompound(pathKey);
 
-            Map<String, NbtCompound> chapterMap = new HashMap<>();
-            for (String chapterKey : chapters.getKeys()) {
+            Map<String, CompoundTag> chapterMap = new HashMap<>();
+            for (String chapterKey : chapters.getAllKeys()) {
                 chapterMap.put(chapterKey, chapters.getCompound(chapterKey));
             }
             result.put(pathKey, chapterMap);
@@ -88,7 +88,7 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
      * @param incoming the new NBT data from the client
      * @return the merged NBT compound with synced paths and chapters
      */
-    public NbtCompound syncPathsFromIncoming(NbtCompound existing, NbtCompound incoming) {
+    public CompoundTag syncPathsFromIncoming(CompoundTag existing, CompoundTag incoming) {
 
         var oldPaths = getPaths(existing);
         var newPaths = getPaths(incoming);
@@ -99,8 +99,8 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         // 2. Remove or update chapters inside existing paths
         for (var entry : oldPaths.entrySet()) {
             String path = entry.getKey();
-            Map<String, NbtCompound> oldChapters = entry.getValue();
-            Map<String, NbtCompound> newChapters = newPaths.get(path);
+            Map<String, CompoundTag> oldChapters = entry.getValue();
+            Map<String, CompoundTag> newChapters = newPaths.get(path);
 
             // Remove chapters that no longer exist
             oldChapters.keySet().removeIf(ch -> !newChapters.containsKey(ch));
@@ -119,10 +119,10 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         });
 
         // 4. Rebuild the existing NBT in-place
-        NbtCompound pathsNbt = new NbtCompound();
+        CompoundTag pathsNbt = new CompoundTag();
 
         for (var pathEntry : oldPaths.entrySet()) {
-            NbtCompound chapterNbt = new NbtCompound();
+            CompoundTag chapterNbt = new CompoundTag();
 
             for (var chapterEntry : pathEntry.getValue().entrySet()) {
                 chapterNbt.put(chapterEntry.getKey(), chapterEntry.getValue());

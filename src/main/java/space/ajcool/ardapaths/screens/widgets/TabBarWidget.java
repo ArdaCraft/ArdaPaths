@@ -3,13 +3,13 @@ package space.ajcool.ardapaths.screens.widgets;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.List;
 import java.util.function.IntConsumer;
@@ -17,16 +17,16 @@ import java.util.function.IntConsumer;
 /**
  * A compact tab selector for switching between fixed content panels in configuration screens.
  */
-public class TabBarWidget extends ClickableWidget {
+public class TabBarWidget extends AbstractWidget {
     /**
-     * Texture containing the vanilla-style widget backgrounds used by this tab bar.
+     * Inner padding applied between the tab content panel edges and its content.
      */
-    private static final Identifier WIDGETS_TEXTURE = new Identifier("textures/gui/widgets.png");
+    public static final int CONTENT_PADDING = 5;
 
     /**
      * Labels displayed for each selectable tab.
      */
-    private final List<Text> tabs;
+    private final List<Component> tabs;
 
     /**
      * Callback invoked when the selected tab changes.
@@ -64,9 +64,9 @@ public class TabBarWidget extends ClickableWidget {
      * @param contentBackgroundColor ARGB color for the tab content background, or zero for the default
      */
     @Builder(builderClassName = "TabBarBuilder", builderMethodName = "create", setterPrefix = "set")
-    public TabBarWidget(int x, int y, int width, int height, List<Text> tabs, int selectedIndex, IntConsumer onSelect,
+    public TabBarWidget(int x, int y, int width, int height, List<Component> tabs, int selectedIndex, IntConsumer onSelect,
                         int contentHeight, int contentBackgroundColor) {
-        super(x, y, width, height, Text.empty());
+        super(x, y, width, height, Component.empty());
         this.tabs = tabs;
         this.selectedIndex = selectedIndex;
         this.onSelect = onSelect;
@@ -84,10 +84,10 @@ public class TabBarWidget extends ClickableWidget {
      */
     @SuppressWarnings("resource")
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
         if (tabs.isEmpty()) return;
 
-        TextRenderer textRenderer = Client.mc().textRenderer;
+        Font textRenderer = Client.mc().font;
         int tabWidth = getWidth() / tabs.size();
         int x = getX();
 
@@ -103,13 +103,13 @@ public class TabBarWidget extends ClickableWidget {
                     mouseY >= getY() && mouseY <= getY() + getHeight();
             boolean selected = index == selectedIndex;
             int v = 46 + (hovered || selected ? 40 : 20);
-            Text tab = tabs.get(index);
-            int textX = cellX + (cellWidth - textRenderer.getWidth(tab)) / 2;
-            int textY = getY() + (getHeight() - textRenderer.fontHeight) / 2;
+            Component tab = tabs.get(index);
+            int textX = cellX + (cellWidth - textRenderer.width(tab)) / 2;
+            int textY = getY() + (getHeight() - textRenderer.lineHeight) / 2;
             int color = selected ? 0xFFFFFFFF : 0xFFA0A0A0;
 
-            context.drawNineSlicedTexture(WIDGETS_TEXTURE, cellX, getY(), cellWidth, getHeight(), 20, 4, 200, 20, 0, v);
-            context.drawTextWithShadow(textRenderer, tab, textX, textY, color);
+            GuiTextures.blitNineSliced(context, WIDGETS_LOCATION, cellX, getY(), cellWidth, getHeight(), 20, 4, 200, 20, 0, v);
+            context.drawString(textRenderer, tab, textX, textY, color);
         }
     }
 
@@ -140,7 +140,7 @@ public class TabBarWidget extends ClickableWidget {
      * @param builder the narration builder receiving widget narration
      */
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
+        defaultButtonNarrationText(builder);
     }
 }

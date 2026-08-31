@@ -2,7 +2,7 @@ package space.ajcool.ardapaths.core.data;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 /**

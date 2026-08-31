@@ -3,11 +3,11 @@ package space.ajcool.ardapaths.mc.particles;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
-import net.minecraft.particle.ParticleType;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.util.Identifier;
-import space.ajcool.ardapaths.ArdaPaths;
+import net.minecraft.core.Registry;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import org.jetbrains.annotations.NotNull;
+import space.ajcool.ardapaths.core.ModConstants;
 
 /**
  * Registry for custom particle types in ArdaPaths.
@@ -27,7 +27,7 @@ public class ModParticles {
                  * @return the path particle effect codec
                  */
                 @Override
-                public com.mojang.serialization.Codec<PathParticleEffect> getCodec() {
+                public com.mojang.serialization.@NotNull Codec<PathParticleEffect> codec() {
                     return PathParticleEffect.CODEC;
                 }
             });
@@ -42,13 +42,14 @@ public class ModParticles {
      */
     @SuppressWarnings("SameParameterValue")
     private static <T extends ParticleType<?>> T register(final String id, final T type) {
-        return Registry.register(Registries.PARTICLE_TYPE, new Identifier(ArdaPaths.MOD_ID, id), type);
+        return Registry.register(BuiltInRegistries.PARTICLE_TYPE, ModConstants.modId(id), type);
     }
 
     /**
      * Initializes the particle type registry by forcing class loading.
      * This method is called during mod initialization and must be invoked before {@link #initClient()}.
      */
+    @SuppressWarnings("EmptyMethod")
     public static void init() {
     }
 

@@ -3,16 +3,17 @@ package space.ajcool.ardapaths.paths.rendering;
 import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import space.ajcool.ardapaths.ArdaPaths;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.mc.items.ModItems;
 import space.ajcool.ardapaths.paths.movement.FocusController;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 /**
  * Persistent HUD prompt shown when a nearby marker offers an authored focus target.
@@ -22,7 +23,7 @@ public final class FocusPromptRenderer {
     /**
      * Texture used to indicate the focus action.
      */
-    private static final Identifier EYE_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/eye-icon.png");
+    private static final ResourceLocation EYE_ICON = ModConstants.modId("textures/gui/eye-icon.png");
 
     /**
      * Drawn icon size in screen pixels.
@@ -45,25 +46,25 @@ public final class FocusPromptRenderer {
      * @param context the drawing context used for HUD rendering
      * @param ignoredDelta the frame delta supplied by Fabric
      */
-    public static void render(DrawContext context, float ignoredDelta) {
+    public static void render(GuiGraphics context, float ignoredDelta) {
         if (!FocusController.hasCandidate() || FocusController.isEngaged() || ArdaPathsClient.FOCUS_KEY == null) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientPlayerEntity player = client.player;
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
         if (player == null || !player.isHolding(ModItems.PATH_REVEALER)) return;
 
-        TextRenderer textRenderer = client.textRenderer;
-        Text label = Text.translatable("ardapaths.client.focus.prompt", ArdaPathsClient.FOCUS_KEY.getBoundKeyLocalizedText());
-        int textWidth = textRenderer.getWidth(label);
+        Font textRenderer = client.font;
+        Component label = Component.translatable("ardapaths.client.focus.prompt", ArdaPathsClient.FOCUS_KEY.getTranslatedKeyMessage());
+        int textWidth = textRenderer.width(label);
         int rowWidth = ICON_SIZE + ICON_TEXT_GAP + textWidth;
-        int x = (context.getScaledWindowWidth() - rowWidth) / 2;
-        int y = context.getScaledWindowHeight() - HOTBAR_CLEARANCE - ICON_TEXT_GAP - ICON_SIZE;
+        int x = (context.guiWidth() - rowWidth) / 2;
+        int y = context.guiHeight() - HOTBAR_CLEARANCE - ICON_TEXT_GAP - ICON_SIZE;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        context.drawTexture(EYE_ICON, x, y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
-        context.drawText(textRenderer, label, x + ICON_SIZE + ICON_TEXT_GAP, y + 2, 0xFFFFFF, true);
+        GuiTextures.blit(context, EYE_ICON, x, y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+        context.drawString(textRenderer, label, x + ICON_SIZE + ICON_TEXT_GAP, y + 2, 0xFFFFFF, true);
 
         RenderSystem.disableBlend();
     }

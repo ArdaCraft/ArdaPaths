@@ -1,7 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering;
 
 import lombok.Getter;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Base class for text-based UI elements that can be rendered, animated, and managed.
@@ -41,7 +41,7 @@ public abstract class TextRenderable {
      *
      * @param drawContext the drawing context used for rendering
      */
-    public abstract void render(DrawContext drawContext);
+    public abstract void render(GuiGraphics drawContext);
 
     /**
      * Checks if this renderable has finished its animation or display cycle.

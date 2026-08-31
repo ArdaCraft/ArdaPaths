@@ -2,12 +2,11 @@ package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.Getter;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.ColorHelper;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.BitPacker;
@@ -15,6 +14,7 @@ import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -136,7 +136,7 @@ public class AnimatedMessage extends TextRenderable {
      * @param drawContext the drawing context used for rendering
      */
     @Override
-    public void render(DrawContext drawContext) {
+    public void render(GuiGraphics drawContext) {
         if (!showing) return;
 
         // Initialize start time on first render
@@ -147,10 +147,10 @@ public class AnimatedMessage extends TextRenderable {
         // Calculate elapsed time with proximity speed multiplier applied
         long elapsedMillis = (long) ((System.currentTimeMillis() - startTime) * proximitySpeedMultiplier);
 
-        var client = MinecraftClient.getInstance();
-        var font = client.inGameHud.getTextRenderer();
-        var width = client.getWindow().getScaledWidth();
-        var height = client.getWindow().getScaledHeight();
+        var client = Minecraft.getInstance();
+        var font = client.gui.getFont();
+        var width = client.getWindow().getGuiScaledWidth();
+        var height = client.getWindow().getGuiScaledHeight();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -169,7 +169,7 @@ public class AnimatedMessage extends TextRenderable {
      * @param width         screen width in scaled pixels
      * @param height        screen height in scaled pixels
      */
-    private void renderAnimatedMessage(DrawContext drawContext, long elapsedMillis, TextRenderer font, int width, int height) {
+    private void renderAnimatedMessage(GuiGraphics drawContext, long elapsedMillis, Font font, int width, int height) {
 
         // Calculate number of characters to reveal
         int textLength = message.length() + 1;
@@ -179,18 +179,18 @@ public class AnimatedMessage extends TextRenderable {
         var splitMessage = message.split("\n");
         int numCharsLeft = numChars;
 
-        var lines = new ArrayList<Text>();
+        var lines = new ArrayList<Component>();
         for (String line : splitMessage) {
             if (line.length() < numCharsLeft) {
                 // Entire line is revealed
-                lines.add(Text.literal(line));
+                lines.add(Component.literal(line));
                 numCharsLeft -= line.length();
             } else {
                 // Partial line with gray boundary character
-                var partialLine = Text.empty()
-                        .append(Text.literal(line.substring(0, numCharsLeft - 1))) // fully visible
-                        .append(Text.literal(line.substring(numCharsLeft - 1, numCharsLeft))
-                                .formatted(Formatting.GRAY)); // fade boundary char
+                var partialLine = Component.empty()
+                        .append(Component.literal(line.substring(0, numCharsLeft - 1))) // fully visible
+                        .append(Component.literal(line.substring(numCharsLeft - 1, numCharsLeft))
+                                .withStyle(ChatFormatting.GRAY)); // fade boundary char
                 lines.add(partialLine);
                 numCharsLeft = 0;
             }
@@ -221,12 +221,12 @@ public class AnimatedMessage extends TextRenderable {
             if (ArdaRegionsState.isDisplaying()) y += (int) ((height / 2f) + titleOffset);
             else y += (int) ((height - titleOffset)/ 5);
 
-            drawContext.drawCenteredTextWithShadow(
+            drawContext.drawCenteredString(
                     font,
                     lines.get(i),
                     width / 2,
                     y,
-                    ColorHelper.Argb.getArgb(opacity, 255, 255, 255)
+                    GuiTextures.argb(opacity, 255, 255, 255)
             );
         }
     }

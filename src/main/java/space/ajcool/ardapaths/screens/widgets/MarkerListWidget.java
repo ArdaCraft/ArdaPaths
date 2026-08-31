@@ -1,18 +1,17 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.screen.narration.NarrationPart;
-import net.minecraft.client.gui.widget.EntryListWidget;
-import net.minecraft.text.Text;
-
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSelectionList;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
 
 /**
  * Scrollable list of loaded path markers available from the marker editor.
  */
-public class MarkerListWidget extends EntryListWidget<MarkerListEntry> {
+public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
 
     /**
      * Create a marker list with fixed-height marker rows.
@@ -24,11 +23,11 @@ public class MarkerListWidget extends EntryListWidget<MarkerListEntry> {
      * @param bottom     the bottom list boundary
      * @param itemHeight the fixed row height
      */
-    public MarkerListWidget(MinecraftClient client, int width, int height, int top, int bottom, int itemHeight) {
+    public MarkerListWidget(Minecraft client, int width, int height, int top, int bottom, int itemHeight) {
         super(client, width, height, top, bottom, itemHeight);
         setRenderBackground(false);
         setRenderHeader(false, 0);
-        setRenderHorizontalShadows(false);
+        setRenderTopAndBottom(false);
     }
 
     /**
@@ -50,12 +49,12 @@ public class MarkerListWidget extends EntryListWidget<MarkerListEntry> {
      * @param delta     the partial tick
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        MarkerListEntry hovered = this.getHoveredEntry();
+        MarkerListEntry hovered = this.getHovered();
         if (hovered != null) {
-            hovered.renderTooltip(context, this.client.textRenderer, mouseX, mouseY);
+            hovered.renderTooltip(context, this.minecraft.font, mouseX, mouseY);
         }
     }
 
@@ -65,17 +64,8 @@ public class MarkerListWidget extends EntryListWidget<MarkerListEntry> {
      * @return the scrollbar x coordinate
      */
     @Override
-    protected int getScrollbarPositionX() {
-        return this.left + this.width - 6;
-    }
-
-    /**
-     * Replaces the visible marker entries while preserving scroll position.
-     *
-     * @param markers the entries to display
-     */
-    public void setMarkers(List<MarkerListEntry> markers) {
-        setMarkers(markers, false);
+    protected int getScrollbarPosition() {
+        return this.x0 + this.width - 6;
     }
 
     /**
@@ -131,14 +121,14 @@ public class MarkerListWidget extends EntryListWidget<MarkerListEntry> {
      * @param builder the narration builder to populate
      */
     @Override
-    public void appendNarrations(NarrationMessageBuilder builder) {
-        MarkerListEntry selected = this.getSelectedOrNull();
+    public void updateNarration(NarrationElementOutput builder) {
+        MarkerListEntry selected = this.getSelected();
 
         if (selected != null)
-            builder.put(NarrationPart.TITLE, selected.getNarration());
-        else if (this.getEntryCount() > 0)
-            builder.put(NarrationPart.TITLE, Text.translatable("narration.selection.usage"));
+            builder.add(NarratedElementType.TITLE, selected.getNarration());
+        else if (this.getItemCount() > 0)
+            builder.add(NarratedElementType.TITLE, Component.translatable("narration.selection.usage"));
 
-        builder.put(NarrationPart.USAGE, Text.translatable("narration.component_list.usage"));
+        builder.add(NarratedElementType.USAGE, Component.translatable("narration.component_list.usage"));
     }
 }

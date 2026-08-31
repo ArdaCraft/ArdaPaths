@@ -1,11 +1,11 @@
 package space.ajcool.ardapaths.core.data;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.math.MathHelper;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 
 /**
  * Utility for converting marker time-of-day settings between text and Minecraft daytime ticks.
@@ -91,7 +91,7 @@ public final class TimeOfDay {
 
         Matcher matcher = TIME_PATTERN.matcher(text);
         if (!matcher.matches()) {
-            throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.time").getString());
+            throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.time").getString());
         }
 
         int hours = Integer.parseInt(matcher.group(1));
@@ -172,9 +172,9 @@ public final class TimeOfDay {
      * @return interpolated RGB color
      */
     private static int lerpRgb(int startRgb, int endRgb, float progress) {
-        int red = MathHelper.lerp(progress, (startRgb >> 16) & 0xFF, (endRgb >> 16) & 0xFF);
-        int green = MathHelper.lerp(progress, (startRgb >> 8) & 0xFF, (endRgb >> 8) & 0xFF);
-        int blue = MathHelper.lerp(progress, startRgb & 0xFF, endRgb & 0xFF);
+        int red = Mth.lerpInt(progress, (startRgb >> 16) & 0xFF, (endRgb >> 16) & 0xFF);
+        int green = Mth.lerpInt(progress, (startRgb >> 8) & 0xFF, (endRgb >> 8) & 0xFF);
+        int blue = Mth.lerpInt(progress, startRgb & 0xFF, endRgb & 0xFF);
         return (red << 16) | (green << 8) | blue;
     }
 
@@ -211,7 +211,7 @@ public final class TimeOfDay {
 
             return range;
         } catch (NumberFormatException exception) {
-            throw new TextValidationError(Text.translatable("ardapaths.generic.validation.error.transition_range").getString());
+            throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.transition_range").getString());
         }
     }
 

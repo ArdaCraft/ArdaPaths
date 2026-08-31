@@ -2,8 +2,8 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -17,7 +17,7 @@ public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacke
 {
     public ChapterDeleteHandler()
     {
-        super("path_chapter_delete", ChapterDeletePacket::read);
+        super(ChapterDeletePacket.CHANNEL, ChapterDeletePacket::read);
     }
 
     /**
@@ -31,7 +31,7 @@ public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacke
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterDeletePacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterDeletePacket packet, PacketSender sender)
     {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();

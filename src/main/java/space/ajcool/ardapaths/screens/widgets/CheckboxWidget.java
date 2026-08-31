@@ -1,33 +1,33 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.Builder;
 import lombok.Setter;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.widget.PressableWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import space.ajcool.ardapaths.core.Client;
-
+import space.ajcool.ardapaths.core.ModConstants;
+import space.ajcool.ardapaths.screens.GuiTextures;
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.function.Consumer;
 
 /**
  * A custom checkbox widget for UI screens.
  * Displays a checkbox with a label and calls an onChange callback when toggled.
  */
-public class CheckboxWidget extends PressableWidget {
+public class CheckboxWidget extends AbstractButton {
     /**
      * The texture resource for the checkbox graphics.
      */
-    private static final Identifier TEXTURE = new Identifier("textures/gui/checkbox.png");
+    private static final ResourceLocation TEXTURE = ModConstants.modId("textures/gui/checkbox.png");
 
     /**
      * The label text displayed next to the checkbox.
      */
-    private final Text text;
+    private final Component text;
 
     /**
      * Whether the checkbox is currently checked.
@@ -58,7 +58,7 @@ public class CheckboxWidget extends PressableWidget {
      * @param onChange callback function when the state changes
      */
     @Builder(builderClassName = "CheckboxBuilder", builderMethodName = "create", setterPrefix = "set")
-    public CheckboxWidget(int x, int y, int width, int height, Text text, boolean checked, boolean enabled, Consumer<Boolean> onChange) {
+    public CheckboxWidget(int x, int y, int width, int height, Component text, boolean checked, boolean enabled, Consumer<Boolean> onChange) {
         super(x, y, width, height, null);
         this.text = text;
         this.checked = checked;
@@ -68,43 +68,41 @@ public class CheckboxWidget extends PressableWidget {
 
     @SuppressWarnings("resource")
     @Override
-    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
         int x = this.getX();
         int y = this.getY();
-        TextRenderer textRenderer = Client.mc().textRenderer;
+        Font textRenderer = Client.mc().font;
         int boxSize = this.height;
         int boxX = x + this.width - boxSize;
-        int textY = y + (height - textRenderer.fontHeight) / 2;
+        int textY = y + (height - textRenderer.lineHeight) / 2;
 
         if (!enabled) {
-            MatrixStack matrices = context.getMatrices();
-            matrices.push();
+            PoseStack matrices = context.pose();
+            matrices.pushPose();
             matrices.translate(0, 0, 2);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.7f);
-            context.fill(boxX, y, boxX + boxSize, y + boxSize, 0xFF48494A);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-            matrices.pop();
+            context.fill(boxX, y, boxX + boxSize, y + boxSize, GuiTextures.withAlpha(0xFF48494A, 179));
+            matrices.popPose();
 
-            context.drawTextWithShadow(textRenderer, text, x, textY, 0xFF48494A);
+            context.drawString(textRenderer, text, x, textY, 0xFF48494A);
 
             return;
         }
 
         if (this.isHovered()) {
             if (checked) {
-                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 20, 20, 20, 20, 64, 64);
+                GuiTextures.blit(context, TEXTURE, boxX, y, boxSize, boxSize, 20, 20, 20, 20, 64, 64);
             } else {
-                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 20, 0, 20, 20, 64, 64);
+                GuiTextures.blit(context, TEXTURE, boxX, y, boxSize, boxSize, 20, 0, 20, 20, 64, 64);
             }
         } else {
             if (checked) {
-                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 0, 20, 20, 20, 64, 64);
+                GuiTextures.blit(context, TEXTURE, boxX, y, boxSize, boxSize, 0, 20, 20, 20, 64, 64);
             } else {
-                context.drawTexture(TEXTURE, boxX, y, boxSize, boxSize, 0, 0, 20, 20, 64, 64);
+                GuiTextures.blit(context, TEXTURE, boxX, y, boxSize, boxSize, 0, 0, 20, 20, 64, 64);
             }
         }
 
-        context.drawTextWithShadow(textRenderer, text, x, textY, 0xFFFFFF);
+        context.drawString(textRenderer, text, x, textY, 0xFFFFFF);
     }
 
     @Override
@@ -120,7 +118,7 @@ public class CheckboxWidget extends PressableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
-        this.appendDefaultNarrations(builder);
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
+        this.defaultButtonNarrationText(builder);
     }
 }

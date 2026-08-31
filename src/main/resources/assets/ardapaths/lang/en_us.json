@@ -75,6 +75,7 @@
   "ardapaths.client.marker.configuration.screens.chapter_markers": "Chapter Markers",
   "ardapaths.client.marker.configuration.screens.chapter_markers.tooltip": "Full chapter chain from the chapter start - Click to edit - Shift+click to select a range - Ctrl+click to teleport - Right-click for actions",
   "ardapaths.client.marker.configuration.screens.chapter_markers.break": "Chain break",
+  "ardapaths.client.marker.configuration.screens.chapter_markers.missing_chapter_start": "Missing Chapter Start",
   "ardapaths.client.marker.configuration.screens.tab.general": "General",
   "ardapaths.client.marker.configuration.screens.tab.time_and_weather": "Time and Weather",
   "ardapaths.client.marker.configuration.screens.tab.misc": "Misc",

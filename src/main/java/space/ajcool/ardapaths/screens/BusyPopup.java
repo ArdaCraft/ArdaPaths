@@ -1,13 +1,13 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 /**
  * Blocking progress popup used while waiting for a server response.
  */
-public class BusyPopup extends Screen {
+public class BusyPopup extends ArdaPathsScreen {
     /**
      * Number of screen ticks to wait before timing out the operation.
      */
@@ -16,7 +16,7 @@ public class BusyPopup extends Screen {
     /**
      * Message displayed in the middle of the popup.
      */
-    private final Text message;
+    private final Component message;
 
     /**
      * Screen to restore if the request times out.
@@ -40,8 +40,8 @@ public class BusyPopup extends Screen {
      * @param parentScreen screen to restore when timing out
      * @param onTimeout    callback used to report timeout state to the parent
      */
-    public BusyPopup(Text message, Screen parentScreen, Runnable onTimeout) {
-        super(Text.literal("Busy"));
+    public BusyPopup(Component message, Screen parentScreen, Runnable onTimeout) {
+        super(Component.literal("Busy"));
         this.message = message;
         this.parentScreen = parentScreen;
         this.onTimeout = onTimeout;
@@ -53,9 +53,9 @@ public class BusyPopup extends Screen {
     @Override
     public void tick() {
         ticksWaiting++;
-        if (ticksWaiting >= TIMEOUT_TICKS && client != null) {
+        if (ticksWaiting >= TIMEOUT_TICKS && minecraft != null) {
             onTimeout.run();
-            client.setScreen(parentScreen);
+            minecraft.setScreen(parentScreen);
         }
     }
 
@@ -73,7 +73,7 @@ public class BusyPopup extends Screen {
      * Ignores ordinary close requests while the server operation is pending.
      */
     @Override
-    public void close() {
+    public void onClose() {
     }
 
     /**
@@ -85,9 +85,9 @@ public class BusyPopup extends Screen {
      * @param delta   partial tick delta
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
-        context.drawCenteredTextWithShadow(this.textRenderer, this.message, this.width / 2, this.height / 2 - 5, 0xFFFFFF);
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        this.renderModBackground(context);
+        context.drawCenteredString(this.font, this.message, this.width / 2, this.height / 2 - 5, 0xFFFFFF);
         super.render(context, mouseX, mouseY, delta);
     }
 }

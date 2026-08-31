@@ -1,11 +1,12 @@
 package space.ajcool.ardapaths.core.backup;
 
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
+import lombok.extern.slf4j.Slf4j;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import space.ajcool.ardapaths.core.backup.dto.MarkerIndexDto;
 import space.ajcool.ardapaths.core.backup.dto.PathChapterDto;
 import space.ajcool.ardapaths.core.backup.dto.PathFileDto;
@@ -16,15 +17,16 @@ import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
-import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Applies exported marker data back into server worlds.
  */
+@Slf4j(topic = "ardapaths")
 public class MarkerRestorer {
     /**
      * Builds all marker operations described by the backup files.
@@ -34,19 +36,29 @@ public class MarkerRestorer {
      * @return planned marker payloads
      */
     public List<PlannedMarker> plan(MarkerIndexDto markerIndex, List<PathFileDto> paths) {
-        Map<String, Map<Long, NbtCompound>> markerPayloads = buildMarkerPayloads(markerIndex, paths);
+        Map<String, Map<Long, CompoundTag>> markerPayloads = buildMarkerPayloads(markerIndex, paths);
         List<PlannedMarker> plannedMarkers = new ArrayList<>();
+        int droppedEmptyMarkers = 0;
 
-        for (Map.Entry<String, Map<Long, NbtCompound>> dimensionEntry : markerPayloads.entrySet()) {
-            for (Map.Entry<Long, NbtCompound> markerEntry : dimensionEntry.getValue().entrySet()) {
+        for (Map.Entry<String, Map<Long, CompoundTag>> dimensionEntry : markerPayloads.entrySet()) {
+            for (Map.Entry<Long, CompoundTag> markerEntry : dimensionEntry.getValue().entrySet()) {
+                if (markerEntry.getValue().isEmpty()) {
+                    droppedEmptyMarkers++;
+                    continue;
+                }
+
                 plannedMarkers.add(new PlannedMarker(dimensionEntry.getKey(), markerEntry.getKey(), markerEntry.getValue()));
             }
         }
 
+        if (droppedEmptyMarkers > 0) {
+            log.warn("ArdaPaths restore left {} indexed marker(s) untouched because no exported path node supplied data for them", droppedEmptyMarkers);
+        }
+
         plannedMarkers.sort(Comparator
                 .comparing(PlannedMarker::dimensionId)
-                .thenComparingLong(marker -> ChunkPos.toLong(BlockPos.fromLong(marker.packedPos())))
-                .thenComparingInt(marker -> BlockPos.fromLong(marker.packedPos()).getY()));
+                .thenComparingLong(marker -> ChunkPos.asLong(BlockPos.of(marker.packedPos())))
+                .thenComparingInt(marker -> BlockPos.of(marker.packedPos()).getY()));
 
         return plannedMarkers;
     }
@@ -59,14 +71,14 @@ public class MarkerRestorer {
      * @param pathsNbt   marker paths NBT to apply
      * @return outcome describing whether the marker was restored
      */
-    public static ApplyOutcome apply(ServerWorld world, BlockPos position, NbtCompound pathsNbt) {
+    public static ApplyOutcome apply(ServerLevel world, BlockPos position, CompoundTag pathsNbt) {
         BlockState existingState = world.getBlockState(position);
-        if (!existingState.isAir() && !existingState.isOf(ModBlocks.PATH_MARKER)) {
+        if (!existingState.isAir() && !existingState.is(ModBlocks.PATH_MARKER)) {
             return ApplyOutcome.CONFLICT;
         }
 
-        if (!existingState.isOf(ModBlocks.PATH_MARKER)) {
-            world.setBlockState(position, ModBlocks.PATH_MARKER.getDefaultState(), Block.NOTIFY_LISTENERS);
+        if (!existingState.is(ModBlocks.PATH_MARKER)) {
+            world.setBlock(position, ModBlocks.PATH_MARKER.defaultBlockState(), Block.UPDATE_CLIENTS);
         }
 
         if (world.getBlockEntity(position) instanceof PathMarkerBlockEntity markerBlockEntity) {
@@ -85,7 +97,7 @@ public class MarkerRestorer {
      * @param position stale marker position
      * @return true when a marker block was removed
      */
-    public static boolean delete(ServerWorld world, BlockPos position) {
+    public static boolean delete(ServerLevel world, BlockPos position) {
         if (world.getBlockEntity(position) instanceof PathMarkerBlockEntity) {
             return world.removeBlock(position, false);
         }
@@ -100,13 +112,13 @@ public class MarkerRestorer {
      * @param paths       exported path files
      * @return marker payloads grouped by dimension and packed position
      */
-    private Map<String, Map<Long, NbtCompound>> buildMarkerPayloads(MarkerIndexDto markerIndex, List<PathFileDto> paths) {
-        Map<String, Map<Long, NbtCompound>> markerPayloads = new HashMap<>();
+    private Map<String, Map<Long, CompoundTag>> buildMarkerPayloads(MarkerIndexDto markerIndex, List<PathFileDto> paths) {
+        Map<String, Map<Long, CompoundTag>> markerPayloads = new HashMap<>();
 
         for (Map.Entry<String, Map<String, int[]>> dimensionEntry : markerIndex.markers().entrySet()) {
-            Map<Long, NbtCompound> dimensionMarkers = new HashMap<>();
+            Map<Long, CompoundTag> dimensionMarkers = new HashMap<>();
             for (String packedPosition : dimensionEntry.getValue().keySet()) {
-                dimensionMarkers.put(Long.parseLong(packedPosition), new NbtCompound());
+                dimensionMarkers.put(Long.parseLong(packedPosition), new CompoundTag());
             }
             markerPayloads.put(dimensionEntry.getKey(), dimensionMarkers);
         }
@@ -114,14 +126,14 @@ public class MarkerRestorer {
         for (PathFileDto path : paths) {
             for (PathChapterDto chapter : path.chapters()) {
                 for (PathNodeDto node : chapter.nodes()) {
-                    Map<Long, NbtCompound> dimensionMarkers = markerPayloads.get(node.dimension());
+                    Map<Long, CompoundTag> dimensionMarkers = markerPayloads.get(node.dimension());
                     if (dimensionMarkers == null) continue;
 
-                    NbtCompound markerPathsNbt = dimensionMarkers.get(node.pos());
+                    CompoundTag markerPathsNbt = dimensionMarkers.get(node.pos());
                     if (markerPathsNbt == null) continue;
 
-                    NbtCompound pathNbt = markerPathsNbt.getCompound(path.id());
-                    NbtCompound chapterNbt = toChapterNbt(chapter.id(), node);
+                    CompoundTag pathNbt = markerPathsNbt.getCompound(path.id());
+                    CompoundTag chapterNbt = toChapterNbt(chapter.id(), node);
                     pathNbt.put(chapter.id(), chapterNbt);
                     markerPathsNbt.put(path.id(), pathNbt);
                 }
@@ -138,12 +150,12 @@ public class MarkerRestorer {
      * @param node      exported node
      * @return NBT compound matching {@link PathMarkerBlockEntity.ChapterNbtData}
      */
-    private NbtCompound toChapterNbt(String chapterId, PathNodeDto node) {
-        NbtCompound chapterNbt = new NbtCompound();
+    CompoundTag toChapterNbt(String chapterId, PathNodeDto node) {
+        CompoundTag chapterNbt = new CompoundTag();
 
         if (node.next() != null) {
-            BlockPos position = BlockPos.fromLong(node.pos());
-            BlockPos next = BlockPos.fromLong(node.next());
+            BlockPos position = BlockPos.of(node.pos());
+            BlockPos next = BlockPos.of(node.next());
             NbtEncodeable.putBlockPosIfPresent(chapterNbt, "target", next.subtract(position));
         }
 
@@ -159,7 +171,7 @@ public class MarkerRestorer {
         NbtEncodeable.putStringIfNotEmpty(chapterNbt, "auto_teleport_target", node.autoTeleportTarget() == null ? "" : node.autoTeleportTarget());
         NbtEncodeable.putBlockPosIfPresent(chapterNbt, "look_at", WarpTarget.parseCoordinates(node.lookAt()));
         NbtEncodeable.putStringIfNotEmpty(chapterNbt, "give_item", node.giveItem() == null ? "" : node.giveItem());
-        NbtEncodeable.putLongIfNonDefault(chapterNbt, "packed_message_data", node.anim().packed(), 360727776182960136L);
+        NbtEncodeable.putLongIfNonDefault(chapterNbt, "packed_message_data", node.anim().packed(), PathMarkerBlockEntity.ChapterNbtData.DEFAULT_PACKED_MESSAGE_DATA);
 
         return chapterNbt;
     }

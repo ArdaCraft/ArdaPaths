@@ -5,20 +5,20 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
-import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
@@ -62,9 +62,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param world the world this marker belongs to
      */
     @Override
-    public void setWorld(World world) {
-        super.setWorld(world);
-        if (world.isClient()) {
+    public void setLevel(Level world) {
+        super.setLevel(world);
+        if (world.isClientSide()) {
             Paths.addTickingMarker(this);
         }
     }
@@ -73,11 +73,11 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * Removes this marker from client-side rendering queries when it unloads.
      */
     @Override
-    public void markRemoved() {
-        if (this.world != null && this.world.isClient()) {
+    public void setRemoved() {
+        if (this.level != null && this.level.isClientSide()) {
             Paths.removeTickingMarker(this);
         }
-        super.markRemoved();
+        super.setRemoved();
     }
 
     /**
@@ -96,7 +96,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
 
         if (target == null) return;
 
-        AnimatedTrail trail = AnimatedTrail.from(this.getPos(), target, chapterNbtData.isDisplayAboveBlocks(), colors);
+        AnimatedTrail trail = AnimatedTrail.from(this.getBlockPos(), target, chapterNbtData.isDisplayAboveBlocks(), colors);
         TrailRenderer.registerTrail(trail);
     }
 
@@ -106,8 +106,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return the update packet
      */
     @Override
-    public @Nullable Packet<ClientPlayPacketListener> toUpdatePacket() {
-        return BlockEntityUpdateS2CPacket.create(this);
+    public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     /**
@@ -116,8 +116,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return the NBT compound
      */
     @Override
-    public @NotNull NbtCompound toInitialChunkDataNbt() {
-        return this.createNbt();
+    public @NotNull CompoundTag getUpdateTag() {
+        return this.saveWithoutMetadata();
     }
 
     /**
@@ -125,10 +125,10 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      */
     public void markUpdated() {
 
-        if (this.world == null) return;
+        if (this.level == null) return;
 
-        this.markDirty();
-        this.world.updateListeners(this.getPos(), this.getCachedState(), this.getCachedState(), 3);
+        this.setChanged();
+        this.level.sendBlockUpdated(this.getBlockPos(), this.getBlockState(), this.getBlockState(), 3);
     }
 
     /**
@@ -137,21 +137,44 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param compoundTag The NBT compound tag
      */
     @Override
-    public void readNbt(NbtCompound compoundTag) {
-        NbtCompound converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
+    public void load(CompoundTag compoundTag) {
+        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
 
-        super.readNbt(converted);
+        super.load(converted);
 
         this.applyNbt(NbtEncodeable.getCompound(converted, "paths"));
     }
 
     /**
-     * Apply an NBT compound to the entity. This run on the server.
+     * Reads NBT data from a remote update and validates it against the server config.
+     *
+     * @param compoundTag The NBT compound tag
+     */
+    public void loadValidated(CompoundTag compoundTag) {
+        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
+
+        super.load(converted);
+
+        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"), true);
+    }
+
+    /**
+     * Apply a paths NBT compound to the entity without dropping unknown path or chapter data.
      *
      * @param nbt The NBT compound
      */
     @Override
-    public void applyNbt(NbtCompound nbt) {
+    public void applyNbt(CompoundTag nbt) {
+        this.applyNbt(nbt, false);
+    }
+
+    /**
+     * Apply a paths NBT compound to the entity.
+     *
+     * @param nbt the paths NBT compound
+     * @param validate whether unknown server-config paths and chapters should be rejected
+     */
+    private void applyNbt(CompoundTag nbt, boolean validate) {
         if (nbt == null) {
             log.info("NBT compound is null");
 
@@ -159,24 +182,31 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
         }
 
         Map<String, Map<String, ChapterNbtData>> loadedPathData = new HashMap<>();
-        boolean serverSide = this.world != null ? !this.world.isClient() : ArdaPaths.amITheServer();
 
-        for (String pathKey : nbt.getKeys()) {
-            var configPath = serverSide ? ArdaPaths.CONFIG.getPath(pathKey) : ArdaPathsClient.CONFIG.getPath(pathKey);
+        for (String pathKey : nbt.getAllKeys()) {
+            PathData configPath = ArdaPaths.CONFIG == null ? null : ArdaPaths.CONFIG.getPath(pathKey);
 
-            if (configPath == null && serverSide) {
-                log.warn("Refusing to apply marker NBT at {} with unknown path '{}'", this.getPos(), pathKey);
-                return;
+            if (configPath == null && validate) {
+                log.warn("Refusing to apply marker NBT at {} with unknown path '{}'", this.getBlockPos(), pathKey);
+                continue;
+            }
+
+            if (configPath == null && ArdaPaths.CONFIG != null) {
+                log.warn("Keeping marker NBT at {} with unknown path '{}'", this.getBlockPos(), pathKey);
             }
 
             var chapterData = new HashMap<String, ChapterNbtData>();
 
             var nbtEntry = NbtEncodeable.getCompound(nbt, pathKey);
 
-            for (String chapterKey : nbtEntry.getKeys()) {
-                if (configPath != null && configPath.getChapter(chapterKey) == null && serverSide) {
-                    log.warn("Refusing to apply marker NBT at {} with unknown chapter '{}:{}'", this.getPos(), pathKey, chapterKey);
-                    return;
+            for (String chapterKey : nbtEntry.getAllKeys()) {
+                if (configPath != null && configPath.getChapter(chapterKey) == null && validate) {
+                    log.warn("Refusing to apply marker NBT at {} with unknown chapter '{}:{}'", this.getBlockPos(), pathKey, chapterKey);
+                    continue;
+                }
+
+                if (configPath != null && configPath.getChapter(chapterKey) == null) {
+                    log.warn("Keeping marker NBT at {} with unknown chapter '{}:{}'", this.getBlockPos(), pathKey, chapterKey);
                 }
 
                 ChapterNbtData chapterNbtData = ChapterNbtData.fromNbt(NbtEncodeable.getCompound(nbtEntry, chapterKey));
@@ -195,8 +225,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param compoundTag The NBT compound tag
      */
     @Override
-    public void writeNbt(NbtCompound compoundTag) {
-        super.writeNbt(compoundTag);
+    public void saveAdditional(CompoundTag compoundTag) {
+        super.saveAdditional(compoundTag);
         this.toNbt(compoundTag);
     }
 
@@ -206,17 +236,17 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return The NBT compound
      */
     @Override
-    public NbtCompound toNbt(@Nullable NbtCompound nbt) {
-        if (nbt == null) nbt = new NbtCompound();
+    public CompoundTag toNbt(@Nullable CompoundTag nbt) {
+        if (nbt == null) nbt = new CompoundTag();
         if (this.pathData.isEmpty()) return nbt;
 
-        NbtCompound pathsNbt = new NbtCompound();
+        CompoundTag pathsNbt = new CompoundTag();
 
         for (Map.Entry<String, Map<String, ChapterNbtData>> pathEntry : this.pathData.entrySet()) {
-            NbtCompound pathNbt = new NbtCompound();
+            CompoundTag pathNbt = new CompoundTag();
 
             for (Map.Entry<String, ChapterNbtData> chapterEntry : pathEntry.getValue().entrySet()) {
-                NbtCompound chapterNbt = chapterEntry.getValue().toNbt();
+                CompoundTag chapterNbt = chapterEntry.getValue().toNbt();
 
                 if (chapterEntry.getValue().isEmpty() || chapterNbt.isEmpty()) continue;
                 pathNbt.put(chapterEntry.getKey(), chapterNbt);
@@ -235,9 +265,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return The center position of the block entity
      */
     @SuppressWarnings("unused")
-    public Vec3d getCenterPos() {
-        BlockPos position = this.getPos();
-        return new Vec3d(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
+    public Vec3 getCenterPos() {
+        BlockPos position = this.getBlockPos();
+        return new Vec3(position.getX() + 0.5, position.getY() + 0.5, position.getZ() + 0.5);
     }
 
     public @Nullable List<ChapterNbtData> getChapters(String pathId, boolean createIfNull) {
@@ -300,6 +330,11 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * Marker value used when optional chapter marker settings are unset.
          */
         public static final int UNSET = -1;
+
+        /**
+         * Default packed proximity animation value for [5, 100, 5, 2, 8].
+         */
+        public static final long DEFAULT_PACKED_MESSAGE_DATA = 360727776182960136L;
 
         /**
          * The proximity message shown when the player enters this marker's activation range.
@@ -377,8 +412,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          */
         private long packedMessageData;
 
-        private ChapterNbtData(NbtCompound nbt) {
-            this("", 0, null, null, "", false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", 360727776182960136L);
+        private ChapterNbtData(CompoundTag nbt) {
+            this("", 0, null, null, "", false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", DEFAULT_PACKED_MESSAGE_DATA);
             this.applyNbt(nbt);
         }
 
@@ -388,7 +423,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @param nbt The NBT compound
          */
         @Override
-        public void applyNbt(NbtCompound nbt) {
+        public void applyNbt(CompoundTag nbt) {
             this.target = NbtEncodeable.getBlockPos(nbt, "target").orElse(null);
             this.lookAt = NbtEncodeable.getBlockPos(nbt, "look_at").orElse(null);
             this.proximityMessage = NbtEncodeable.getStringOrEmpty(nbt, "proximity_message");
@@ -402,7 +437,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             this.timeTransitionRange = NbtEncodeable.getIntOrDefault(nbt, "time_transition_range", TimeOfDay.DEFAULT_TRANSITION_RANGE);
             this.autoTeleportTarget = NbtEncodeable.getStringOrEmpty(nbt, "auto_teleport_target");
             this.giveItem = NbtEncodeable.getStringOrEmpty(nbt, "give_item");
-            this.packedMessageData = NbtEncodeable.getLongOrDefault(nbt, "packed_message_data", 360727776182960136L);
+            this.packedMessageData = NbtEncodeable.getLongOrDefault(nbt, "packed_message_data", DEFAULT_PACKED_MESSAGE_DATA);
         }
 
         /**
@@ -411,7 +446,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @param nbt the NBT compound to deserialize
          * @return the chapter NBT data loaded from the compound
          */
-        public static ChapterNbtData fromNbt(NbtCompound nbt) {
+        public static ChapterNbtData fromNbt(CompoundTag nbt) {
             return new ChapterNbtData(nbt);
         }
 
@@ -422,7 +457,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @return empty marker data for the chapter
          */
         public static ChapterNbtData empty(String chapterId) {
-            return new ChapterNbtData("", 0, null, null, chapterId, false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", 360727776182960136L);
+            return new ChapterNbtData("", 0, null, null, chapterId, false, false, true, UNSET, UNSET, TimeOfDay.DEFAULT_TRANSITION_RANGE, "", "", DEFAULT_PACKED_MESSAGE_DATA);
         }
 
         /**
@@ -457,7 +492,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
                     && timeTransitionRange == TimeOfDay.DEFAULT_TRANSITION_RANGE
                     && autoTeleportTarget.isEmpty()
                     && giveItem.isEmpty()
-                    && packedMessageData == 360727776182960136L; // Default packed value [5,100,5,2,8]
+                    && packedMessageData == DEFAULT_PACKED_MESSAGE_DATA;
         }
 
         /**
@@ -466,8 +501,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * @return The NBT compound
          */
         @Override
-        public NbtCompound toNbt(@Nullable NbtCompound nbt) {
-            nbt = nbt == null ? new NbtCompound() : nbt;
+        public CompoundTag toNbt(@Nullable CompoundTag nbt) {
+            nbt = nbt == null ? new CompoundTag() : nbt;
 
             NbtEncodeable.putBlockPosIfPresent(nbt, "target", target);
             NbtEncodeable.putBlockPosIfPresent(nbt, "look_at", lookAt);
@@ -482,7 +517,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
             NbtEncodeable.putIntIfNonDefault(nbt, "time_transition_range", timeTransitionRange, TimeOfDay.DEFAULT_TRANSITION_RANGE);
             NbtEncodeable.putStringIfNotEmpty(nbt, "auto_teleport_target", autoTeleportTarget);
             NbtEncodeable.putStringIfNotEmpty(nbt, "give_item", giveItem);
-            NbtEncodeable.putLongIfNonDefault(nbt, "packed_message_data", packedMessageData, 360727776182960136L);
+            NbtEncodeable.putLongIfNonDefault(nbt, "packed_message_data", packedMessageData, DEFAULT_PACKED_MESSAGE_DATA);
 
             return nbt;
         }

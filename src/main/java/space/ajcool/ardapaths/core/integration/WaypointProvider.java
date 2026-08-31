@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.core.integration;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * First-party waypoint bridge used by client trail rendering.
@@ -12,7 +12,7 @@ public interface WaypointProvider {
      *
      * @param target the next trail node position
      */
-    void setNextTrailNode(Vec3d target);
+    void setNextTrailNode(Vec3 target);
 
     /**
      * Clears all waypoints owned by ArdaPaths.

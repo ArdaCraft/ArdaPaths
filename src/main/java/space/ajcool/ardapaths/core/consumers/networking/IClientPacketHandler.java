@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * Interface for client-side packet handlers that process packets received from the server.
@@ -17,5 +17,5 @@ public interface IClientPacketHandler {
      * @param buf the packet byte buffer
      * @param sender the packet sender
      */
-    void handle(MinecraftClient client, ClientPlayNetworkHandler handler, PacketByteBuf buf, PacketSender sender);
+    void handle(Minecraft client, ClientPacketListener handler, FriendlyByteBuf buf, PacketSender sender);
 }

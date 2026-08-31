@@ -1,8 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.Identifier;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
 /**
@@ -12,26 +13,30 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
  * @param z the Z coordinate
  * @param worldId the world/dimension identifier, or null to teleport within the current world
  */
-public record PlayerTeleportPacket(double x, double y, double z, Identifier worldId) implements IPacket
+public record PlayerTeleportPacket(double x, double y, double z, ResourceLocation worldId) implements IPacket
 {
+    /**
+     * Network channel used for direct player teleport requests.
+     */
+    public static final ResourceLocation CHANNEL = ModConstants.modId("player_teleport");
 
     @Override
-    public PacketByteBuf build()
+    public FriendlyByteBuf build()
     {
-        PacketByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = PacketByteBufs.create();
         buf.writeDouble(x);
         buf.writeDouble(y);
         buf.writeDouble(z);
-        buf.writeIdentifier(worldId);
+        buf.writeResourceLocation(worldId);
         return buf;
     }
 
-    public static PlayerTeleportPacket read(PacketByteBuf buf)
+    public static PlayerTeleportPacket read(FriendlyByteBuf buf)
     {
         final double x = buf.readDouble();
         final double y = buf.readDouble();
         final double z = buf.readDouble();
-        final Identifier worldId = buf.readIdentifier();
+        final ResourceLocation worldId = buf.readResourceLocation();
         return new PlayerTeleportPacket(x, y, z, worldId);
     }
 }

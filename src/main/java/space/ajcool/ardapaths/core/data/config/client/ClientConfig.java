@@ -301,19 +301,4 @@ public class ClientConfig {
         selectedPaths.get(identifier).setChapterId(chapter);
     }
 
-    /**
-     * Sets the path with the given ID.
-     *
-     * @param path The path data
-     */
-    public void setPath(PathData path) {
-        List<PathData> paths = getPaths();
-        for (int i = 0; i < paths.size(); i++) {
-            if (paths.get(i).getId().equalsIgnoreCase(path.getId())) {
-                paths.set(i, path);
-                return;
-            }
-        }
-        paths.add(path);
-    }
 }

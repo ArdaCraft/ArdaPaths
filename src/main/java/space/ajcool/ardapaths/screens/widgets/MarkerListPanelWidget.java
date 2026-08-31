@@ -3,19 +3,20 @@ package space.ajcool.ardapaths.screens.widgets;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Drawable;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Selectable;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import space.ajcool.ardapaths.ArdaPaths;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WeatherTypes;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity.ChapterNbtData;
@@ -28,7 +29,7 @@ import java.util.function.Consumer;
 /**
  * Composite marker navigation column for the marker editor.
  */
-public class MarkerListPanelWidget implements Drawable, Element, Selectable {
+public class MarkerListPanelWidget implements Renderable, GuiEventListener, NarratableEntry {
     /**
      * Width of the marker navigation column.
      */
@@ -62,42 +63,42 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
     /**
      * Icon texture for an active weather marker filter.
      */
-    private static final Identifier CLOUD_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/cloud-icon.png");
+    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("textures/gui/cloud-icon.png");
 
     /**
      * Icon texture for an inactive weather marker filter.
      */
-    private static final Identifier CLOUD_ICON_OUTLINED = new Identifier(ArdaPaths.MOD_ID, "textures/gui/cloud-icon-outlined.png");
+    private static final ResourceLocation CLOUD_ICON_OUTLINED = ModConstants.modId("textures/gui/cloud-icon-outlined.png");
 
     /**
      * Icon texture for an active time marker filter.
      */
-    private static final Identifier MOON_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/moon-icon.png");
+    private static final ResourceLocation MOON_ICON = ModConstants.modId("textures/gui/moon-icon.png");
 
     /**
      * Icon texture for an inactive time marker filter.
      */
-    private static final Identifier MOON_ICON_OUTLINED = new Identifier(ArdaPaths.MOD_ID, "textures/gui/moon-icon-outlined.png");
+    private static final ResourceLocation MOON_ICON_OUTLINED = ModConstants.modId("textures/gui/moon-icon-outlined.png");
 
     /**
      * Icon texture for an active proximity text marker filter.
      */
-    private static final Identifier TEXT_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/text-icon.png");
+    private static final ResourceLocation TEXT_ICON = ModConstants.modId("textures/gui/text-icon.png");
 
     /**
      * Icon texture for an inactive proximity text marker filter.
      */
-    private static final Identifier TEXT_ICON_OUTLINED = new Identifier(ArdaPaths.MOD_ID, "textures/gui/text-icon-outlined.png");
+    private static final ResourceLocation TEXT_ICON_OUTLINED = ModConstants.modId("textures/gui/text-icon-outlined.png");
 
     /**
      * Icon texture for an active miscellaneous marker action filter.
      */
-    private static final Identifier GEAR_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/gear-icon.png");
+    private static final ResourceLocation GEAR_ICON = ModConstants.modId("textures/gui/gear-icon.png");
 
     /**
      * Icon texture for an inactive miscellaneous marker action filter.
      */
-    private static final Identifier GEAR_ICON_OUTLINED = new Identifier(ArdaPaths.MOD_ID, "textures/gui/gear-icon-outlined.png");
+    private static final ResourceLocation GEAR_ICON_OUTLINED = ModConstants.modId("textures/gui/gear-icon-outlined.png");
 
     /**
      * Whether the marker list hides markers without selected-chapter weather data.
@@ -307,7 +308,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      */
     public List<BlockPos> getVisiblePositions() {
         return visibleRows.stream()
-                .filter(row -> !row.isChainBreak())
+                .filter(row -> !row.isNotice())
                 .map(MarkerRow::pos)
                 .toList();
     }
@@ -333,13 +334,13 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      */
     public void setServerListActive(boolean active) {
         if (active) {
-            header.setText(Text.translatable("ardapaths.client.marker.configuration.screens.chapter_markers"));
-            header.setTextColor(HEADER_CHAPTER_COLOR);
-            header.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.tooltip")));
+            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers"));
+            header.setColor(HEADER_CHAPTER_COLOR);
+            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.tooltip")));
         } else {
-            header.setText(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers"));
-            header.setTextColor(HEADER_LOCAL_COLOR);
-            header.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers.tooltip")));
+            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers"));
+            header.setColor(HEADER_LOCAL_COLOR);
+            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.tooltip")));
         }
     }
 
@@ -352,7 +353,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @param delta   the partial tick delta
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         header.render(context, mouseX, mouseY, delta);
         weatherFilter.render(context, mouseX, mouseY, delta);
         timeFilter.render(context, mouseX, mouseY, delta);
@@ -473,8 +474,8 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @return nested list selection type
      */
     @Override
-    public SelectionType getType() {
-        return markerList.getType();
+    public @NotNull NarrationPriority narrationPriority() {
+        return markerList.narrationPriority();
     }
 
     /**
@@ -483,8 +484,8 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @param builder narration builder receiving child narration
      */
     @Override
-    public void appendNarrations(NarrationMessageBuilder builder) {
-        markerList.appendNarrations(builder);
+    public void updateNarration(NarrationElementOutput builder) {
+        markerList.updateNarration(builder);
     }
 
     /**
@@ -498,7 +499,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
                 .setY(y)
                 .setWidth(MARKER_LIST_WIDTH)
                 .setHeight(MARKER_LIST_HEADER_HEIGHT)
-                .setMessage(Text.empty())
+                .setMessage(Component.empty())
                 .build();
     }
 
@@ -523,7 +524,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
                     onFiltersChanged.run();
                 })
                 .build();
-        filter.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.weather.tooltip")));
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.weather.tooltip")));
         return filter;
     }
 
@@ -548,7 +549,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
                     onFiltersChanged.run();
                 })
                 .build();
-        filter.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.time.tooltip")));
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.time.tooltip")));
         return filter;
     }
 
@@ -573,7 +574,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
                     onFiltersChanged.run();
                 })
                 .build();
-        filter.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.text.tooltip")));
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.text.tooltip")));
         return filter;
     }
 
@@ -598,7 +599,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
                     onFiltersChanged.run();
                 })
                 .build();
-        filter.setTooltip(Tooltip.of(Text.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.misc.tooltip")));
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.misc.tooltip")));
         return filter;
     }
 
@@ -645,7 +646,7 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @return true when the row should be visible
      */
     private boolean isVisible(MarkerRow row) {
-        return row.isChainBreak() ||
+        return row.isNotice() ||
                 noFiltersActive() ||
                 row.focused() ||
                 (filterWeather && hasWeatherData(row)) ||
@@ -670,8 +671,8 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @return marker list entry
      */
     private MarkerListEntry toEntry(MarkerRow row) {
-        if (row.isChainBreak()) {
-            return MarkerListEntry.chainBreak();
+        if (row.isNotice()) {
+            return MarkerListEntry.notice(row.noticeText());
         }
 
         return new MarkerListEntry(
@@ -726,22 +727,22 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @param row row data to describe
      * @return styled tooltip lines for marker data and actions
      */
-    private List<Text> markerTooltipLines(MarkerRow row) {
-        List<Text> lines = new ArrayList<>();
-        MutableText environment = Text.empty();
+    private List<Component> markerTooltipLines(MarkerRow row) {
+        List<Component> lines = new ArrayList<>();
+        MutableComponent environment = Component.empty();
         boolean hasTime = hasTimeData(row);
         boolean hasWeather = hasWeatherData(row);
 
         if (hasTime) {
-            environment.append(Text.literal(TimeOfDay.format(row.timeOfDay())).formatted(Formatting.BLUE));
+            environment.append(Component.literal(TimeOfDay.format(row.timeOfDay())).withStyle(ChatFormatting.BLUE));
         }
 
         if (hasTime && hasWeather) {
-            environment.append(Text.literal(" - ").formatted(Formatting.GRAY));
+            environment.append(Component.literal(" - ").withStyle(ChatFormatting.GRAY));
         }
 
         if (hasWeather) {
-            environment.append(Text.literal(WeatherTypes.fromInt(row.weather()).getDisplayName()).formatted(Formatting.GREEN));
+            environment.append(Component.literal(WeatherTypes.fromInt(row.weather()).getDisplayName()).withStyle(ChatFormatting.GREEN));
         }
 
         if (hasTime || hasWeather) {
@@ -749,16 +750,16 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
         }
 
         if (!row.proximityMessage().isEmpty()) {
-            lines.add(Text.literal("\"" + ellipsizeTooltipText(row.proximityMessage()) + "\"").formatted(Formatting.WHITE));
+            lines.add(Component.literal("\"" + ellipsizeTooltipText(row.proximityMessage()) + "\"").withStyle(ChatFormatting.WHITE));
         }
 
         if (row.hasMiscData()) {
-            lines.add(Text.translatable("ardapaths.client.marker.configuration.screens.marker_list.misc_hint")
-                    .formatted(Formatting.GRAY));
+            lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.misc_hint")
+                    .withStyle(ChatFormatting.GRAY));
         }
 
-        lines.add(Text.translatable("ardapaths.client.marker.configuration.screens.marker_list.teleport_hint")
-                .formatted(Formatting.GRAY, Formatting.ITALIC));
+        lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.teleport_hint")
+                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
         return lines;
     }
 
@@ -788,17 +789,51 @@ public class MarkerListPanelWidget implements Drawable, Element, Selectable {
      * @param hasMiscData      whether marker action data is configured
      * @param focused          whether this marker is currently being edited
      * @param selected         whether this marker is in the current multi-selection
-     * @param isChainBreak     whether this row separates disconnected marker chains
+     * @param noticeText       inert notice label, or null for marker rows
      */
     public record MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused,
-                            boolean selected, boolean isChainBreak) {
+                            boolean selected, Component noticeText) {
+        /**
+         * Creates a marker row with no notice label.
+         *
+         * @param pos              marker position represented by the row
+         * @param timeOfDay        configured marker time, or unset
+         * @param weather          configured marker weather, or unset
+         * @param proximityMessage configured marker proximity message
+         * @param hasMiscData      whether marker action data is configured
+         * @param focused          whether this marker is currently being edited
+         * @param selected         whether this marker is in the current multi-selection
+         */
+        public MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused, boolean selected) {
+            this(pos, timeOfDay, weather, proximityMessage, hasMiscData, focused, selected, null);
+        }
+
+        /**
+         * Checks whether this row is an inert notice instead of a marker.
+         *
+         * @return true when the row renders only a notice label
+         */
+        public boolean isNotice() {
+            return noticeText != null;
+        }
+
+        /**
+         * Creates an inert notice row.
+         *
+         * @param text notice label to render
+         * @return notice row data
+         */
+        public static MarkerRow notice(Component text) {
+            return new MarkerRow(BlockPos.ZERO, ChapterNbtData.UNSET, ChapterNbtData.UNSET, "", false, false, false, text);
+        }
+
         /**
          * Creates an inert separator between disconnected marker chains.
          *
          * @return chain-break row data
          */
         public static MarkerRow chainBreak() {
-            return new MarkerRow(BlockPos.ORIGIN, ChapterNbtData.UNSET, ChapterNbtData.UNSET, "", false, false, false, true);
+            return notice(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.break"));
         }
     }
 }

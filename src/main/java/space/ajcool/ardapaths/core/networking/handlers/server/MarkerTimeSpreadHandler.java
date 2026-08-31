@@ -2,12 +2,12 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.ChunkPos;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
@@ -63,7 +63,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * Constructs the handler and its request and response channels.
      */
     public MarkerTimeSpreadHandler() {
-        super("marker_time_spread", MarkerTimeSpreadPacket::read, "marker_time_spread_response", MarkerTimeSpreadResponsePacket::read);
+        super(MarkerTimeSpreadPacket.CHANNEL, MarkerTimeSpreadPacket::read, MarkerTimeSpreadResponsePacket.CHANNEL, MarkerTimeSpreadResponsePacket::read);
     }
 
     /**
@@ -77,9 +77,9 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @return status result for the client editor
      */
     @Override
-    public CompletableFuture<MarkerTimeSpreadResponsePacket> handleAsync(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, MarkerTimeSpreadPacket packet, PacketSender sender) {
+    public CompletableFuture<MarkerTimeSpreadResponsePacket> handleAsync(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, MarkerTimeSpreadPacket packet, PacketSender sender) {
         if (!PermissionHelper.hasEditPermission(player)) {
-            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getUuidAsString());
+            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
             return CompletableFuture.completedFuture(response(TimeSpreadStatus.UNAUTHORIZED));
         }
 
@@ -118,17 +118,17 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param gate   gate for server-thread-only work
      * @return status result for the client editor
      */
-    private MarkerTimeSpreadResponsePacket handleBatched(ServerPlayerEntity player, MarkerTimeSpreadPacket packet, BackupJobRunner.ServerGate gate) {
-        ServerWorld world = gate.call(player::getServerWorld);
-        String dimensionId = world.getRegistryKey().getValue().toString();
+    private MarkerTimeSpreadResponsePacket handleBatched(ServerPlayer player, MarkerTimeSpreadPacket packet, BackupJobRunner.ServerGate gate) {
+        ServerLevel world = gate.call(player::serverLevel);
+        String dimensionId = world.dimension().location().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
-        BlockPos sourcePos = BlockPos.fromLong(packet.sourcePackedPos());
+        BlockPos sourcePos = BlockPos.of(packet.sourcePackedPos());
         Optional<BlockPos> source = gate.call(() -> snapshot(resolver, sourcePos, packet.pathId(), packet.chapterId(), true));
         if (source.isEmpty()) {
             return response(TimeSpreadStatus.INVALID_DATA);
         }
 
-        Optional<WalkResult> walkResult = walkChain(gate, resolver, source.get(), BlockPos.fromLong(packet.targetPackedPos()), packet.pathId(), packet.chapterId());
+        Optional<WalkResult> walkResult = walkChain(gate, resolver, source.get(), BlockPos.of(packet.targetPackedPos()), packet.pathId(), packet.chapterId());
         if (walkResult.isEmpty()) {
             return response(TimeSpreadStatus.INVALID_DATA);
         }
@@ -182,7 +182,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
                 return Optional.of(WalkResult.failed(TimeSpreadStatus.CHAIN_ENDED, current));
             }
 
-            BlockPos nextPos = current.add(data.getTarget());
+            BlockPos nextPos = current.offset(data.getTarget());
             boolean isRequestedTarget = nextPos.equals(targetPos);
             Optional<BlockPos> next = gate.call(() -> snapshot(resolver, nextPos, pathId, chapterId, !isRequestedTarget));
             if (next.isEmpty()) {
@@ -281,7 +281,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
         double[] distances = new double[markers.size()];
 
         for (int index = 1; index < markers.size(); index++) {
-            distances[index] = distances[index - 1] + Math.sqrt(markers.get(index - 1).getSquaredDistance(markers.get(index)));
+            distances[index] = distances[index - 1] + Math.sqrt(markers.get(index - 1).distSqr(markers.get(index)));
         }
 
         return distances;

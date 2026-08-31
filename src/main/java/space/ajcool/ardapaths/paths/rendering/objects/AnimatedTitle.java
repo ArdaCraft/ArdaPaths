@@ -1,16 +1,16 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.ColorHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
 import space.ajcool.ardapaths.paths.rendering.TextRenderable;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.Objects;
 
@@ -79,7 +79,7 @@ public class AnimatedTitle extends TextRenderable {
      * @param drawContext the drawing context used for rendering
      */
     @Override
-    public void render(DrawContext drawContext) {
+    public void render(GuiGraphics drawContext) {
         if (!showing) return;
 
         // Initialize start time on first render
@@ -89,10 +89,10 @@ public class AnimatedTitle extends TextRenderable {
 
         long elapsedMillis = System.currentTimeMillis() - startTime;
 
-        var client = MinecraftClient.getInstance();
-        var font = client.inGameHud.getTextRenderer();
-        var width = client.getWindow().getScaledWidth();
-        var height = client.getWindow().getScaledHeight();
+        var client = Minecraft.getInstance();
+        var font = client.gui.getFont();
+        var width = client.getWindow().getGuiScaledWidth();
+        var height = client.getWindow().getGuiScaledHeight();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -119,7 +119,7 @@ public class AnimatedTitle extends TextRenderable {
      * @param width         screen width in scaled pixels
      * @param height        screen height in scaled pixels
      */
-    private void renderAnimatedTitle(DrawContext drawContext, long elapsedMillis, TextRenderer font, int width, int height) {
+    private void renderAnimatedTitle(GuiGraphics drawContext, long elapsedMillis, Font font, int width, int height) {
 
         int opacity;
 
@@ -158,7 +158,7 @@ public class AnimatedTitle extends TextRenderable {
 
         if (ArdaRegionsState.isDisplaying()) y = (int) ((height / 2f) / scale);
 
-        drawTitleText(title, primaryColor, drawContext, font, x, y, opacity, scale, -font.fontHeight / 2);
+        drawTitleText(title, primaryColor, drawContext, font, x, y, opacity, scale, -font.lineHeight / 2);
     }
 
     /**
@@ -176,21 +176,21 @@ public class AnimatedTitle extends TextRenderable {
      * @param textScale   the scale factor to apply
      * @param textOffsetY vertical offset to apply after scaling
      */
-    private void drawTitleText(String text, Color color, DrawContext drawContext, TextRenderer font, int x, int y, int opacity, float textScale, int textOffsetY) {
+    private void drawTitleText(String text, Color color, GuiGraphics drawContext, Font font, int x, int y, int opacity, float textScale, int textOffsetY) {
 
-        MatrixStack matrices = drawContext.getMatrices();
-        matrices.push();
+        PoseStack matrices = drawContext.pose();
+        matrices.pushPose();
 
         matrices.scale(textScale, textScale, 1f);
 
-        drawContext.drawCenteredTextWithShadow(
+        drawContext.drawCenteredString(
                 font,
                 text,
                 x,
                 y + textOffsetY,
-                ColorHelper.Argb.getArgb(opacity, color.r, color.g, color.b));
+                GuiTextures.argb(opacity, color.r, color.g, color.b));
 
-        matrices.pop();
+        matrices.popPose();
     }
 
     /**

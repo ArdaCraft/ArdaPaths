@@ -2,9 +2,8 @@ package space.ajcool.ardapaths.screens;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.Journal;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
@@ -24,13 +23,13 @@ import java.util.List;
  * Shows a scrollable list of visited waypoints and events, with teleport buttons for each entry.
  */
 @Environment(value = EnvType.CLIENT)
-public class JournalScreen extends Screen {
+public class JournalScreen extends ArdaPathsScreen {
 
     /**
      * Constructs a new JournalScreen instance.
      */
     protected JournalScreen() {
-        super(Text.literal(Text.translatable("ardapaths.client.journal.screen.title").getString()));
+        super(Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()));
     }
 
     /**
@@ -53,16 +52,16 @@ public class JournalScreen extends Screen {
 
             switch (entry.type()) {
                 case CHAPTER_START -> entries.add(new JournalListEntry(
-                        Text.translatable("ardapaths.client.journal.screen.entry.type.chapter"),
-                        Text.literal(entry.text()),
-                        Text.translatable("ardapaths.client.journal.screen.teleport"),
+                        Component.translatable("ardapaths.client.journal.screen.entry.type.chapter"),
+                        Component.literal(entry.text()),
+                        Component.translatable("ardapaths.client.journal.screen.teleport"),
                         entry.color(),
                         button -> handleTeleportRequest(entry.pathId(), entry.chapterId(), entry.teleportPacket())
                 ));
                 case PROXIMITY_MESSAGE -> entries.add(new JournalListEntry(
-                        Text.translatable("ardapaths.client.journal.screen.entry.type.entry"),
-                        Text.literal(entry.text()),
-                        Text.translatable("ardapaths.client.journal.screen.teleport"),
+                        Component.translatable("ardapaths.client.journal.screen.entry.type.entry"),
+                        Component.literal(entry.text()),
+                        Component.translatable("ardapaths.client.journal.screen.teleport"),
                         entry.color(),
                         button -> handleTeleportRequest(entry.pathId(), entry.chapterId(), entry.teleportPacket())
                 ));
@@ -88,12 +87,12 @@ public class JournalScreen extends Screen {
                         .setY(titleY + verticalOffset)
                         .setWidth(150)
                         .setHeight(20)
-                        .setMessage(Text.literal(Text.translatable("ardapaths.client.journal.screen.title").getString()))
+                        .setMessage(Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()))
                         .build();
-        this.addDrawableChild(titleWidget);
+        this.addRenderableWidget(titleWidget);
 
         JournalListWidget listWidget = new JournalListWidget(
-                this.client, totalUiWidth, listHeight, listTop, listBottom, 32
+                this.minecraft, totalUiWidth, listHeight, listTop, listBottom, 32
         );
         listWidget.offsetY(verticalOffset);
 
@@ -105,7 +104,7 @@ public class JournalScreen extends Screen {
             listWidget.addJournalEntry(entry);
         }
 
-        this.addDrawableChild(listWidget);
+        this.addRenderableWidget(listWidget);
     }
 
     /**
@@ -139,9 +138,9 @@ public class JournalScreen extends Screen {
      * @param delta   The delta time
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
 
-        this.renderBackground(context);
+        this.renderModBackground(context);
         super.render(context, mouseX, mouseY, delta);
     }
 }

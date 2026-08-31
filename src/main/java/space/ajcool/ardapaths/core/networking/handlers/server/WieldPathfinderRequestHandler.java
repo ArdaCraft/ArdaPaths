@@ -2,15 +2,15 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
-import space.ajcool.ardapaths.ArdaPaths;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
 import space.ajcool.ardapaths.mc.items.ModItems;
@@ -35,12 +35,16 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
     private final Map<UUID, Long> lastAcceptedRequests = new ConcurrentHashMap<>();
 
     /**
+     * Channel identifier for pathfinder wield requests and responses.
+     */
+    private static final ResourceLocation CHANNEL = ModConstants.modId("wield_pathfinder_request_channel");
+
+    /**
      * Handler constructor
      */
     public WieldPathfinderRequestHandler()
     {
-        super("wield_pathfinder_request_channel", EmptyPacket::read,
-                "wield_pathfinder_request_channel", EmptyPacket::read);
+        super(CHANNEL, EmptyPacket::read, CHANNEL, EmptyPacket::read);
     }
 
     /**
@@ -52,28 +56,28 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
      * @param sender the sender
      */
     @Override
-    public EmptyPacket handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, EmptyPacket packet, PacketSender sender) {
+    public EmptyPacket handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, EmptyPacket packet, PacketSender sender) {
         if (!acceptRequest(player)) {
-            log.warn("Rate-limited Pathfinder wield request from {}", player.getUuidAsString());
+            log.warn("Rate-limited Pathfinder wield request from {}", player.getStringUUID());
             return new EmptyPacket();
         }
 
-        Item pathfinder = Registries.ITEM.get(new Identifier(ArdaPaths.MOD_ID, ModItems.PATH_REVEALER_ID));
-        PlayerInventory inventory = player.getInventory();
+        Item pathfinder = BuiltInRegistries.ITEM.get(ModConstants.modId(ModItems.PATH_REVEALER_ID));
+        Inventory inventory = player.getInventory();
 
-        int selectedSlot = inventory.selectedSlot;
+        int selectedSlot = inventory.selected;
 
-        for (int i = 0; i < inventory.size(); i++) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
 
-            ItemStack stack = inventory.getStack(i);
+            ItemStack stack = inventory.getItem(i);
 
-            if (stack.isOf(pathfinder)) {
+            if (stack.is(pathfinder)) {
 
                 if (i != selectedSlot) {
-                    ItemStack oldSelected = inventory.getStack(selectedSlot);
+                    ItemStack oldSelected = inventory.getItem(selectedSlot);
 
-                    inventory.setStack(selectedSlot, stack);
-                    inventory.setStack(i, oldSelected);
+                    inventory.setItem(selectedSlot, stack);
+                    inventory.setItem(i, oldSelected);
                 }
 
                 return new EmptyPacket();
@@ -81,7 +85,7 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
         }
 
         // Not found, create one directly in hand
-        inventory.setStack(selectedSlot, new ItemStack(pathfinder));
+        inventory.setItem(selectedSlot, new ItemStack(pathfinder));
 
         return new EmptyPacket();
     }
@@ -92,9 +96,9 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
      * @param player the requesting player
      * @return true when the request is outside the cooldown window
      */
-    private boolean acceptRequest(ServerPlayerEntity player) {
+    private boolean acceptRequest(ServerPlayer player) {
         long now = System.currentTimeMillis();
-        UUID playerId = player.getUuid();
+        UUID playerId = player.getUUID();
         Long previous = lastAcceptedRequests.get(playerId);
 
         if (previous != null && now - previous < REQUEST_COOLDOWN_MS) {

@@ -2,14 +2,14 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.world.World;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.Level;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
@@ -25,30 +25,30 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
 {
     public PlayerTeleportHandler()
     {
-        super("player_teleport", PlayerTeleportPacket::read);
+        super(PlayerTeleportPacket.CHANNEL, PlayerTeleportPacket::read);
     }
 
     @Override
-    protected void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PlayerTeleportPacket packet, PacketSender sender)
+    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PlayerTeleportPacket packet, PacketSender sender)
     {
         if (!Double.isFinite(packet.x()) || !Double.isFinite(packet.y()) || !Double.isFinite(packet.z())) {
-            log.warn("Rejected teleport request from {} with non-finite coordinates", player.getUuidAsString());
+            log.warn("Rejected teleport request from {} with non-finite coordinates", player.getStringUUID());
             return;
         }
 
-        ServerWorld serverWorld = resolveWorld(server, player, packet);
+        ServerLevel serverWorld = resolveWorld(server, player, packet);
         if (serverWorld == null) {
-            log.warn("Rejected teleport request from {} to unknown world {}", player.getUuidAsString(), packet.worldId());
+            log.warn("Rejected teleport request from {} to unknown world {}", player.getStringUUID(), packet.worldId());
             return;
         }
 
-        BlockPos destination = BlockPos.ofFloored(packet.x(), packet.y(), packet.z());
+        BlockPos destination = BlockPos.containing(packet.x(), packet.y(), packet.z());
         if (!isAllowedDestination(serverWorld, destination)) {
-            log.warn("Rejected teleport request from {} to unauthorized destination {} in {}", player.getUuidAsString(), destination, serverWorld.getRegistryKey().getValue());
+            log.warn("Rejected teleport request from {} to unauthorized destination {} in {}", player.getStringUUID(), destination, serverWorld.dimension().location());
             return;
         }
 
-        player.teleport(serverWorld, packet.x(), packet.y(), packet.z(), player.getYaw(), player.getPitch());
+        player.teleportTo(serverWorld, packet.x(), packet.y(), packet.z(), player.getYRot(), player.getXRot());
     }
 
     /**
@@ -59,13 +59,13 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
      * @param packet the teleport packet to validate
      * @return the resolved server world, or null if the world does not exist
      */
-    private ServerWorld resolveWorld(MinecraftServer server, ServerPlayerEntity player, PlayerTeleportPacket packet) {
+    private ServerLevel resolveWorld(MinecraftServer server, ServerPlayer player, PlayerTeleportPacket packet) {
         if (packet.worldId() == null) {
-            return player.getServerWorld();
+            return player.serverLevel();
         }
 
-        RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, packet.worldId());
-        return server.getWorld(key);
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, packet.worldId());
+        return server.getLevel(key);
     }
 
     /**
@@ -75,7 +75,7 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
      * @param destination the floored requested destination position
      * @return true when the destination is a configured chapter start or loaded path marker
      */
-    private boolean isAllowedDestination(ServerWorld world, BlockPos destination) {
+    private boolean isAllowedDestination(ServerLevel world, BlockPos destination) {
         if (ArdaPaths.CONFIG.isChapterStartPosition(destination)) {
             return true;
         }

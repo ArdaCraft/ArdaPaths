@@ -1,13 +1,13 @@
 package space.ajcool.ardapaths.core.markers;
 
 import lombok.extern.slf4j.Slf4j;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkStatus;
-import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.LevelChunk;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
@@ -25,7 +25,7 @@ import java.util.concurrent.CompletionException;
 public class MarkerResolver {
 
     /** World used for live chunk and block-entity lookups. */
-    private final ServerWorld world;
+    private final ServerLevel world;
 
     /** Registry identifier for the world being searched. */
     private final String dimensionId;
@@ -39,7 +39,7 @@ public class MarkerResolver {
      * @param world       world where live markers may be loaded
      * @param dimensionId registry identifier for the searched world
      */
-    public MarkerResolver(ServerWorld world, String dimensionId) {
+    public MarkerResolver(ServerLevel world, String dimensionId) {
         this.world = world;
         this.dimensionId = dimensionId;
     }
@@ -52,7 +52,7 @@ public class MarkerResolver {
      */
     public Optional<ResolvedMarker> resolve(BlockPos pos) {
         ChunkPos chunkPos = new ChunkPos(pos);
-        boolean loaded = world.getChunkManager().isChunkLoaded(chunkPos.x, chunkPos.z);
+        boolean loaded = world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z);
         if (!loaded && !chunkExistsOnDisk(chunkPos)) {
             return Optional.empty();
         }
@@ -76,12 +76,12 @@ public class MarkerResolver {
      * @return resolved markers present in the chunk
      */
     public List<ResolvedMarker> resolveChunkMarkers(ChunkPos chunkPos) {
-        if (!world.getChunkManager().isChunkLoaded(chunkPos.x, chunkPos.z) && !chunkExistsOnDisk(chunkPos)) {
+        if (!world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z) && !chunkExistsOnDisk(chunkPos)) {
             return List.of();
         }
 
-        Chunk chunk = world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
-        if (!(chunk instanceof WorldChunk worldChunk)) {
+        ChunkAccess chunk = world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+        if (!(chunk instanceof LevelChunk worldChunk)) {
             return List.of();
         }
 
@@ -104,7 +104,7 @@ public class MarkerResolver {
     private boolean chunkExistsOnDisk(ChunkPos chunkPos) {
         try {
             return chunkExistsCache.computeIfAbsent(chunkPos.toLong(), ignored ->
-                    world.getChunkManager().threadedAnvilChunkStorage.getNbt(chunkPos).join().isPresent());
+                    world.getChunkSource().chunkMap.read(chunkPos).join().isPresent());
         } catch (CompletionException exception) {
             log.warn("Failed to probe ArdaPaths marker chunk {}", chunkPos, exception);
             return false;
@@ -127,7 +127,7 @@ public class MarkerResolver {
          * @return resolved loaded marker
          */
         public static ResolvedMarker loaded(String dimensionId, PathMarkerBlockEntity marker) {
-            return new ResolvedMarker(dimensionId, marker.getPos().toImmutable(), marker);
+            return new ResolvedMarker(dimensionId, marker.getBlockPos().immutable(), marker);
         }
 
         /**

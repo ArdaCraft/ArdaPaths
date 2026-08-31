@@ -1,10 +1,5 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
 import space.ajcool.ardapaths.core.data.MarkerId;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
@@ -12,11 +7,16 @@ import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.function.Consumer;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 
 /**
  * Modal screen for choosing the endpoint markers and times used by server-side interpolation.
  */
-public class TimeInterpolationPopup extends Screen {
+public class TimeInterpolationPopup extends ArdaPathsScreen {
     /**
      * Width of text input controls.
      */
@@ -76,7 +76,7 @@ public class TimeInterpolationPopup extends Screen {
      * @param onConfirm    callback for validated endpoint values
      */
     public TimeInterpolationPopup(Screen parentScreen, BlockPos startMarker, BlockPos endMarker, Consumer<Endpoints> onConfirm) {
-        super(Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.title"));
+        super(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.title"));
         this.parentScreen = parentScreen;
         this.startMarker = startMarker;
         this.endMarker = endMarker;
@@ -92,16 +92,16 @@ public class TimeInterpolationPopup extends Screen {
         int centerY = this.height / 2;
         int left = centerX - 140;
 
-        startMarkerInput = buildMarkerInput(left, centerY - 35, Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_marker"), MarkerId.format(startMarker));
-        endMarkerInput = buildMarkerInput(left + 145, centerY - 35, Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_marker"), MarkerId.format(endMarker));
-        startTimeInput = buildTimeInput(left, centerY + 10, Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_time"));
-        endTimeInput = buildTimeInput(left + 145, centerY + 10, Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_time"));
+        startMarkerInput = buildMarkerInput(left, centerY - 35, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_marker"), MarkerId.format(startMarker));
+        endMarkerInput = buildMarkerInput(left + 145, centerY - 35, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_marker"), MarkerId.format(endMarker));
+        startTimeInput = buildTimeInput(left, centerY + 10, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_time"));
+        endTimeInput = buildTimeInput(left + 145, centerY + 10, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_time"));
 
-        this.addDrawableChild(ButtonWidget.builder(Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.ok"), ignored -> confirm())
-                .dimensions(centerX - 60, centerY + 45, 50, 20)
+        this.addRenderableWidget(Button.builder(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.ok"), ignored -> confirm())
+                .bounds(centerX - 60, centerY + 45, 50, 20)
                 .build());
-        this.addDrawableChild(ButtonWidget.builder(Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.cancel"), ignored -> close())
-                .dimensions(centerX + 10, centerY + 45, 60, 20)
+        this.addRenderableWidget(Button.builder(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.cancel"), ignored -> onClose())
+                .bounds(centerX + 10, centerY + 45, 60, 20)
                 .build());
     }
 
@@ -114,18 +114,18 @@ public class TimeInterpolationPopup extends Screen {
      * @param value initial input value
      * @return configured marker ID input
      */
-    private InputBoxWidget buildMarkerInput(int x, int y, Text label, String value) {
-        this.addDrawableChild(new TextWidget(x, y - 17, textRenderer.getWidth(label), 17, label));
-        InputBoxWidget input = this.addDrawableChild(InputBoxWidget.create()
+    private InputBoxWidget buildMarkerInput(int x, int y, Component label, String value) {
+        this.addRenderableWidget(new TextWidget(x, y - 17, font.width(label), 17, label));
+        InputBoxWidget input = this.addRenderableWidget(InputBoxWidget.create()
                 .setX(x)
                 .setY(y)
                 .setWidth(INPUT_WIDTH)
                 .setHeight(INPUT_HEIGHT)
                 .setEnabled(true)
-                .setPlaceholder(Text.empty())
+                .setPlaceholder(Component.empty())
                 .setValidator(MarkerId::parse)
                 .build());
-        input.setText(value);
+        input.setValue(value);
         return input;
     }
 
@@ -137,15 +137,15 @@ public class TimeInterpolationPopup extends Screen {
      * @param label label text
      * @return configured time input
      */
-    private InputBoxWidget buildTimeInput(int x, int y, Text label) {
-        this.addDrawableChild(new TextWidget(x, y - 17, textRenderer.getWidth(label), 17, label));
-        return this.addDrawableChild(InputBoxWidget.create()
+    private InputBoxWidget buildTimeInput(int x, int y, Component label) {
+        this.addRenderableWidget(new TextWidget(x, y - 17, font.width(label), 17, label));
+        return this.addRenderableWidget(InputBoxWidget.create()
                 .setX(x)
                 .setY(y)
                 .setWidth(INPUT_WIDTH)
                 .setHeight(INPUT_HEIGHT)
                 .setEnabled(true)
-                .setPlaceholder(Text.literal("hh:mm"))
+                .setPlaceholder(Component.literal("hh:mm"))
                 .setValidator(this::validateRequiredTime)
                 .build());
     }
@@ -159,7 +159,7 @@ public class TimeInterpolationPopup extends Screen {
     private void validateRequiredTime(String text) throws TextValidationError {
         int parsed = TimeOfDay.parse(text);
         if (parsed == TimeOfDay.UNSET) {
-            throw new TextValidationError(Text.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.time_required").getString());
+            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.time_required").getString());
         }
     }
 
@@ -175,12 +175,12 @@ public class TimeInterpolationPopup extends Screen {
 
         try {
             Endpoints endpoints = new Endpoints(
-                    MarkerId.parse(startMarkerInput.getText()),
-                    MarkerId.parse(endMarkerInput.getText()),
-                    TimeOfDay.parse(startTimeInput.getText()),
-                    TimeOfDay.parse(endTimeInput.getText())
+                    MarkerId.parse(startMarkerInput.getValue()),
+                    MarkerId.parse(endMarkerInput.getValue()),
+                    TimeOfDay.parse(startTimeInput.getValue()),
+                    TimeOfDay.parse(endTimeInput.getValue())
             );
-            close();
+            onClose();
             onConfirm.accept(endpoints);
         } catch (TextValidationError ignored) {
         }
@@ -190,9 +190,9 @@ public class TimeInterpolationPopup extends Screen {
      * Returns to the marker editor.
      */
     @Override
-    public void close() {
-        if (client == null) return;
-        client.setScreen(parentScreen);
+    public void onClose() {
+        if (minecraft == null) return;
+        minecraft.setScreen(parentScreen);
     }
 
     /**
@@ -204,9 +204,9 @@ public class TimeInterpolationPopup extends Screen {
      * @param delta   partial tick delta
      */
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, this.height / 2 - 65, 0xFFFFFF);
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        this.renderModBackground(context);
+        context.drawCenteredString(this.font, this.title, this.width / 2, this.height / 2 - 65, 0xFFFFFF);
         super.render(context, mouseX, mouseY, delta);
     }
 

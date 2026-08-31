@@ -1,26 +1,26 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.EditBoxWidget;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.MultiLineEditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 /**
  * A custom input box widget with text validation support.
  * Validates input as the user types and displays error messages.
  */
 @Environment(EnvType.CLIENT)
-public class InputBoxWidget extends EditBoxWidget {
+public class InputBoxWidget extends MultiLineEditBox {
     /**
      * The text validator that validates input content.
      */
@@ -63,8 +63,8 @@ public class InputBoxWidget extends EditBoxWidget {
      */
     @Builder(builderClassName = "InputBoxBuilder", builderMethodName = "create", setterPrefix = "set")
     @SuppressWarnings("resource")
-    public InputBoxWidget(int x, int y, int width, int height, Text title, Text placeholder, TextValidator validator, boolean enabled) {
-        super(Client.mc().textRenderer, x, y, width, height, placeholder, title != null ? title : Text.empty());
+    public InputBoxWidget(int x, int y, int width, int height, Component title, Component placeholder, TextValidator validator, boolean enabled) {
+        super(Client.mc().font, x, y, width, height, placeholder, title != null ? title : Component.empty());
         this.validator = validator;
         this.errorMessage = null;
         this.hasValidatedOnce = false;
@@ -77,7 +77,7 @@ public class InputBoxWidget extends EditBoxWidget {
     public void disable() {
         this.enabled = false;
         this.setFocused(false);
-        this.setTooltip(Tooltip.of(Text.literal("Disabled")));
+        this.setTooltip(Tooltip.create(Component.literal("Disabled")));
     }
 
     /**
@@ -106,7 +106,7 @@ public class InputBoxWidget extends EditBoxWidget {
         if (validator == null) return true;
 
         try {
-            validator.validate(getText());
+            validator.validate(getValue());
             errorMessage = null;
             return true;
         } catch (TextValidationError e) {
@@ -145,17 +145,16 @@ public class InputBoxWidget extends EditBoxWidget {
      */
     @SuppressWarnings("resource")
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
         if (!enabled) {
-            MatrixStack matrices = context.getMatrices();
-            matrices.push();
+            PoseStack matrices = context.pose();
+            matrices.pushPose();
             matrices.translate(0, 0, 2);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.7f);
-            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0xFF000000);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-            matrices.pop();
+            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height,
+                    GuiTextures.withAlpha(0xFF000000, 179));
+            matrices.popPose();
 
             return;
         }
@@ -163,32 +162,32 @@ public class InputBoxWidget extends EditBoxWidget {
         if (backgroundColor != Integer.MIN_VALUE) {
 
             // Convert raw text → coloured styled text (you define this)
-            Text colored = Text.literal(this.getText()).fillStyle(Style.EMPTY.withColor(backgroundColor));
+            Component colored = Component.literal(this.getValue()).withStyle(Style.EMPTY.withColor(backgroundColor));
 
             // Coordinates for drawing inside the box
             int textX = this.getX() + 4;
             int textY = this.getY() + (this.height - 8) / 2;
 
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 5); // ensure it's above box text
-            context.drawText(
-                    Client.mc().textRenderer,
+            context.pose().pushPose();
+            context.pose().translate(0, 0, 5); // ensure it's above box text
+            context.drawString(
+                    Client.mc().font,
                     colored,
                     textX,
                     textY,
                     0xFFFFFFFF, // ignored for literal() because color is inside the style
                     false
             );
-            context.getMatrices().pop();
+            context.pose().popPose();
         }
 
         if (errorMessage != null && !errorMessage.isEmpty()) {
             int errorX = this.getX();
             int errorY = this.getY() + this.height + 2;
-            context.getMatrices().push();
-            context.getMatrices().scale(0.85f, 0.85f, 1.0f);
-            context.drawTextWithShadow(Client.mc().textRenderer, errorMessage, (int) (errorX / 0.85), (int) (errorY / 0.85), 0xFFFF5555);
-            context.getMatrices().pop();
+            context.pose().pushPose();
+            context.pose().scale(0.85f, 0.85f, 1.0f);
+            context.drawString(Client.mc().font, errorMessage, (int) (errorX / 0.85), (int) (errorY / 0.85), 0xFFFF5555);
+            context.pose().popPose();
         }
     }
 
@@ -212,7 +211,7 @@ public class InputBoxWidget extends EditBoxWidget {
     }
 
     public void reset() {
-        setText("");
+        setValue("");
         resetValidation();
     }
 
@@ -220,8 +219,8 @@ public class InputBoxWidget extends EditBoxWidget {
      * Override setText so that after the first validation, every edit revalidates.
      */
     @Override
-    public void setText(String text) {
-        super.setText(text);
+    public void setValue(String text) {
+        super.setValue(text);
         if (hasValidatedOnce) {
             validateText();
         }
@@ -233,7 +232,7 @@ public class InputBoxWidget extends EditBoxWidget {
     }
 
     public void reset(String text) {
-        setText(text);
+        setValue(text);
         resetValidation();
     }
 }

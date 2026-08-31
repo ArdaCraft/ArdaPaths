@@ -1,8 +1,10 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
 /**
@@ -14,16 +16,21 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
  */
 public record MarkerActionTriggerPacket(BlockPos markerPos, String pathId, String chapterId) implements IPacket {
     /**
+     * Network channel used for authored marker action triggers.
+     */
+    public static final ResourceLocation CHANNEL = ModConstants.modId("marker_action_trigger");
+
+    /**
      * Builds this marker-action trigger into a packet buffer.
      *
      * @return packet buffer containing the marker position and path chapter ids
      */
     @Override
-    public PacketByteBuf build() {
-        PacketByteBuf buf = PacketByteBufs.create();
+    public FriendlyByteBuf build() {
+        FriendlyByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(markerPos);
-        buf.writeString(pathId);
-        buf.writeString(chapterId);
+        buf.writeUtf(pathId);
+        buf.writeUtf(chapterId);
         return buf;
     }
 
@@ -33,10 +40,10 @@ public record MarkerActionTriggerPacket(BlockPos markerPos, String pathId, Strin
      * @param buf packet buffer to read
      * @return decoded marker-action trigger packet
      */
-    public static MarkerActionTriggerPacket read(PacketByteBuf buf) {
+    public static MarkerActionTriggerPacket read(FriendlyByteBuf buf) {
         BlockPos markerPos = buf.readBlockPos();
-        String pathId = buf.readString();
-        String chapterId = buf.readString();
+        String pathId = buf.readUtf();
+        String chapterId = buf.readUtf();
         return new MarkerActionTriggerPacket(markerPos, pathId, chapterId);
     }
 }

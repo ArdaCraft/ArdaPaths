@@ -1,16 +1,16 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
-import net.minecraft.client.gui.screen.narration.NarrationPart;
-import net.minecraft.client.gui.widget.EntryListWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSelectionList;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.network.chat.Component;
 
 /**
  * A custom list widget for displaying journal entries with variable heights.
  */
-public class JournalListWidget extends EntryListWidget<JournalListEntry> {
+public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
 
     /**
      * Create a new JournalListWidget.
@@ -22,11 +22,11 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * @param bottom     The bottom position of the widget
      * @param itemHeight The height of each item (not used for variable height entries)
      */
-    public JournalListWidget(MinecraftClient client, int width, int height, int top, int bottom, int itemHeight) {
+    public JournalListWidget(Minecraft client, int width, int height, int top, int bottom, int itemHeight) {
         super(client, width, height, top, bottom, itemHeight);
         setRenderBackground(false);
         setRenderHeader(false, 0);
-        setRenderHorizontalShadows(false);
+        setRenderTopAndBottom(false);
     }
 
     /**
@@ -41,8 +41,8 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * Position the scrollbar on the right side of the list.
      */
     @Override
-    protected int getScrollbarPositionX() {
-        return this.left + this.width - 6;
+    protected int getScrollbarPosition() {
+        return this.x0 + this.width - 6;
     }
 
     /**
@@ -60,8 +60,8 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * @param offset the number of pixels to add to the list's top and bottom bounds
      */
     public void offsetY(int offset) {
-        this.top += offset;
-        this.bottom += offset;
+        this.y0 += offset;
+        this.y1 += offset;
     }
 
     /**
@@ -70,7 +70,7 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
     @Override
     protected int getMaxPosition() {
         int total = 0;
-        for (int i = 0; i < this.getEntryCount(); i++) {
+        for (int i = 0; i < this.getItemCount(); i++) {
             total += this.getEntry(i).getHeight(getRowWidth());
         }
         return total + this.headerHeight;
@@ -83,18 +83,18 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * @param delta   The delta time
      */
     @Override
-    protected void renderList(DrawContext context, int mouseX, int mouseY, float delta) {
+    protected void renderList(GuiGraphics context, int mouseX, int mouseY, float delta) {
 
         int rowLeft = this.getRowLeft();
         int rowWidth = this.getRowWidth();
-        int currentY = this.top + 4 - (int) this.getScrollAmount();
+        int currentY = this.y0 + 4 - (int) this.getScrollAmount();
 
-        for (int i = 0; i < this.getEntryCount(); i++) {
+        for (int i = 0; i < this.getItemCount(); i++) {
 
             JournalListEntry entry = this.getEntry(i);
             int entryHeight = entry.getHeight(rowWidth);
 
-            if (currentY + entryHeight >= this.top && currentY <= this.bottom) {
+            if (currentY + entryHeight >= this.y0 && currentY <= this.y1) {
                 entry.render(context, i, currentY, rowLeft, rowWidth, entryHeight,
                         mouseX, mouseY, this.isMouseOver(mouseX, mouseY) && this.getEntryAtPosition(mouseX, mouseY) == entry, delta);
             }
@@ -111,9 +111,9 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
     @SuppressWarnings("unused")
     private JournalListEntry getJournalEntryAtPosition(double x, double y) {
 
-        int currentY = this.top + 4 - (int) this.getScrollAmount();
+        int currentY = this.y0 + 4 - (int) this.getScrollAmount();
 
-        for (int i = 0; i < this.getEntryCount(); i++) {
+        for (int i = 0; i < this.getItemCount(); i++) {
             JournalListEntry entry = this.getEntry(i);
             int entryHeight = entry.getHeight(getRowWidth());
             if (y >= currentY && y < currentY + entryHeight) {
@@ -153,15 +153,15 @@ public class JournalListWidget extends EntryListWidget<JournalListEntry> {
      * Append narration information for accessibility.
      */
     @Override
-    public void appendNarrations(NarrationMessageBuilder builder) {
+    public void updateNarration(NarrationElementOutput builder) {
 
-        JournalListEntry selected = this.getSelectedOrNull();
+        JournalListEntry selected = this.getSelected();
 
         if (selected != null)
-            builder.put(NarrationPart.TITLE, selected.getNarration());
-        else if (this.getEntryCount() > 0)
-            builder.put(NarrationPart.TITLE, Text.translatable("narration.selection.usage"));
+            builder.add(NarratedElementType.TITLE, selected.getNarration());
+        else if (this.getItemCount() > 0)
+            builder.add(NarratedElementType.TITLE, Component.translatable("narration.selection.usage"));
 
-        builder.put(NarrationPart.USAGE, Text.translatable("narration.component_list.usage"));
+        builder.add(NarratedElementType.USAGE, Component.translatable("narration.component_list.usage"));
     }
 }

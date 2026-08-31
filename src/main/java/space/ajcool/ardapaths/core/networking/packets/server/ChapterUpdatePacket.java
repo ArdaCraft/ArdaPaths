@@ -1,7 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 
@@ -23,6 +25,10 @@ public record ChapterUpdatePacket(
         String warp
 ) implements IPacket
 {
+    /**
+     * Network channel used for chapter metadata updates.
+     */
+    public static final ResourceLocation CHANNEL = ModConstants.modId("path_chapter_update");
 
     public ChapterUpdatePacket(String pathId, ChapterData chapter)
     {
@@ -30,26 +36,26 @@ public record ChapterUpdatePacket(
     }
 
     @Override
-    public PacketByteBuf build()
+    public FriendlyByteBuf build()
     {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(pathId);
-        buf.writeString(chapterId);
-        buf.writeString(chapterName);
-        buf.writeString(chapterDate);
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeUtf(pathId);
+        buf.writeUtf(chapterId);
+        buf.writeUtf(chapterName);
+        buf.writeUtf(chapterDate);
         buf.writeInt(chapterIndex);
-        buf.writeString(warp);
+        buf.writeUtf(warp);
         return buf;
     }
 
-    public static ChapterUpdatePacket read(PacketByteBuf buf)
+    public static ChapterUpdatePacket read(FriendlyByteBuf buf)
     {
-        final String pathId = buf.readString();
-        final String chapterId = buf.readString();
-        final String chapterName = buf.readString();
-        final String chapterDate = buf.readString();
+        final String pathId = buf.readUtf();
+        final String chapterId = buf.readUtf();
+        final String chapterName = buf.readUtf();
+        final String chapterDate = buf.readUtf();
         final int chapterIndex = buf.readInt();
-        final String warp = buf.readString();
+        final String warp = buf.readUtf();
         return new ChapterUpdatePacket(pathId, chapterId, chapterName, chapterDate, chapterIndex, warp);
     }
 }

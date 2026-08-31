@@ -1,26 +1,16 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
- * Interface for network packets that can be built into and read from PacketByteBuf.
+ * Interface for network packets that can be built into a PacketByteBuf.
+ * Implementations must expose a static {@code read(FriendlyByteBuf)} factory.
  */
 public interface IPacket {
-    /**
-     * Convert the packet to an instance of the object.
-     *
-     * @param <T> the type of object to read
-     * @param ignoredBuf the packet byte buffer to read
-     * @return the object instance
-     */
-    static <T> T read(PacketByteBuf ignoredBuf) {
-        return null;
-    }
-
     /**
      * Build the packet.
      *
      * @return the packet as a PacketByteBuf
      */
-    PacketByteBuf build();
+    FriendlyByteBuf build();
 }

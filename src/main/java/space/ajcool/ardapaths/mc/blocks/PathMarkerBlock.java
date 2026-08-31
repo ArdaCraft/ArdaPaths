@@ -1,21 +1,26 @@
 package space.ajcool.ardapaths.mc.blocks;
 
 import lombok.extern.slf4j.Slf4j;
-import net.minecraft.block.*;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
@@ -33,7 +38,7 @@ import space.ajcool.ardapaths.screens.Screens;
  */
 @SuppressWarnings("deprecation")
 @Slf4j(topic = "ardapaths")
-public class PathMarkerBlock extends BlockWithEntity {
+public class PathMarkerBlock extends BaseEntityBlock {
     /**
      * The block position of the currently selected origin marker for linking paths,
      * or null if no marker is currently selected.
@@ -45,7 +50,7 @@ public class PathMarkerBlock extends BlockWithEntity {
      *
      * @param properties the block settings (non-opaque, no collision, indestructible, etc.)
      */
-    public PathMarkerBlock(AbstractBlock.Settings properties) {
+    public PathMarkerBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }
 
@@ -61,19 +66,20 @@ public class PathMarkerBlock extends BlockWithEntity {
      * @param blockHitResult  the hit result
      * @return the action result (CONSUME if handled, PASS otherwise)
      */
-    public ActionResult onUse(BlockState blockState, World level, BlockPos blockPos, PlayerEntity player, Hand interactionHand, BlockHitResult blockHitResult) {
+    @Override
+    public @NotNull InteractionResult use(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult) {
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
-        if (selectedBlockEntity == null) return ActionResult.PASS;
+        if (selectedBlockEntity == null) return InteractionResult.PASS;
         if (!player.isHolding(ModItems.PATH_MARKER) || !(selectedBlockEntity instanceof PathMarkerBlockEntity pathMarkerBlockEntity))
-            return ActionResult.PASS;
-        if (!level.isClient()) return ActionResult.CONSUME;
+            return InteractionResult.PASS;
+        if (!level.isClientSide()) return InteractionResult.CONSUME;
 
         if (PermissionHelper.hasEditPermission(player)) {
             this.validateOnUse(level, blockPos, pathMarkerBlockEntity, player);
         }
 
-        return ActionResult.CONSUME;
+        return InteractionResult.CONSUME;
     }
 
     /**
@@ -85,8 +91,8 @@ public class PathMarkerBlock extends BlockWithEntity {
      * @param pathMarkerBlockEntity the block entity
      * @param player                the player interacting
      */
-    public void validateOnUse(World level, BlockPos blockPos, PathMarkerBlockEntity pathMarkerBlockEntity, PlayerEntity player) {
-        MinecraftClient.getInstance().execute(() -> {
+    public void validateOnUse(Level level, BlockPos blockPos, PathMarkerBlockEntity pathMarkerBlockEntity, Player player) {
+        Minecraft.getInstance().execute(() -> {
             if (Client.isCtrlDown()) {
                 Screens.openEditorScreen(pathMarkerBlockEntity);
                 return;
@@ -95,38 +101,38 @@ public class PathMarkerBlock extends BlockWithEntity {
             if (selectedBlockPosition == null) {
                 selectedBlockPosition = blockPos;
 
-                var message = Text.empty()
-                        .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                        .append(Text.literal("Selected origin block.").formatted(Formatting.BLUE));
+                var message = Component.empty()
+                        .append(Component.literal("ArdaPaths: ").withStyle(ChatFormatting.DARK_AQUA))
+                        .append(Component.literal("Selected origin block.").withStyle(ChatFormatting.BLUE));
 
-                player.sendMessage(message);
+                player.sendSystemMessage(message);
 
             } else {
 
                 BlockEntity blockEntity = level.getBlockEntity(selectedBlockPosition);
 
                 if (blockEntity instanceof PathMarkerBlockEntity pathMarker) {
-                    MutableText message;
+                    MutableComponent message;
 
                     if (selectedBlockPosition.equals(blockPos)) {
-                        message = Text.empty()
-                                .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                                .append(Text.literal("Target block removed.").formatted(Formatting.RED));
+                        message = Component.empty()
+                                .append(Component.literal("ArdaPaths: ").withStyle(ChatFormatting.DARK_AQUA))
+                                .append(Component.literal("Target block removed.").withStyle(ChatFormatting.RED));
 
                         PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
                         data.removeTarget();
                     } else {
-                        message = Text.empty()
-                                .append(Text.literal("ArdaPaths: ").formatted(Formatting.DARK_AQUA))
-                                .append(Text.literal("Target block set.").formatted(Formatting.GREEN));
+                        message = Component.empty()
+                                .append(Component.literal("ArdaPaths: ").withStyle(ChatFormatting.DARK_AQUA))
+                                .append(Component.literal("Target block set.").withStyle(ChatFormatting.GREEN));
 
                         PathMarkerBlockEntity.ChapterNbtData data = pathMarker.getChapterData(ArdaPathsClient.CONFIG.getSelectedPathId(), ArdaPathsClient.CONFIG.getCurrentChapterId());
                         data.setTarget(blockPos.subtract(selectedBlockPosition));
                     }
 
-                    PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getPos(), pathMarker.createNbt());
+                    PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getBlockPos(), pathMarker.saveWithoutMetadata());
                     PacketRegistry.PATH_MARKER_UPDATE.send(packet);
-                    player.sendMessage(message);
+                    player.sendSystemMessage(message);
                     log.info("Sending Update Packet");
                 }
 
@@ -135,25 +141,29 @@ public class PathMarkerBlock extends BlockWithEntity {
         });
     }
 
-    public boolean isTransparent(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
+    @Override
+    public boolean propagatesSkylightDown(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
         return true;
     }
 
-    public BlockRenderType getRenderType(BlockState blockState) {
-        return BlockRenderType.INVISIBLE;
+    @Override
+    public @NotNull RenderShape getRenderShape(BlockState blockState) {
+        return RenderShape.INVISIBLE;
     }
 
-    public float getAmbientOcclusionLightLevel(BlockState blockState, BlockView blockGetter, BlockPos blockPos) {
+    @Override
+    public float getShadeBrightness(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
         return 1.0F;
     }
 
-    public VoxelShape getOutlineShape(BlockState blockState, BlockView blockGetter, BlockPos blockPos, ShapeContext collisionContext) {
-        return collisionContext.isHolding(ModItems.PATH_MARKER) ? VoxelShapes.fullCube() : VoxelShapes.empty();
+    @Override
+    public @NotNull VoxelShape getShape(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos, CollisionContext collisionContext) {
+        return collisionContext.isHoldingItem(ModItems.PATH_MARKER) ? Shapes.block() : Shapes.empty();
     }
 
     @Nullable
     @Override
-    public BlockEntity createBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new PathMarkerBlockEntity(blockPos, blockState);
     }
 }

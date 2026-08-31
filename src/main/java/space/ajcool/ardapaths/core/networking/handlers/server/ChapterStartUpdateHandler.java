@@ -1,10 +1,10 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.data.config.server.PositionData;
@@ -18,7 +18,7 @@ public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartU
 {
     public ChapterStartUpdateHandler()
     {
-        super("path_chapter_start_update", ChapterStartUpdatePacket::read);
+        super(ChapterStartUpdatePacket.CHANNEL, ChapterStartUpdatePacket::read);
     }
 
     /**
@@ -32,7 +32,7 @@ public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartU
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, ChapterStartUpdatePacket packet, PacketSender sender)
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartUpdatePacket packet, PacketSender sender)
     {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();

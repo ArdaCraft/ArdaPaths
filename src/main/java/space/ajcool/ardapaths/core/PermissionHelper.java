@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
@@ -41,7 +41,7 @@ public class PermissionHelper {
      * @param player the player to check permissions for, or null
      * @return true if the player has the edit permission, false otherwise
      */
-    public static boolean hasEditPermission(@Nullable PlayerEntity player) {
+    public static boolean hasEditPermission(@Nullable Player player) {
 
         if (player == null) return false;
 
@@ -55,7 +55,7 @@ public class PermissionHelper {
      * @param player the player to check permissions for
      * @return true if the player has the {@code ardapaths.edit} permission, false otherwise
      */
-    private static boolean serverEditPermissionCheck(@NotNull PlayerEntity player) {
+    private static boolean serverEditPermissionCheck(@NotNull Player player) {
 
         var serverPlayer = resolveServerPlayer(player);
 
@@ -78,9 +78,9 @@ public class PermissionHelper {
      * @param player the player to resolve
      * @return the matching server player, or null if none could be resolved
      */
-    private static @Nullable ServerPlayerEntity resolveServerPlayer(@NotNull PlayerEntity player) {
+    private static @Nullable ServerPlayer resolveServerPlayer(@NotNull Player player) {
 
-        if (player instanceof ServerPlayerEntity serverPlayer) return serverPlayer;
+        if (player instanceof ServerPlayer serverPlayer) return serverPlayer;
 
         // Dedicated servers only ever see real server players, so there is nothing else to resolve
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) return null;

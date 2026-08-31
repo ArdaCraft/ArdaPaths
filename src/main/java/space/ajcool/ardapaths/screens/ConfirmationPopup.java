@@ -1,15 +1,15 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 /**
  * A confirmation dialogue popup screen with yes/no buttons.
  * Displays a centered message and executes callbacks when the user confirms or cancels.
  */
-public class ConfirmationPopup extends Screen {
+public class ConfirmationPopup extends ArdaPathsScreen {
 
     /**
      * Callback invoked when the player confirms.
@@ -24,7 +24,7 @@ public class ConfirmationPopup extends Screen {
     /**
      * The message text displayed in the confirmation dialogue.
      */
-    private final Text message;
+    private final Component message;
 
     /**
      * The screen to return to after the dialogue closes.
@@ -34,12 +34,12 @@ public class ConfirmationPopup extends Screen {
     /**
      * Text for the confirmation button.
      */
-    private final Text confirmButtonText = Text.translatable("ardapaths.generic.yes");
+    private final Component confirmButtonText = Component.translatable("ardapaths.generic.yes");
 
     /**
      * Text for the cancel button.
      */
-    private final Text cancelButtonText = Text.translatable("ardapaths.generic.no");
+    private final Component cancelButtonText = Component.translatable("ardapaths.generic.no");
 
     /**
      * Whether to close completely or return to parent screen.
@@ -54,7 +54,7 @@ public class ConfirmationPopup extends Screen {
      * @param onCancel     callback when cancelled
      * @param parentScreen the screen to return to
      */
-    public ConfirmationPopup(Text message, Runnable onConfirm, Runnable onCancel, Screen parentScreen) {
+    public ConfirmationPopup(Component message, Runnable onConfirm, Runnable onCancel, Screen parentScreen) {
         this(message, onConfirm, onCancel, parentScreen, false);
     }
 
@@ -67,8 +67,8 @@ public class ConfirmationPopup extends Screen {
      * @param parentScreen    the screen to return to
      * @param closeOnValidate whether to close completely instead of returning to parent
      */
-    public ConfirmationPopup(Text message, Runnable onConfirm, Runnable onCancel, Screen parentScreen, boolean closeOnValidate) {
-        super(Text.literal("Confirm"));
+    public ConfirmationPopup(Component message, Runnable onConfirm, Runnable onCancel, Screen parentScreen, boolean closeOnValidate) {
+        super(Component.literal("Confirm"));
         this.message = message;
         this.onConfirm = onConfirm;
         this.onCancel = onCancel;
@@ -81,37 +81,37 @@ public class ConfirmationPopup extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        this.addDrawableChild(ButtonWidget.builder(confirmButtonText, button -> {
+        this.addRenderableWidget(Button.builder(confirmButtonText, button -> {
             onConfirm.run();
-            close();
-        }).dimensions(centerX - 60, centerY + 10, 50, 20).build());
+            onClose();
+        }).bounds(centerX - 60, centerY + 10, 50, 20).build());
 
-        this.addDrawableChild(ButtonWidget.builder(cancelButtonText, button -> {
+        this.addRenderableWidget(Button.builder(cancelButtonText, button -> {
             onCancel.run();
-            close();
-        }).dimensions(centerX + 10, centerY + 10, 50, 20).build());
+            onClose();
+        }).bounds(centerX + 10, centerY + 10, 50, 20).build());
     }
 
     @Override
-    public void close() {
+    public void onClose() {
 
         if (closeOnValidate) {
-            super.close();
+            super.onClose();
             return;
         }
 
-        if (client == null) return;
+        if (minecraft == null) return;
 
-        client.setScreen(parentScreen);
+        minecraft.setScreen(parentScreen);
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        this.renderModBackground(context);
 
         // Draw centered text
-        context.drawCenteredTextWithShadow(
-                this.textRenderer,
+        context.drawCenteredString(
+                this.font,
                 this.message,
                 this.width / 2,
                 this.height / 2 - 20,

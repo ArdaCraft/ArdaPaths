@@ -3,11 +3,12 @@ package space.ajcool.ardapaths.core.networking;
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Fabric;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IServerPacketHandler;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.Json;
@@ -27,7 +28,7 @@ public class PacketRegistry {
     /**
      * Server-to-client channel used to push path data after server-side restore.
      */
-    private static final Identifier PATH_DATA_SYNC_CHANNEL = new Identifier(ArdaPaths.MOD_ID, "path_data_sync");
+    private static final ResourceLocation PATH_DATA_SYNC_CHANNEL = ModConstants.modId("path_data_sync");
 
     /**
      * Handler for player teleport requests (client to server).
@@ -149,7 +150,7 @@ public class PacketRegistry {
         String json = Json.toJson(ArdaPaths.CONFIG.getPaths());
         PathDataResponsePacket packet = new PathDataResponsePacket(json);
 
-        for (var player : server.getPlayerManager().getPlayerList()) {
+        for (var player : server.getPlayerList().getPlayers()) {
             ServerPlayNetworking.send(player, PATH_DATA_SYNC_CHANNEL, packet.build());
         }
     }

@@ -1,17 +1,19 @@
 package space.ajcool.ardapaths.screens.widgets;
 
 import lombok.Getter;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.AlwaysSelectedEntryListWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import space.ajcool.ardapaths.ArdaPaths;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity.ChapterNbtData;
+import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -20,27 +22,27 @@ import java.util.function.Consumer;
 /**
  * Row in the local marker list showing marker coordinates and configured data hints.
  */
-public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerListEntry> {
+public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> {
 
     /**
      * Icon shown when a marker has time or weather data.
      */
-    private static final Identifier MOON_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/moon-icon.png");
+    private static final ResourceLocation MOON_ICON = ModConstants.modId("textures/gui/moon-icon.png");
 
     /**
      * Icon shown when a marker has weather data.
      */
-    private static final Identifier CLOUD_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/cloud-icon.png");
+    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("textures/gui/cloud-icon.png");
 
     /**
      * Icon shown when a marker has proximity text.
      */
-    private static final Identifier TEXT_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/text-icon.png");
+    private static final ResourceLocation TEXT_ICON = ModConstants.modId("textures/gui/text-icon.png");
 
     /**
      * Icon shown when a marker has action data.
      */
-    private static final Identifier GEAR_ICON = new Identifier(ArdaPaths.MOD_ID, "textures/gui/gear-icon.png");
+    private static final ResourceLocation GEAR_ICON = ModConstants.modId("textures/gui/gear-icon.png");
 
     /**
      * Size in pixels used for marker data icons.
@@ -112,18 +114,18 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
     /**
      * Coordinates displayed and narrated for this marker.
      */
-    private final Text coordinateText;
+    private final Component coordinateText;
 
     /**
      * Lines shown while hovering the marker row.
      */
-    private final List<Text> tooltipLines;
+    private final List<Component> tooltipLines;
 
     /**
-     * Whether this row is a non-marker separator between disconnected chains.
+     * Whether this row is a non-marker notice.
      */
     @Getter
-    private final boolean chainBreak;
+    private final boolean notice;
 
     /**
      * Creates a row for a loaded local marker.
@@ -142,7 +144,7 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
      * @param onContextMenu       callback for right-clicks
      */
     public MarkerListEntry(BlockPos pos, int timeOfDay, boolean hasWeatherData, boolean hasProximityMessage, boolean hasMiscData, boolean focused, boolean selected,
-                           List<Text> tooltipLines, Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
+                           List<Component> tooltipLines, Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
                            Consumer<BlockPos> onRangeSelect, BiConsumer<BlockPos, ContextMenuAnchor> onContextMenu) {
         this.pos = pos;
         this.timeOfDay = timeOfDay;
@@ -156,24 +158,27 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
         this.onTeleport = onTeleport;
         this.onRangeSelect = onRangeSelect;
         this.onContextMenu = onContextMenu;
-        this.coordinateText = Text.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
-        this.chainBreak = false;
+        this.coordinateText = Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
+        this.notice = false;
     }
 
     /**
-     * Creates a row for a chain-break separator.
+     * Creates a row for an inert notice label.
      *
-     * @return chain-break marker list row
+     * @param text notice text to render
+     * @return notice marker list row
      */
-    public static MarkerListEntry chainBreak() {
-        return new MarkerListEntry();
+    public static MarkerListEntry notice(Component text) {
+        return new MarkerListEntry(text);
     }
 
     /**
-     * Creates an inert chain-break separator row.
+     * Creates an inert notice row.
+     *
+     * @param text notice text to render
      */
-    private MarkerListEntry() {
-        this.pos = BlockPos.ORIGIN;
+    private MarkerListEntry(Component text) {
+        this.pos = BlockPos.ZERO;
         this.timeOfDay = ChapterNbtData.UNSET;
         this.hasWeatherData = false;
         this.hasProximityMessage = false;
@@ -185,8 +190,8 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
         this.onTeleport = null;
         this.onRangeSelect = null;
         this.onContextMenu = null;
-        this.coordinateText = Text.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.break");
-        this.chainBreak = true;
+        this.coordinateText = text;
+        this.notice = true;
     }
 
     /**
@@ -204,14 +209,14 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
      * @param tickDelta   the partial tick
      */
     @Override
-    public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight,
+    public void render(GuiGraphics context, int index, int y, int x, int entryWidth, int entryHeight,
                        int mouseX, int mouseY, boolean hovered, float tickDelta) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        TextRenderer textRenderer = client.textRenderer;
-        if (chainBreak) {
-            int textWidth = textRenderer.getWidth(coordinateText);
-            int textY = y + (entryHeight - textRenderer.fontHeight) / 2;
-            context.drawTextWithShadow(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, 0xFFFF5555);
+        Minecraft client = Minecraft.getInstance();
+        Font textRenderer = client.font;
+        if (notice) {
+            int textWidth = textRenderer.width(coordinateText);
+            int textY = y + (entryHeight - textRenderer.lineHeight) / 2;
+            context.drawString(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, 0xFFFF5555);
             return;
         }
 
@@ -229,32 +234,32 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
         int iconY = y + (entryHeight - ICON_SIZE) / 2;
         if (hasProximityMessage) {
             iconX -= ICON_SIZE;
-            context.drawTexture(TEXT_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blit(context, TEXT_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasTimeData()) {
             iconX -= ICON_SIZE;
-            context.drawTexture(MOON_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blit(context, MOON_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasWeatherData) {
             iconX -= ICON_SIZE;
-            context.drawTexture(CLOUD_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blit(context, CLOUD_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasMiscData) {
             iconX -= ICON_SIZE;
-            context.drawTexture(GEAR_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blit(context, GEAR_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         int textWidth = Math.max(0, iconX - x - 8);
-        int textY = y + (entryHeight - textRenderer.fontHeight) / 2;
-        String trimmedText = textRenderer.trimToWidth(coordinateText.getString(), textWidth);
-        context.drawTextWithShadow(textRenderer, Text.literal(trimmedText), x + 4, textY, 0xFFFFFF);
+        int textY = y + (entryHeight - textRenderer.lineHeight) / 2;
+        String trimmedText = textRenderer.plainSubstrByWidth(coordinateText.getString(), textWidth);
+        context.drawString(textRenderer, Component.literal(trimmedText), x + 4, textY, 0xFFFFFF);
 
     }
 
@@ -266,9 +271,9 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
      * @param mouseX       the mouse x coordinate
      * @param mouseY       the mouse y coordinate
      */
-    public void renderTooltip(DrawContext context, TextRenderer textRenderer, int mouseX, int mouseY) {
+    public void renderTooltip(GuiGraphics context, Font textRenderer, int mouseX, int mouseY) {
         if (!tooltipLines.isEmpty()) {
-            context.drawTooltip(textRenderer, tooltipLines, mouseX, mouseY);
+            context.renderComponentTooltip(textRenderer, tooltipLines, mouseX, mouseY);
         }
     }
 
@@ -291,7 +296,7 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
      */
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (chainBreak) return false;
+        if (notice) return false;
 
         if (button == 1) {
             if (onContextMenu != null) {
@@ -304,7 +309,7 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
 
         if (Client.isCtrlDown()) {
             if (onTeleport != null) onTeleport.accept(pos);
-        } else if (net.minecraft.client.gui.screen.Screen.hasShiftDown()) {
+        } else if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) {
             if (onRangeSelect != null) onRangeSelect.accept(pos);
         } else {
             if (onSelect == null) return false;
@@ -320,7 +325,7 @@ public class MarkerListEntry extends AlwaysSelectedEntryListWidget.Entry<MarkerL
      * @return the marker coordinate text
      */
     @Override
-    public Text getNarration() {
+    public @NotNull Component getNarration() {
         return coordinateText;
     }
 

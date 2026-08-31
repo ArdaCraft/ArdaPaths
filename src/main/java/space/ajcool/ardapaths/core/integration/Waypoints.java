@@ -4,7 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -40,7 +40,7 @@ public final class Waypoints {
      *
      * @param target the next trail node position
      */
-    public static void setNextTrailNode(Vec3d target) {
+    public static void setNextTrailNode(Vec3 target) {
         WaypointProvider waypointProvider = provider;
         if (waypointProvider != null) waypointProvider.setNextTrailNode(target);
     }

@@ -2,16 +2,16 @@ package space.ajcool.ardapaths.mc.sounds;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.sound.MovingSoundInstance;
-import net.minecraft.client.sound.SoundInstance;
-import net.minecraft.sound.SoundCategory;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.sounds.SoundSource;
 
 /**
  * A looping ambient sound that follows the active trail geometry and fades with distance.
  */
 @Environment(value = EnvType.CLIENT)
-public class TrailSoundInstance extends MovingSoundInstance {
+public class TrailSoundInstance extends AbstractTickableSoundInstance {
     /**
      * The amount the sound envelope increases per tick while it is fading in.
      */
@@ -55,10 +55,10 @@ public class TrailSoundInstance extends MovingSoundInstance {
      * @param z the world z coordinate
      */
     public TrailSoundInstance(double x, double y, double z) {
-        super(ModSounds.TRAIL, SoundCategory.AMBIENT, SoundInstance.createRandom());
+        super(ModSounds.TRAIL, SoundSource.AMBIENT, SoundInstance.createUnseededRandom());
 
-        this.repeat = true;
-        this.repeatDelay = 0;
+        this.looping = true;
+        this.delay = 0;
         this.volume = 0.001F;
         this.x = (float) x;
         this.y = (float) y;
@@ -105,8 +105,8 @@ public class TrailSoundInstance extends MovingSoundInstance {
      * @return {@code true} while a client player exists
      */
     @Override
-    public boolean canPlay() {
-        return MinecraftClient.getInstance().player != null;
+    public boolean canPlaySound() {
+        return Minecraft.getInstance().player != null;
     }
 
     /**
@@ -115,7 +115,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
      * @return {@code true}
      */
     @Override
-    public boolean shouldAlwaysPlay() {
+    public boolean canStartSilent() {
         return true;
     }
 
@@ -132,7 +132,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
 
         if (released && envelope == 0.0F) {
             volume = 0.0F;
-            setDone();
+            stop();
             return;
         }
 
@@ -151,7 +151,7 @@ public class TrailSoundInstance extends MovingSoundInstance {
      * @return the ambient-corrected maximum volume for this sound
      */
     private float maxVolume() {
-        float ambientVolume = MinecraftClient.getInstance().options.getSoundVolume(SoundCategory.AMBIENT);
+        float ambientVolume = Minecraft.getInstance().options.getSoundSourceVolume(SoundSource.AMBIENT);
         if (ambientVolume <= AMBIENT_VOLUME_OFFSET) {
             return 0.0F;
         }
