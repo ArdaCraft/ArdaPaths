@@ -103,8 +103,8 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * @return final response packet
      */
     private MarkerBulkClearResponsePacket applyClear(ServerPlayer player, List<Long> positions, String pathId, String chapterId, boolean clearTime, boolean clearWeather, BackupJobRunner.ServerGate gate) {
-        ServerLevel world = gate.call(player::serverLevel);
-        String dimensionId = world.dimension().location().toString();
+        ServerLevel world = gate.call(player::level);
+        String dimensionId = world.dimension().identifier().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         int updated = 0;
 
@@ -113,7 +113,7 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
                     positions,
                     batchStart,
                     ignored -> dimensionId,
-                    packedPosition -> new ChunkPos(BlockPos.of(packedPosition)).toLong()
+                    packedPosition -> ChunkPos.pack(BlockPos.of(packedPosition))
             );
             int fromIndex = batchStart;
             BatchClearResult result = gate.call(() -> applyClearBatch(resolver, positions.subList(fromIndex, toIndex), pathId, chapterId, clearTime, clearWeather));

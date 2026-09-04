@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
 
@@ -23,7 +23,7 @@ public record ChapterPathMarkersPacket(UUID requestId, String pathId, String cha
     /**
      * Network channel used for chapter marker chain requests.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("chapter_path_markers");
+    public static final Identifier CHANNEL = ModConstants.modId("chapter_path_markers");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -75,7 +75,7 @@ public record ChapterPathMarkersPacket(UUID requestId, String pathId, String cha
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUUID(requestId);
         buf.writeUtf(pathId);
         buf.writeUtf(chapterId);

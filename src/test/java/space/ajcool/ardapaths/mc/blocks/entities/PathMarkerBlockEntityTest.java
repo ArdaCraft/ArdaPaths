@@ -2,10 +2,10 @@ package space.ajcool.ardapaths.mc.blocks.entities;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.MarkerTestSupport;
+import space.ajcool.ardapaths.mc.NbtEncodeable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -62,7 +62,7 @@ class PathMarkerBlockEntityTest {
         frodo.put("shire", shire);
 
         CompoundTag moria = new CompoundTag();
-        moria.put("target", NbtUtils.writeBlockPos(new BlockPos(4, 5, 6)));
+        moria.store("target", BlockPos.CODEC, new BlockPos(4, 5, 6));
         frodo.put("moria", moria);
         paths.put("frodo", frodo);
 
@@ -94,6 +94,6 @@ class PathMarkerBlockEntityTest {
 
         marker.applyNbt(paths);
 
-        assertEquals(paths, marker.toNbt(new CompoundTag()).getCompound("paths"));
+        assertEquals(paths, NbtEncodeable.getCompound(marker.toNbt(new CompoundTag()), "paths"));
     }
 }

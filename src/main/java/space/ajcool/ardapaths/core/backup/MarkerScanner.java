@@ -3,8 +3,6 @@ package space.ajcool.ardapaths.core.backup;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -143,7 +141,7 @@ public class MarkerScanner {
         List<RegionScanTarget> targets = new ArrayList<>();
 
         for (ServerLevel world : worlds) {
-            String dimensionId = world.dimension().location().toString();
+            String dimensionId = world.dimension().identifier().toString();
 
             try {
                 storageAccess.flushWorker(world);
@@ -315,17 +313,17 @@ public class MarkerScanner {
      * @param emptyMarkers marker accumulator for path markers without path data
      */
     void scanChunk(CompoundTag chunkNbt, String dimensionId, List<ScannedMarkerData> markers, List<ScannedMarkerData> emptyMarkers) {
-        ListTag blockEntities = chunkNbt.getList("block_entities", Tag.TAG_COMPOUND);
+        var blockEntities = chunkNbt.getListOrEmpty("block_entities");
 
         for (int i = 0; i < blockEntities.size(); i++) {
-            CompoundTag blockEntityNbt = blockEntities.getCompound(i);
-            if (!PATH_MARKER_BLOCK_ENTITY_ID.equals(blockEntityNbt.getString("id"))) continue;
+            CompoundTag blockEntityNbt = blockEntities.getCompoundOrEmpty(i);
+            if (!PATH_MARKER_BLOCK_ENTITY_ID.equals(blockEntityNbt.getStringOr("id", ""))) continue;
 
             CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(blockEntityNbt.copy());
             CompoundTag pathsNbt = NbtEncodeable.getCompound(converted, "paths");
             Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = decodePathData(pathsNbt);
 
-            BlockPos position = new BlockPos(blockEntityNbt.getInt("x"), blockEntityNbt.getInt("y"), blockEntityNbt.getInt("z"));
+            BlockPos position = new BlockPos(blockEntityNbt.getIntOr("x", 0), blockEntityNbt.getIntOr("y", 0), blockEntityNbt.getIntOr("z", 0));
             if (pathData.isEmpty()) {
                 emptyMarkers.add(new ScannedMarkerData(dimensionId, position, pathData));
                 continue;
@@ -374,11 +372,11 @@ public class MarkerScanner {
     private Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> decodePathData(CompoundTag pathsNbt) {
         Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = new HashMap<>();
 
-        for (String pathId : pathsNbt.getAllKeys()) {
+        for (String pathId : pathsNbt.keySet()) {
             CompoundTag pathNbt = NbtEncodeable.getCompound(pathsNbt, pathId);
             Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = new HashMap<>();
 
-            for (String chapterId : pathNbt.getAllKeys()) {
+            for (String chapterId : pathNbt.keySet()) {
                 chapters.put(chapterId, PathMarkerBlockEntity.ChapterNbtData.fromNbt(NbtEncodeable.getCompound(pathNbt, chapterId)));
             }
 

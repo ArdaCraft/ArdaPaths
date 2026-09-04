@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -54,7 +54,7 @@ public class BusyPopup extends ArdaPathsScreen {
     @Override
     public void tick() {
         ticksWaiting++;
-        if (ticksWaiting >= TIMEOUT_TICKS && minecraft != null) {
+        if (ticksWaiting >= TIMEOUT_TICKS) {
             onTimeout.run();
             minecraft.setScreen(parentScreen);
         }
@@ -83,10 +83,10 @@ public class BusyPopup extends ArdaPathsScreen {
      * @param context drawing context
      * @param mouseX  current mouse x coordinate
      * @param mouseY  current mouse y coordinate
-     * @param delta   partial tick delta
+     * @param partialTick   partial tick delta
      */
     @Override
-    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        context.drawCenteredString(this.font, this.message, this.width / 2, this.height / 2 - 5, 0xFFFFFF);
+    protected void extractModContent(GuiGraphicsExtractor context, int mouseX, int mouseY, float partialTick) {
+        context.centeredText(this.font, this.message, this.width / 2, this.height / 2 - 5, 0xFFFFFFFF);
     }
 }

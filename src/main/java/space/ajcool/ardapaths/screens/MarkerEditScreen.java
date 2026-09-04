@@ -10,11 +10,14 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
@@ -38,7 +41,6 @@ import space.ajcool.ardapaths.screens.widgets.TabBarWidget;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.*;
-import java.util.function.Supplier;
 
 import static space.ajcool.ardapaths.screens.marker.MarkerEditLayout.*;
 
@@ -325,7 +327,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      */
     private void confirmBulkClear(boolean clearTime, boolean clearWeather) {
         markerList.closeContextMenu();
-        if (this.minecraft == null) return;
         Component message = clearTime
                 ? Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.clear_time.confirm", markerList.selectedMarkers().size())
                 : Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.clear_weather.confirm", markerList.selectedMarkers().size());
@@ -340,7 +341,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param clearWeather whether weather data should be cleared
      */
     private void startBulkClear(boolean clearTime, boolean clearWeather) {
-        if (this.minecraft == null) return;
         List<Long> packedPositions = markerList.selectedMarkers().stream().map(BlockPos::asLong).toList();
         timeSpreadFeedback = null;
         this.minecraft.setScreen(new BusyPopup(
@@ -360,7 +360,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     private void openTimeInterpolationPopup() {
         markerList.closeContextMenu();
         List<BlockPos> selectedMarkers = markerList.selectedMarkers();
-        if (this.minecraft == null || selectedMarkers.size() < 2) return;
+        if (selectedMarkers.size() < 2) return;
         this.minecraft.setScreen(new TimeInterpolationPopup(
                 this,
                 selectedMarkers.getFirst(),
@@ -375,7 +375,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param endpoints interpolation endpoints selected by the modal
      */
     private void startTimeInterpolation(TimeInterpolationPopup.Endpoints endpoints) {
-        if (this.minecraft == null) return;
         timeSpreadFeedback = null;
         this.minecraft.setScreen(new BusyPopup(
                 Component.translatable("ardapaths.client.marker.configuration.screens.marker.time_spread.busy"),
@@ -410,7 +409,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         MarkerEditScreen nextScreen = new MarkerEditScreen(target, null, markerList.selectedMarkers());
         promptPendingChangesThen(() -> {
             nextScreen.seedChapterMarkers(markerList.serverMarkers(), markerList.serverListActive(), markerList.currentMarkerListScrollAmount());
-            if (this.minecraft != null) this.minecraft.setScreen(nextScreen);
+            this.minecraft.setScreen(nextScreen);
         }, nextScreen, false);
     }
 
@@ -432,12 +431,12 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      */
     @SuppressWarnings("resource")
     private void teleportToMarker(BlockPos pos) {
-        if (this.minecraft == null || this.minecraft.player == null) return;
+        if (this.minecraft.player == null) return;
 
-        ResourceLocation worldId = this.minecraft.player.level().dimension().location();
+        Identifier worldId = this.minecraft.player.level().dimension().identifier();
         promptPendingChangesThen(() -> {
             PacketRegistry.PLAYER_TELEPORT.send(new PlayerTeleportPacket(pos.getX(), pos.getY(), pos.getZ(), worldId));
-            if (this.minecraft != null) this.minecraft.setScreen(null);
+            this.minecraft.setScreen(null);
         }, null, false);
     }
 
@@ -461,7 +460,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param selection marker positions selected in list order
      */
     private void requestRemoteMarker(BlockPos pos, Collection<BlockPos> selection) {
-        if (this.minecraft == null) return;
 
         markerLoadFeedback = null;
         this.minecraft.setScreen(new BusyPopup(
@@ -706,16 +704,11 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the button
      */
     private void buildMarkerEditLinksButton(int x, int y) {
-        assert this.minecraft != null;
-        this.addRenderableWidget(new Button(
-                x,
-                y,
-                60,
-                20,
-                Component.translatable("ardapaths.client.marker.configuration.screens.edit_links"),
-                button -> this.minecraft.setScreen(new MarkerLinksEditScreen(MARKER, linkTracker.originalEntries())),
-                Supplier::get
-        ));
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("ardapaths.client.marker.configuration.screens.edit_links"),
+                        _ -> this.minecraft.setScreen(new MarkerLinksEditScreen(MARKER, linkTracker.originalEntries())))
+                .bounds(x, y, 60, 20)
+                .build());
     }
 
     /**
@@ -725,16 +718,11 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the button
      */
     private void buildEditChaptersButton(int x, int y) {
-        assert this.minecraft != null;
-        this.addRenderableWidget(new Button(
-                x,
-                y,
-                100,
-                20,
-                Component.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"),
-                button -> this.minecraft.setScreen(new ChapterEditScreen(this)),
-                Supplier::get
-        ));
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"),
+                        _ -> this.minecraft.setScreen(new ChapterEditScreen(this)))
+                .bounds(x, y, 100, 20)
+                .build());
     }
 
     /**
@@ -810,15 +798,11 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the button
      */
     private void buildCloseButton(int x, int y) {
-        this.addRenderableWidget(new Button(
-                x,
-                y,
-                60,
-                20,
-                Component.translatable("ardapaths.generic.close"),
-                button -> this.onClose(),
-                Supplier::get
-        ));
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("ardapaths.generic.close"),
+                        _ -> this.onClose())
+                .bounds(x, y, 60, 20)
+                .build());
     }
 
     /**
@@ -828,14 +812,9 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the button
      */
     private void buildSaveButton(int x, int y) {
-        this.addRenderableWidget(new Button(
-                x,
-                y,
-                60,
-                20,
-                Component.translatable("ardapaths.generic.save"),
-                button ->
-                {
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("ardapaths.generic.save"),
+                        _ -> {
                     if (validateForm()) {
 
                         commitInputsToFields();
@@ -845,57 +824,53 @@ public class MarkerEditScreen extends ArdaPathsScreen {
 
                         log.error(Component.translatable("ardapaths.generic.validation.form.errors").getString());
                     }
-                },
-                Supplier::get
-        ));
+                })
+                .bounds(x, y, 60, 20)
+                .build());
     }
 
     /**
      * Lets an open context menu consume clicks before the rest of the editor handles them.
      *
-     * @param mouseX mouse x coordinate
-     * @param mouseY mouse y coordinate
-     * @param button clicked mouse button
+     * @param event   clicked mouse button event
+     * @param doubled whether this click is a double-click
      * @return true when the click is consumed
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (markerList.mouseClicked(mouseX, mouseY, button)) {
+    public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubled) {
+        if (markerList.mouseClicked(event, doubled)) {
             return true;
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubled);
     }
 
     /**
      * Closes an open context menu when Esc is pressed.
      *
-     * @param keyCode   GLFW key code
-     * @param scanCode  hardware scan code
-     * @param modifiers active key modifiers
+     * @param event key event
      * @return true when the key is consumed
      */
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
         if (keyCode == GLFW.GLFW_KEY_ESCAPE && markerList.closeContextMenu()) {
             return true;
         }
 
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     /**
      * Handles mouse release events, delegating to the multi-line edit box.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button the mouse button code
+     * @param event released mouse button event
      * @return true if the event was handled
      */
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return super.mouseReleased(mouseX, mouseY, button) ||
-                tabs.get(activeTab).mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
+        return super.mouseReleased(event) ||
+                tabs.get(activeTab).mouseReleased(event);
     }
 
     /**
@@ -937,7 +912,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         }
 
         if (!validationWarning.equals(Component.empty())) {
-            assert this.minecraft != null;
             ConfirmationPopup popup = new ConfirmationPopup(
                     validationWarning,
                     () -> {

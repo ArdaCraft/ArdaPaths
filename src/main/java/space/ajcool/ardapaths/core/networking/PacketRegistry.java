@@ -122,33 +122,56 @@ public class PacketRegistry {
      * @return the handler instance
      */
     private static <T extends IServerPacketHandler<?>> T register(T handler) {
-        registerServerPayload(handler);
-        if (Fabric.isClient() && handler instanceof RespondablePacketHandler<?, ?> responseHandler) {
-            registerClientPayload(responseHandler);
+        registerServerboundPayload(handler);
+        registerServerReceiver(handler);
+
+        if (handler instanceof RespondablePacketHandler<?, ?> responseHandler) {
+            registerClientboundResponsePayload(responseHandler);
+            if (Fabric.isClient()) {
+                registerClientResponseReceiver(responseHandler);
+            }
         }
         return handler;
     }
 
     /**
-     * Registers a client-to-server payload type and receiver.
+     * Registers a client-to-server payload type.
      *
      * @param handler handler for the payload
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerServerPayload(IServerPacketHandler<?> handler) {
-        PayloadTypeRegistry.playC2S().register((CustomPacketPayload.Type) handler.getType(), (StreamCodec) handler.getCodec());
+    private static void registerServerboundPayload(IServerPacketHandler<?> handler) {
+        PayloadTypeRegistry.serverboundPlay().register((CustomPacketPayload.Type) handler.getType(), (StreamCodec) handler.getCodec());
+    }
+
+    /**
+     * Registers the server receiver for a client-to-server payload.
+     *
+     * @param handler handler for the payload
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerServerReceiver(IServerPacketHandler<?> handler) {
         ServerPlayNetworking.registerGlobalReceiver((CustomPacketPayload.Type) handler.getType(),
                 (packet, context) -> ((IServerPacketHandler) handler).receive((IPacket) packet, context));
     }
 
     /**
-     * Registers a server-to-client response payload type and receiver.
+     * Registers a server-to-client response payload type.
      *
      * @param handler respondable handler owning the response channel
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerClientPayload(RespondablePacketHandler<?, ?> handler) {
-        PayloadTypeRegistry.playS2C().register((CustomPacketPayload.Type) handler.getResponseType(), (StreamCodec) handler.getResponseCodec());
+    private static void registerClientboundResponsePayload(RespondablePacketHandler<?, ?> handler) {
+        PayloadTypeRegistry.clientboundPlay().register((CustomPacketPayload.Type) handler.getResponseType(), (StreamCodec) handler.getResponseCodec());
+    }
+
+    /**
+     * Registers the client receiver for a server-to-client response payload.
+     *
+     * @param handler respondable handler owning the response channel
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerClientResponseReceiver(RespondablePacketHandler<?, ?> handler) {
         ClientPlayNetworking.registerGlobalReceiver((CustomPacketPayload.Type) handler.getResponseType(),
                 (packet, context) -> handler.receive((IPacket) packet, context));
     }
@@ -158,17 +181,24 @@ public class PacketRegistry {
      * This method is called during mod initialization.
      */
     public static void init() {
+        registerPathDataSyncPayload();
         if (Fabric.isClient()) {
-            registerPathDataSyncClient();
+            registerPathDataSyncReceiver();
         }
+    }
+
+    /**
+     * Registers the server-to-client payload type for server-pushed path data.
+     */
+    private static void registerPathDataSyncPayload() {
+        PayloadTypeRegistry.clientboundPlay().register(PathDataSyncPacket.TYPE, IPacket.codec(PathDataSyncPacket::read));
     }
 
     /**
      * Registers the client receiver for server-pushed path data.
      */
     @SuppressWarnings("resource")
-    private static void registerPathDataSyncClient() {
-        PayloadTypeRegistry.playS2C().register(PathDataSyncPacket.TYPE, IPacket.codec(PathDataSyncPacket::read));
+    private static void registerPathDataSyncReceiver() {
         ClientPlayNetworking.registerGlobalReceiver(PathDataSyncPacket.TYPE, (packet, context) -> context.client().execute(() -> {
             Type listType = new TypeToken<ArrayList<PathData>>() {
             }.getType();

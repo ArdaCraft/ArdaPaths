@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.client;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
@@ -13,12 +13,13 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
  *
  * @param json the complete path configuration serialized as JSON
  */
+@SuppressWarnings("unused")
 public record PathDataSyncPacket(String json) implements IPacket {
 
     /**
      * Network channel used for server-pushed path data synchronization.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("path_data_sync");
+    public static final Identifier CHANNEL = ModConstants.modId("path_data_sync");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -46,13 +47,13 @@ public record PathDataSyncPacket(String json) implements IPacket {
     }
 
     /**
-     * Builds the packet into a fresh PacketByteBuf.
+     * Builds the packet into a fresh friendly byte buffer.
      *
      * @return packet data buffer
      */
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUtf(json);
         return buf;
     }

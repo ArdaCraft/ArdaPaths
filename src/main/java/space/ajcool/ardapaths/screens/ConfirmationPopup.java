@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -81,12 +81,12 @@ public class ConfirmationPopup extends ArdaPathsScreen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        this.addRenderableWidget(Button.builder(confirmButtonText, button -> {
+        this.addRenderableWidget(Button.builder(confirmButtonText, _ -> {
             onConfirm.run();
             onClose();
         }).bounds(centerX - 60, centerY + 10, 50, 20).build());
 
-        this.addRenderableWidget(Button.builder(cancelButtonText, button -> {
+        this.addRenderableWidget(Button.builder(cancelButtonText, _ -> {
             onCancel.run();
             onClose();
         }).bounds(centerX + 10, centerY + 10, 50, 20).build());
@@ -100,8 +100,6 @@ public class ConfirmationPopup extends ArdaPathsScreen {
             return;
         }
 
-        if (minecraft == null) return;
-
         minecraft.setScreen(parentScreen);
     }
 
@@ -111,16 +109,16 @@ public class ConfirmationPopup extends ArdaPathsScreen {
      * @param context drawing context
      * @param mouseX  current mouse x coordinate
      * @param mouseY  current mouse y coordinate
-     * @param delta   partial tick delta
+     * @param partialTick   partial tick delta
      */
     @Override
-    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        context.drawCenteredString(
+    protected void extractModContent(GuiGraphicsExtractor context, int mouseX, int mouseY, float partialTick) {
+        context.centeredText(
                 this.font,
                 this.message,
                 this.width / 2,
                 this.height / 2 - 20,
-                0xFFFFFF
+                0xFFFFFFFF
         );
     }
 }

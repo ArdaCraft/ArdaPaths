@@ -25,7 +25,7 @@ public class CheckboxRow {
     private static final int LABEL_GAP = 4;
 
     /** Label color used while the row is enabled. */
-    private static final int ENABLED_LABEL_COLOR = 0xFFFFFF;
+    private static final int ENABLED_LABEL_COLOR = 0xFFFFFFFF;
 
     /** Label color used while the row is disabled. */
     private static final int DISABLED_LABEL_COLOR = 0xFF48494A;
@@ -35,10 +35,14 @@ public class CheckboxRow {
 
     /** The label rendered at the left edge of the row. */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final TextWidget label;
 
     /** The vanilla checkbox rendered at the right edge of the row. */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final Checkbox checkbox;
 
     /**

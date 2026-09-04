@@ -2,7 +2,7 @@ package space.ajcool.ardapaths.core.networking.packets;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
@@ -20,7 +20,7 @@ public record EmptyPacket(UUID requestId,
     /**
      * Network channel used for path data requests.
      */
-    public static final ResourceLocation PATH_DATA_REQUEST_CHANNEL = ModConstants.modId("path_data_request");
+    public static final Identifier PATH_DATA_REQUEST_CHANNEL = ModConstants.modId("path_data_request");
 
     /**
      * Payload type used for path data requests.
@@ -30,7 +30,7 @@ public record EmptyPacket(UUID requestId,
     /**
      * Network channel used for permission check requests.
      */
-    public static final ResourceLocation PERMISSION_CHECK_CHANNEL = ModConstants.modId("ardapaths_permission_check_request");
+    public static final Identifier PERMISSION_CHECK_CHANNEL = ModConstants.modId("ardapaths_permission_check_request");
 
     /**
      * Payload type used for permission check requests.
@@ -40,7 +40,7 @@ public record EmptyPacket(UUID requestId,
     /**
      * Network channel used for pathfinder wield requests and responses.
      */
-    public static final ResourceLocation WIELD_PATHFINDER_CHANNEL = ModConstants.modId("wield_pathfinder_request_channel");
+    public static final Identifier WIELD_PATHFINDER_CHANNEL = ModConstants.modId("wield_pathfinder_request_channel");
 
     /**
      * Payload type used for pathfinder wield requests and responses.
@@ -64,7 +64,7 @@ public record EmptyPacket(UUID requestId,
     }
 
     /**
-     * Deserializes an EmptyPacket from a PacketByteBuf using the default request type.
+     * Deserializes an EmptyPacket from a friendly byte buffer using the default request type.
      *
      * @param buf the buffer containing the request id
      * @return a new EmptyPacket instance
@@ -84,13 +84,13 @@ public record EmptyPacket(UUID requestId,
     }
 
     /**
-     * Builds the packet into a fresh PacketByteBuf containing only the request id.
+     * Builds the packet into a fresh friendly byte buffer containing only the request id.
      *
      * @return packet data buffer
      */
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+        FriendlyByteBuf buf = net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs.create();
         buf.writeUUID(requestId);
         return buf;
     }

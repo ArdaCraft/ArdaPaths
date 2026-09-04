@@ -59,10 +59,10 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
             return new EmptyPacket(EmptyPacket.WIELD_PATHFINDER_TYPE);
         }
 
-        Item pathfinder = BuiltInRegistries.ITEM.get(ModConstants.modId(ModItems.PATH_REVEALER_ID));
+        Item pathfinder = BuiltInRegistries.ITEM.getValue(ModConstants.modId(ModItems.PATH_REVEALER_ID));
         Inventory inventory = player.getInventory();
 
-        int selectedSlot = inventory.selected;
+        int selectedSlot = inventory.getSelectedSlot();
 
         for (int i = 0; i < inventory.getContainerSize(); i++) {
 

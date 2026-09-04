@@ -100,7 +100,7 @@ public class Journal {
          * @param type           the type of the entry
          */
         public Entry(String pathId, String chapterId, String text, PlayerTeleportPacket teleportPacket, EntryType type) {
-            this(pathId, chapterId, text, teleportPacket, type, 0xDDDDDD);
+            this(pathId, chapterId, text, teleportPacket, type, 0xFFDDDDDD);
         }
 
         /**

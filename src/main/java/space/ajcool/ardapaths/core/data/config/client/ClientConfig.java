@@ -26,6 +26,8 @@ public class ClientConfig {
     /**
      * Map of server addresses to their selected path/chapter data.
      */
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("selected_paths")
     private final Map<String, SelectedPathData> selectedPaths = new HashMap<>();
 
@@ -33,6 +35,8 @@ public class ClientConfig {
      * Whether to show proximity messages when near path markers.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("proximity_messages")
     private boolean proximityMessages;
 
@@ -40,6 +44,8 @@ public class ClientConfig {
      * Whether to display chapter title overlays when chapters start.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("chapter_titles")
     private boolean chapterTitles;
 
@@ -47,6 +53,8 @@ public class ClientConfig {
      * Whether to show ArdaMaps waypoints for the next trail node.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("trail_waypoints")
     private boolean trailWaypoints;
 
@@ -54,6 +62,8 @@ public class ClientConfig {
      * Whether followed trail markers may dynamically change time and weather.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("dynamic_environment")
     private boolean dynamicEnvironment;
 
@@ -61,6 +71,8 @@ public class ClientConfig {
      * Speed multiplier for proximity message animation speed (0.0-1.0+).
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("proximity_text_speed_multiplier")
     private Double proximityTextSpeedMultiplier;
 
@@ -68,6 +80,8 @@ public class ClientConfig {
      * Speed factor used by client-side auto-walk movement.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("auto_walk_speed_factor")
     private Double autoWalkSpeedFactor;
 
@@ -75,6 +89,8 @@ public class ClientConfig {
      * Duration in milliseconds to display chapter titles.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("chapter_title_display_speed")
     private Float chapterTitleDisplaySpeed;
 
@@ -83,6 +99,8 @@ public class ClientConfig {
      */
     @Getter
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("paths")
     private List<PathData> clientPaths = new ArrayList<>();
 

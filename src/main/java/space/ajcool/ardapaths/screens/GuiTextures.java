@@ -1,8 +1,8 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import space.ajcool.ardapaths.core.ModConstants;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 /**
  * GUI texture helpers that isolate volatile draw API signatures and tint behavior.
@@ -10,29 +10,9 @@ import space.ajcool.ardapaths.core.ModConstants;
 public final class GuiTextures {
 
     /**
-     * Source width of vanilla button textures.
+     * Extra pixels used to clip unwanted vanilla button caps fully outside a panel segment.
      */
-    private static final int BUTTON_REGION_WIDTH = 200;
-
-    /**
-     * Source height of vanilla button textures.
-     */
-    private static final int BUTTON_REGION_HEIGHT = 20;
-
-    /**
-     * Horizontal corner slice width of vanilla button textures.
-     */
-    private static final int BUTTON_CORNER_WIDTH = 20;
-
-    /**
-     * Vertical corner slice height of vanilla button textures.
-     */
-    private static final int BUTTON_CORNER_HEIGHT = 4;
-
-    /**
-     * Local copy of the vanilla widget strip used for panel backgrounds.
-     */
-    private static final ResourceLocation WIDGETS_TEXTURE = ModConstants.modId("textures/gui/widgets.png");
+    private static final int PANEL_CAP_INSET = 4;
 
     /**
      * Prevents construction of this utility class.
@@ -50,35 +30,12 @@ public final class GuiTextures {
      * @param width   destination width
      * @param height  destination height
      */
-    public static void blitSprite(GuiGraphics context, ResourceLocation sprite, int x, int y, int width, int height) {
-        context.blitSprite(sprite, x, y, width, height);
+    public static void blitSprite(GuiGraphicsExtractor context, Identifier sprite, int x, int y, int width, int height) {
+        context.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, width, height);
     }
 
     /**
-     * Draws a nine-sliced texture region using a single corner size.
-     *
-     * @param context      draw context
-     * @param texture      texture identifier
-     * @param x            destination x coordinate
-     * @param y            destination y coordinate
-     * @param width        destination width
-     * @param height       destination height
-     * @param cornerWidth  corner slice width
-     * @param cornerHeight corner slice height
-     * @param regionWidth  source region width
-     * @param regionHeight source region height
-     * @param u            source u coordinate
-     * @param v            source v coordinate
-     */
-    public static void blitNineSliced(GuiGraphics context, ResourceLocation texture, int x, int y, int width, int height,
-                                      int cornerWidth, int cornerHeight, int regionWidth, int regionHeight,
-                                      int u, int v) {
-        blitNineSlicedSegment(context, texture, x, y, width, height, cornerWidth, cornerHeight,
-                regionWidth, regionHeight, u, v, SliceCap.FULL);
-    }
-
-    /**
-     * Draws a panel segment from the vanilla button texture using semantic state and cap selection.
+     * Draws a panel segment from vanilla button sprites, clipping away caps for stacked rows.
      *
      * @param context draw context
      * @param x       destination x coordinate
@@ -88,106 +45,36 @@ public final class GuiTextures {
      * @param state   visual panel state
      * @param cap     caps to draw for this segment
      */
-    public static void drawPanelSegment(GuiGraphics context, int x, int y, int width, int height,
+    public static void drawPanelSegment(GuiGraphicsExtractor context, int x, int y, int width, int height,
                                         PanelState state, SliceCap cap) {
-        if (cap == SliceCap.FULL) {
-            blitNineSliced(context, WIDGETS_TEXTURE, x, y, width, height,
-                    BUTTON_CORNER_WIDTH, BUTTON_CORNER_HEIGHT, BUTTON_REGION_WIDTH, BUTTON_REGION_HEIGHT,
-                    0, state.buttonV);
-            return;
-        }
-        blitNineSlicedSegment(context, WIDGETS_TEXTURE, x, y, width, height,
-                BUTTON_CORNER_WIDTH, BUTTON_CORNER_HEIGHT, BUTTON_REGION_WIDTH, BUTTON_REGION_HEIGHT,
-                0, state.buttonV, cap);
-    }
-
-    /**
-     * Draws a nine-sliced texture segment while allowing the top or bottom cap to be omitted.
-     *
-     * @param context      draw context
-     * @param texture      texture identifier
-     * @param x            destination x coordinate
-     * @param y            destination y coordinate
-     * @param width        destination width
-     * @param height       destination height
-     * @param cornerWidth  corner slice width
-     * @param cornerHeight corner slice height
-     * @param regionWidth  source region width
-     * @param regionHeight source region height
-     * @param u            source u coordinate
-     * @param v            source v coordinate
-     * @param cap          caps to draw for this segment
-     */
-    @SuppressWarnings("SameParameterValue")
-    private static void blitNineSlicedSegment(GuiGraphics context, ResourceLocation texture,
-                                              int x, int y, int width, int height,
-                                              int cornerWidth, int cornerHeight,
-                                              int regionWidth, int regionHeight,
-                                              int u, int v, SliceCap cap) {
-        boolean top = cap == SliceCap.TOP || cap == SliceCap.FULL;
-        boolean bottom = cap == SliceCap.BOTTOM || cap == SliceCap.FULL;
-        int topHeight = top ? cornerHeight : 0;
-        int bottomHeight = bottom ? cornerHeight : 0;
-        int bodyHeight = height - topHeight - bottomHeight;
-        int centerWidth = width - 2 * cornerWidth;
-        int sourceCenterWidth = regionWidth - 2 * cornerWidth;
-        int sourceBodyHeight = regionHeight - 2 * cornerHeight;
-        int rightU = u + regionWidth - cornerWidth;
-        int rightX = x + width - cornerWidth;
-        int centerX = x + cornerWidth;
-        int centerU = u + cornerWidth;
-
-        if (topHeight > 0) {
-            context.blit(texture, x, y, u, v, cornerWidth, cornerHeight);
-            blitRepeating(context, texture, centerX, y, centerWidth, cornerHeight,
-                    centerU, v, sourceCenterWidth, cornerHeight);
-            context.blit(texture, rightX, y, rightU, v, cornerWidth, cornerHeight);
-        }
-
-        if (bodyHeight > 0) {
-            int bodyY = y + topHeight;
-            int bodyV = v + cornerHeight;
-            blitRepeating(context, texture, x, bodyY, cornerWidth, bodyHeight,
-                    u, bodyV, cornerWidth, sourceBodyHeight);
-            blitRepeating(context, texture, centerX, bodyY, centerWidth, bodyHeight,
-                    centerU, bodyV, sourceCenterWidth, sourceBodyHeight);
-            blitRepeating(context, texture, rightX, bodyY, cornerWidth, bodyHeight,
-                    rightU, bodyV, cornerWidth, sourceBodyHeight);
-        }
-
-        if (bottomHeight > 0) {
-            int bottomY = y + height - cornerHeight;
-            int bottomV = v + regionHeight - cornerHeight;
-            context.blit(texture, x, bottomY, u, bottomV, cornerWidth, cornerHeight);
-            blitRepeating(context, texture, centerX, bottomY, centerWidth, cornerHeight,
-                    centerU, bottomV, sourceCenterWidth, cornerHeight);
-            context.blit(texture, rightX, bottomY, rightU, bottomV, cornerWidth, cornerHeight);
+        switch (cap) {
+            case FULL -> blitSprite(context, state.sprite(), x, y, width, height);
+            case TOP -> drawClippedPanelSegment(context, state, x, y, width, height, y, height + PANEL_CAP_INSET);
+            case BOTTOM -> drawClippedPanelSegment(context, state, x, y, width, height, y - PANEL_CAP_INSET,
+                    height + PANEL_CAP_INSET);
+            case MIDDLE -> drawClippedPanelSegment(context, state, x, y, width, height, y - PANEL_CAP_INSET,
+                    height + (PANEL_CAP_INSET * 2));
+            default -> throw new IllegalStateException("Unexpected panel cap: " + cap);
         }
     }
 
     /**
-     * Tiles a source texture region across a destination rectangle.
+     * Draws an oversized vanilla button sprite through a scissor box to hide unneeded caps.
      *
-     * @param context      draw context
-     * @param texture      texture identifier
-     * @param x            destination x coordinate
-     * @param y            destination y coordinate
-     * @param width        destination width
-     * @param height       destination height
-     * @param u            source u coordinate
-     * @param v            source v coordinate
-     * @param sourceWidth  source tile width
-     * @param sourceHeight source tile height
+     * @param context    draw context
+     * @param state      visual panel state
+     * @param x          destination x coordinate
+     * @param y          destination y coordinate
+     * @param width      destination width
+     * @param height     destination height
+     * @param textureY   y coordinate for the oversized sprite
+     * @param textureHgt height for the oversized sprite
      */
-    private static void blitRepeating(GuiGraphics context, ResourceLocation texture, int x, int y, int width, int height,
-                                      int u, int v, int sourceWidth, int sourceHeight) {
-        for (int offsetY = 0; offsetY < height; offsetY += sourceHeight) {
-            int tileHeight = Math.min(sourceHeight, height - offsetY);
-            for (int offsetX = 0; offsetX < width; offsetX += sourceWidth) {
-                int tileWidth = Math.min(sourceWidth, width - offsetX);
-                context.blit(texture, x + offsetX, y + offsetY, u, v, tileWidth, tileHeight);
-            }
-        }
+    private static void drawClippedPanelSegment(GuiGraphicsExtractor context, PanelState state, int x, int y,
+                                                int width, int height, int textureY, int textureHgt) {
+        context.enableScissor(x, y, x + width, y + height);
+        blitSprite(context, state.sprite(), x, textureY, width, textureHgt);
+        context.disableScissor();
     }
 
     /**
@@ -253,36 +140,45 @@ public final class GuiTextures {
     }
 
     /**
-     * Visual state for panel-like widget backgrounds.
+     * Visual state for panel-like widget backgrounds drawn from vanilla button sprites.
      */
     public enum PanelState {
         /**
          * Normal inactive panel state.
          */
-        IDLE(46),
+        IDLE(Identifier.withDefaultNamespace("widget/button_disabled")),
 
         /**
          * Selected panel state.
          */
-        SELECTED(66),
+        SELECTED(Identifier.withDefaultNamespace("widget/button")),
 
         /**
          * Hovered panel state.
          */
-        HOVERED(86);
+        HOVERED(Identifier.withDefaultNamespace("widget/button_highlighted"));
 
         /**
-         * Source v coordinate for the 1.20.1 vanilla button texture strip.
+         * Vanilla GUI sprite for this state.
          */
-        private final int buttonV;
+        private final Identifier sprite;
 
         /**
-         * Creates a panel state mapped to a vanilla button texture strip.
+         * Creates a panel state mapped to a vanilla button sprite.
          *
-         * @param buttonV source v coordinate for the backing button strip
+         * @param sprite vanilla GUI sprite for this state
          */
-        PanelState(int buttonV) {
-            this.buttonV = buttonV;
+        PanelState(Identifier sprite) {
+            this.sprite = sprite;
+        }
+
+        /**
+         * Resolves the vanilla atlas sprite for this panel state.
+         *
+         * @return GUI atlas sprite identifier
+         */
+        private Identifier sprite() {
+            return sprite;
         }
     }
 }

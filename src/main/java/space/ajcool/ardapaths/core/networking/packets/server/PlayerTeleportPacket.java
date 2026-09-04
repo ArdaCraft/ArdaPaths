@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
@@ -16,12 +16,12 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
  * @param z       the Z coordinate
  * @param worldId the world/dimension identifier, or null to teleport within the current world
  */
-public record PlayerTeleportPacket(double x, double y, double z, ResourceLocation worldId) implements IPacket {
+public record PlayerTeleportPacket(double x, double y, double z, Identifier worldId) implements IPacket {
 
     /**
      * Network channel used for direct player teleport requests.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("player_teleport");
+    public static final Identifier CHANNEL = ModConstants.modId("player_teleport");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -32,7 +32,7 @@ public record PlayerTeleportPacket(double x, double y, double z, ResourceLocatio
         final double x = buf.readDouble();
         final double y = buf.readDouble();
         final double z = buf.readDouble();
-        final ResourceLocation worldId = buf.readResourceLocation();
+        final Identifier worldId = buf.readIdentifier();
         return new PlayerTeleportPacket(x, y, z, worldId);
     }
 
@@ -48,11 +48,11 @@ public record PlayerTeleportPacket(double x, double y, double z, ResourceLocatio
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeDouble(x);
         buf.writeDouble(y);
         buf.writeDouble(z);
-        buf.writeResourceLocation(worldId);
+        buf.writeIdentifier(worldId);
         return buf;
     }
 }

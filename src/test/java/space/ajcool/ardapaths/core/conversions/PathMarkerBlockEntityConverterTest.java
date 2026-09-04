@@ -3,16 +3,15 @@ package space.ajcool.ardapaths.core.conversions;
 import com.google.gson.Gson;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.MarkerTestSupport;
 import space.ajcool.ardapaths.core.Client;
-import space.ajcool.ardapaths.core.Fabric;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
+import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.screens.marker.MarkerLinkTracker;
 
@@ -46,15 +45,17 @@ class PathMarkerBlockEntityConverterTest {
         CompoundTag legacy = new CompoundTag();
         legacy.putString("proximityMessage", "Mind the road");
         legacy.putInt("activationRange", 9);
-        legacy.put("targetOffset-1", NbtUtils.writeBlockPos(new BlockPos(4, 5, 6)));
+        legacy.store("targetOffset-1", BlockPos.CODEC, new BlockPos(4, 5, 6));
 
-        try (MockedStatic<Fabric> fabric = mockStatic(Fabric.class)) {
-            fabric.when(Fabric::isClient).thenReturn(false);
+        try (MockedStatic<ArdaPaths> ardaPaths = mockStatic(ArdaPaths.class)) {
+            ardaPaths.when(ArdaPaths::amITheServer).thenReturn(true);
 
             CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(legacy);
-            CompoundTag markerData = converted.getCompound("paths")
-                    .getCompound("aragorn")
-                    .getCompound("default");
+            CompoundTag markerData = NbtEncodeable.getCompound(
+                    NbtEncodeable.getCompound(
+                            NbtEncodeable.getCompound(converted, "paths"),
+                            "aragorn"),
+                    "default");
 
             assertSame(legacy, converted);
             assertFalse(converted.contains("proximityMessage"));
@@ -62,10 +63,10 @@ class PathMarkerBlockEntityConverterTest {
             assertFalse(converted.contains("targetOffset-0"));
             assertFalse(converted.contains("targetOffset-1"));
             assertInstanceOf(CompoundTag.class, converted.get("paths"));
-            assertFalse(converted.getCompound("paths").contains("frodo"));
-            assertEquals(new BlockPos(4, 5, 6), NbtUtils.readBlockPos(markerData, "target").orElseThrow());
-            assertEquals("Mind the road", markerData.getString("proximity_message"));
-            assertEquals(9, markerData.getInt("activation_range"));
+            assertFalse(NbtEncodeable.getCompound(converted, "paths").contains("frodo"));
+            assertEquals(new BlockPos(4, 5, 6), markerData.read("target", BlockPos.CODEC).orElseThrow());
+            assertEquals("Mind the road", markerData.getStringOr("proximity_message", ""));
+            assertEquals(9, markerData.getIntOr("activation_range", 0));
         } finally {
             ArdaPaths.CONFIG = null;
         }
@@ -87,8 +88,8 @@ class PathMarkerBlockEntityConverterTest {
         CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(current);
 
         assertSame(current, converted);
-        assertEquals("legacy-looking data", converted.getString("proximityMessage"));
-        assertEquals("keep", converted.getCompound("paths").getCompound("frodo").getString("value"));
+        assertEquals("legacy-looking data", converted.getStringOr("proximityMessage", ""));
+        assertEquals("keep", NbtEncodeable.getCompound(NbtEncodeable.getCompound(converted, "paths"), "frodo").getStringOr("value", ""));
     }
 
     /**
@@ -111,8 +112,8 @@ class PathMarkerBlockEntityConverterTest {
         unrelated.putInt("z", 3);
         CompoundTag originalCopy = unrelated.copy();
 
-        try (MockedStatic<Fabric> fabric = mockStatic(Fabric.class)) {
-            fabric.when(Fabric::isClient).thenReturn(false);
+        try (MockedStatic<ArdaPaths> ardaPaths = mockStatic(ArdaPaths.class)) {
+            ardaPaths.when(ArdaPaths::amITheServer).thenReturn(true);
 
             CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(unrelated);
 
@@ -197,8 +198,8 @@ class PathMarkerBlockEntityConverterTest {
             CompoundTag chapter = new CompoundTag();
             chapter.putString("proximity_message", "Speak friend");
             chapter.putInt("activation_range", 12);
-            chapter.put("target", NbtUtils.writeBlockPos(new BlockPos(-33, 4, 48)));
-            chapter.put("look_at", NbtUtils.writeBlockPos(new BlockPos(20, 70, -15)));
+            chapter.store("target", BlockPos.CODEC, new BlockPos(-33, 4, 48));
+            chapter.store("look_at", BlockPos.CODEC, new BlockPos(20, 70, -15));
             chapter.putString("chapter", "moria");
             chapter.putBoolean("chapter_start", true);
             chapter.putBoolean("display_chapter_title_on_trail", true);
@@ -218,7 +219,7 @@ class PathMarkerBlockEntityConverterTest {
                 marker.applyNbt(paths);
             }
 
-            assertEquals(paths, marker.toNbt(new CompoundTag()).getCompound("paths"));
+            assertEquals(paths, NbtEncodeable.getCompound(marker.toNbt(new CompoundTag()), "paths"));
         } finally {
             MarkerTestSupport.clearConfigs();
         }
@@ -235,10 +236,10 @@ class PathMarkerBlockEntityConverterTest {
         PathMarkerBlockEntity.ChapterNbtData populated = marker.getChapterData("aragorn", "rohan", true);
         populated.setProximityMessage("For Rohan");
 
-        CompoundTag written = marker.toNbt(new CompoundTag()).getCompound("paths");
+        CompoundTag written = NbtEncodeable.getCompound(marker.toNbt(new CompoundTag()), "paths");
 
         assertFalse(written.contains("frodo"));
         assertTrue(written.contains("aragorn"));
-        assertEquals("For Rohan", written.getCompound("aragorn").getCompound("rohan").getString("proximity_message"));
+        assertEquals("For Rohan", NbtEncodeable.getCompound(NbtEncodeable.getCompound(written, "aragorn"), "rohan").getStringOr("proximity_message", ""));
     }
 }

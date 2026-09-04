@@ -14,6 +14,8 @@ public class ChapterData {
      * The unique identifier for this chapter within its path.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("id")
     private String id;
 
@@ -21,12 +23,16 @@ public class ChapterData {
      * The display name of this chapter.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("name")
     private String name;
 
     /**
      * The in-game date when this chapter takes place.
      */
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("date")
     private String date;
 
@@ -34,12 +40,16 @@ public class ChapterData {
      * The order index of this chapter relative to others in the path.
      */
     @Getter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("index")
     private int index;
 
     /**
      * Optional warp destination (e.g., a home name) for the "Return to Chapter Start" feature.
      */
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("warp")
     private String warp;
 
@@ -48,6 +58,8 @@ public class ChapterData {
      */
     @Getter
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("coordinates")
     private PositionData coordinates;
 
@@ -55,6 +67,8 @@ public class ChapterData {
      * Dimension identifier that owns the coordinate fallback.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("dimension")
     private String dimension;
 

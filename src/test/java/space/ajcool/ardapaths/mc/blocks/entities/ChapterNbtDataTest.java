@@ -59,7 +59,7 @@ class ChapterNbtDataTest {
 
         CompoundTag nbt = data.toNbt(new CompoundTag());
 
-        assertEquals("shire", nbt.getString("chapter"));
+        assertEquals("shire", nbt.getStringOr("chapter", ""));
         assertFalse(nbt.contains("display_above_blocks"));
         assertFalse(nbt.contains("weather"));
         assertFalse(nbt.contains("time_of_day"));

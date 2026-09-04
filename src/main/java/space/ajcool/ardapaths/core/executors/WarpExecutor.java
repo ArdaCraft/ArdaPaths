@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.william278.huskhomes.api.FabricHuskHomesAPI;
@@ -49,7 +49,7 @@ public class WarpExecutor implements WarpService {
             }
 
             final var targetWarp = warp.get();
-            final var worldId = ResourceLocation.tryParse(targetWarp.getWorld().getName());
+            final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
 
             if (worldId == null) {
                 log.warn("resolveWarp: invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
@@ -95,7 +95,7 @@ public class WarpExecutor implements WarpService {
 
             warp.ifPresent(targetWarp -> {
 
-                final var worldId = ResourceLocation.tryParse(targetWarp.getWorld().getName());
+                final var worldId = Identifier.tryParse(targetWarp.getWorld().getName());
 
                 if (worldId == null) {
                     log.warn("warpTo: invalid world id for warp {}: {}", warpName, targetWarp.getWorld().getName());
@@ -103,21 +103,20 @@ public class WarpExecutor implements WarpService {
                     return;
                 }
 
-                final var serverWorld = server.getLevel(ResourceKey.create(Registries.DIMENSION, worldId));
-
-                if (serverWorld == null) {
+                if (server.getLevel(ResourceKey.create(Registries.DIMENSION, worldId)) == null) {
                     log.warn("warpTo: world not found for warp {}: {}", warpName, worldId);
                     server.execute(onFailure);
                     return;
                 }
 
                 log.info("Warp ongoing for {} to {}", player.getStringUUID(), targetWarp);
-                server.execute(() -> player.teleportTo(serverWorld,
-                        targetWarp.getX(),
-                        targetWarp.getY(),
-                        targetWarp.getZ(),
-                        targetWarp.getYaw(),
-                        targetWarp.getPitch()));
+                var teleportTarget = huskHomesAPI.getTeleportTarget(targetWarp);
+                if (teleportTarget == null) {
+                    log.warn("warpTo: teleport target not found for warp {}", warpName);
+                    server.execute(onFailure);
+                    return;
+                }
+                server.execute(() -> player.teleport(teleportTarget));
 
             });
         });

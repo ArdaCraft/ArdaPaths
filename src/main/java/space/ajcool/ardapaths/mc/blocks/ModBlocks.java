@@ -37,8 +37,9 @@ public class ModBlocks {
     public static final PathMarkerBlock PATH_MARKER = register(
             PATH_MARKER_KEY,
             new PathMarkerBlock(BlockBehaviour.Properties.of()
+                    .setId(PATH_MARKER_KEY)
                     .noOcclusion()
-                    .noCollission()
+                    .noCollision()
                     .noLootTable()
                     .strength(-1.0f, 3600000.0f)
             )
@@ -55,7 +56,9 @@ public class ModBlocks {
     @SuppressWarnings("SameParameterValue")
     private static <T extends Block> T register(final ResourceKey<Block> key, final T block) {
         Registry.register(BuiltInRegistries.BLOCK, key, block);
-        Registry.register(BuiltInRegistries.ITEM, PATH_MARKER_ITEM_KEY, new BlockItem(block, new Item.Properties()));
+        Registry.register(BuiltInRegistries.ITEM, PATH_MARKER_ITEM_KEY, new BlockItem(block, new Item.Properties()
+                .setId(PATH_MARKER_ITEM_KEY)
+                .useBlockDescriptionPrefix()));
         return block;
     }
 

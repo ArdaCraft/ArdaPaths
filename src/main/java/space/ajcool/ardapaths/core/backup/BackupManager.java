@@ -73,10 +73,10 @@ public class BackupManager {
     private final MarkerScanner markerScanner;
 
     /**
-     * Creates a manager backed by Minecraft 1.20.1 chunk storage access.
+     * Creates a manager backed by Minecraft 26.1 chunk storage access.
      */
     public BackupManager() {
-        this(new Minecraft120ChunkStorageAccess());
+        this(new Minecraft261ChunkStorageAccess());
     }
 
     /**
@@ -755,7 +755,7 @@ public class BackupManager {
                     plannedMarkers,
                     batchStart,
                     PlannedMarker::dimensionId,
-                    marker -> new ChunkPos(BlockPos.of(marker.packedPos())).toLong()
+                    marker -> ChunkPos.pack(BlockPos.of(marker.packedPos()))
             );
             int fromIndex = batchStart;
             result = result.plus(gate.call(() -> applyMarkerBatch(server, plannedMarkers.subList(fromIndex, toIndex))));
@@ -788,7 +788,7 @@ public class BackupManager {
                 .filter(marker -> !backupLocations.contains(markerLocation(marker.dimensionId(), marker.position().asLong())))
                 .sorted(Comparator
                         .comparing(ScannedMarkerData::dimensionId)
-                        .thenComparingLong(marker -> new ChunkPos(marker.position()).toLong())
+                        .thenComparingLong(marker -> ChunkPos.pack(marker.position()))
                         .thenComparingInt(marker -> marker.position().getY()))
                 .toList();
 
@@ -801,7 +801,7 @@ public class BackupManager {
                     staleMarkers,
                     batchStart,
                     ScannedMarkerData::dimensionId,
-                    marker -> new ChunkPos(marker.position()).toLong()
+                    marker -> ChunkPos.pack(marker.position())
             );
             int fromIndex = batchStart;
             deleted += gate.call(() -> deleteMarkerBatch(server, staleMarkers.subList(fromIndex, toIndex)));
@@ -851,11 +851,11 @@ public class BackupManager {
         List<String> formattedChunks = missingChunks.stream()
                 .sorted(Comparator
                         .comparing(ChunkKey::dimensionId)
-                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).x)
-                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).z))
+                        .thenComparingInt(key -> ChunkPos.unpack(key.chunkPos()).x())
+                        .thenComparingInt(key -> ChunkPos.unpack(key.chunkPos()).z()))
                 .map(key -> {
-                    ChunkPos chunkPos = new ChunkPos(key.chunkPos());
-                    return key.dimensionId() + " [" + chunkPos.x + ", " + chunkPos.z + "]";
+                    ChunkPos chunkPos = ChunkPos.unpack(key.chunkPos());
+                    return key.dimensionId() + " [" + chunkPos.x() + ", " + chunkPos.z() + "]";
                 })
                 .toList();
         String chunks = String.join(", ", formattedChunks.stream().limit(10).toList());
@@ -919,13 +919,13 @@ public class BackupManager {
             }
 
             BlockPos position = BlockPos.of(marker.packedPos());
-            ChunkPos chunkPos = new ChunkPos(position);
+            ChunkPos chunkPos = ChunkPos.containing(position);
             if (!chunkExists(world, chunkPos)) {
-                result = result.missing(new ChunkKey(marker.dimensionId(), chunkPos.toLong()));
+                result = result.missing(new ChunkKey(marker.dimensionId(), chunkPos.pack()));
                 continue;
             }
 
-            world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+            world.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL, true);
 
             switch (MarkerRestorer.apply(world, position, marker.pathsNbt())) {
                 case PLACED -> result = result.withPlaced();
@@ -997,7 +997,7 @@ public class BackupManager {
      */
     private @Nullable ServerLevel getWorld(MinecraftServer server, String dimensionId) {
         for (ServerLevel world : server.getAllLevels()) {
-            if (world.dimension().location().toString().equals(dimensionId)) {
+            if (world.dimension().identifier().toString().equals(dimensionId)) {
                 return world;
             }
         }

@@ -1,16 +1,17 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.screens.GuiTextures;
 import space.ajcool.ardapaths.screens.GuiTextures.PanelState;
@@ -28,7 +29,7 @@ import java.util.function.Function;
  * @param <T> the type of options in this dropdown
  */
 @SuppressWarnings({"resource", "unused"})
-public class DropdownWidget<T> extends AbstractWidget {
+public class DropdownWidget<T> extends AbstractWidget implements OverlayRenderer {
 
     /**
      * The original width when not expanded.
@@ -134,7 +135,7 @@ public class DropdownWidget<T> extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    protected void extractWidgetRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         int x = getX();
         int y = getY();
         Component title = this.getMessage();
@@ -148,43 +149,48 @@ public class DropdownWidget<T> extends AbstractWidget {
         String arrow = expanded ? "▲" : "▼";
         int arrowX = x + originalWidth - textRenderer.width(arrow) - 4;
         int arrowY = y + (originalHeight - textRenderer.lineHeight) / 2;
-        context.drawString(textRenderer, Component.literal(arrow), arrowX, arrowY, 0xFFFFFF);
-        context.drawString(textRenderer, title, getX(), titleY, 0xFFFFFF);
+        context.text(textRenderer, Component.literal(arrow), arrowX, arrowY, 0xFFFFFFFF);
+        context.text(textRenderer, title, getX(), titleY, 0xFFFFFFFF);
+    }
 
-        // If expanded, draw the dropdown list.
-        if (expanded) {
-            PoseStack matrices = context.pose();
-            matrices.pushPose();
-            matrices.translate(0, 0, 100); // Raise the dropdown above other elements.
+    @Override
+    public boolean hasOverlay() {
+        return expanded;
+    }
 
-            int baseY = getY() + originalHeight;
+    /**
+     * Draws the expanded option list at the overlay stratum, above all other screen content.
+     *
+     * @param context     draw context
+     * @param mouseX      current mouse x
+     * @param mouseY      current mouse y
+     * @param partialTick partial tick delta
+     */
+    @Override
+    public void extractOverlay(GuiGraphicsExtractor context, int mouseX, int mouseY, float partialTick) {
+        int x = getX();
+        int baseY = getY() + originalHeight;
 
-            // Build a combined list of items. When allowNull is true we add a null entry
-            // (which we later display as "None").
-            List<T> allItems = new ArrayList<>();
-            if (allowNull) {
-                allItems.add(null);
-            }
-            allItems.addAll(options);
+        List<T> allItems = new ArrayList<>();
+        if (allowNull) {
+            allItems.add(null);
+        }
+        allItems.addAll(options);
 
-            int totalItems = allItems.size();
-            int visibleCount = Math.min(totalItems, maxVisibleOptions);
-            int lastVisibleIndex = Math.min(visibleCount, totalItems - scrollOffset) - 1;
-            this.height = originalHeight + visibleCount * originalHeight;
+        int totalItems = allItems.size();
+        int visibleCount = Math.min(totalItems, maxVisibleOptions);
+        int lastVisibleIndex = Math.min(visibleCount, totalItems - scrollOffset) - 1;
 
-            // Render each visible option, starting from scrollOffset.
-            for (int i = 0; i < visibleCount; i++) {
-                int actualIndex = scrollOffset + i;
-                if (actualIndex >= totalItems) break;
-                T item = allItems.get(actualIndex);
-                int itemY = baseY + i * originalHeight;
-                boolean hovered = mouseX >= x && mouseX <= x + originalWidth &&
-                        mouseY >= itemY && mouseY <= itemY + originalHeight;
-                boolean isSelected = (item == null && selected == null)
-                        || (item != null && item.equals(selected));
-                renderItem(context, x, itemY, item, isSelected, hovered, capFor(i, lastVisibleIndex));
-            }
-            matrices.popPose();
+        for (int i = 0; i < visibleCount; i++) {
+            int actualIndex = scrollOffset + i;
+            if (actualIndex >= totalItems) break;
+            T item = allItems.get(actualIndex);
+            int itemY = baseY + i * originalHeight;
+            boolean hovered = mouseX >= x && mouseX <= x + originalWidth &&
+                    mouseY >= itemY && mouseY <= itemY + originalHeight;
+            boolean isSelected = (item == null && selected == null)
+                    || (item != null && item.equals(selected));
+            renderItem(context, x, itemY, item, isSelected, hovered, capFor(i, lastVisibleIndex));
         }
     }
 
@@ -201,13 +207,13 @@ public class DropdownWidget<T> extends AbstractWidget {
      * @param state        visual panel state
      * @param cap          caps to draw for this box
      */
-    private void renderBox(GuiGraphics context, int x, int y, T item, Font textRenderer,
+    private void renderBox(GuiGraphicsExtractor context, int x, int y, T item, Font textRenderer,
                            int width, int height, PanelState state, SliceCap cap) {
         GuiTextures.drawPanelSegment(context, x, y, width, height, state, cap);
         Component display = (item == null) ? Component.literal("None") : optionDisplay.apply(item);
         int textX = x + 4;
         int textY = y + (height - textRenderer.lineHeight) / 2;
-        context.drawString(textRenderer, display, textX, textY, 0xFFFFFF);
+        context.text(textRenderer, display, textX, textY, 0xFFFFFFFF);
     }
 
     /**
@@ -221,17 +227,16 @@ public class DropdownWidget<T> extends AbstractWidget {
      * @param hovered  whether the item is hovered
      * @param cap      caps to draw for this row's list position
      */
-    private void renderItem(GuiGraphics context, int x, int y, T item, boolean selected, boolean hovered,
+    private void renderItem(GuiGraphicsExtractor context, int x, int y, T item, boolean selected, boolean hovered,
                             SliceCap cap) {
         Font textRenderer = Client.mc().font;
-        int width = getWidth();
         PanelState state = PanelState.IDLE;
         if (hovered) {
             state = PanelState.HOVERED;
         } else if (selected) {
             state = PanelState.SELECTED;
         }
-        renderBox(context, x, y, item, textRenderer, width, originalHeight, state, cap);
+        renderBox(context, x, y, item, textRenderer, originalWidth, originalHeight, state, cap);
     }
 
     /**
@@ -259,7 +264,8 @@ public class DropdownWidget<T> extends AbstractWidget {
      * clicking outside collapses the list.
      */
     @Override
-    public void onClick(double mouseX, double mouseY) {
+    public void onClick(MouseButtonEvent event, boolean doubled) {
+        double mouseY = event.y();
         if (!expanded) {
             expanded = true;
             scrollOffset = 0;
@@ -302,7 +308,7 @@ public class DropdownWidget<T> extends AbstractWidget {
             expanded = false;
             this.height = originalHeight;
         }
-        super.onClick(mouseX, mouseY);
+        super.onClick(event, doubled);
     }
 
     /**
@@ -330,7 +336,7 @@ public class DropdownWidget<T> extends AbstractWidget {
     }
 
     @Override
-    protected void updateWidgetNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(@NonNull NarrationElementOutput builder) {
         defaultButtonNarrationText(builder);
     }
 

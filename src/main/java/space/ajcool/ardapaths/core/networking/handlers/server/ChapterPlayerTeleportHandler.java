@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,6 +17,7 @@ import space.ajcool.ardapaths.core.integration.Warps;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Handles teleporting a player to a chapter's start position when requested from the client.
@@ -46,7 +47,7 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
                     log.warn("Cannot teleport player {} to chapter start in unloaded dimension {}", player.getStringUUID(), dimensionId);
                     return;
                 }
-                player.teleportTo(destinationLevel, start.getX() + 0.5, start.getY(), start.getZ() + 0.5, player.getYRot(), player.getXRot());
+                player.teleportTo(destinationLevel, start.getX() + 0.5, start.getY(), start.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
             }
         };
 
@@ -66,7 +67,7 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
      * @return destination level, or null when no matching level is loaded
      */
     private ServerLevel resolveDestinationLevel(MinecraftServer server, String dimensionId) {
-        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(dimensionId));
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, Identifier.parse(dimensionId));
         return server.getLevel(key);
     }
 }

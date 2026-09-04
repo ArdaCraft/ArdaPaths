@@ -74,8 +74,8 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
      * @return remote path marker data response
      */
     private PathMarkerRemoteDataResponsePacket resolve(ServerPlayer player, PathMarkerRemoteDataPacket packet, BackupJobRunner.ServerGate gate) {
-        ServerLevel world = gate.call(player::serverLevel);
-        String dimensionId = world.dimension().location().toString();
+        ServerLevel world = gate.call(player::level);
+        String dimensionId = world.dimension().identifier().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         Optional<ResolvedMarker> marker = gate.call(() -> resolver.resolve(BlockPos.of(packet.packedPos())));
         if (marker.isEmpty()) {

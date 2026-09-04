@@ -9,7 +9,10 @@ import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Factory for creating custom glow particles used in ArdaPaths trail rendering.
@@ -44,29 +47,28 @@ public class PathParticleProvider implements ParticleProvider<PathParticleEffect
      * @param ignoredSpeedX the unused x velocity supplied by the particle spawner
      * @param ignoredSpeedY the unused y velocity supplied by the particle spawner
      * @param ignoredSpeedZ the unused z velocity supplied by the particle spawner
+     * @param random        the random source supplied by the particle engine
      * @return the created particle
      */
-    public Particle createParticle(PathParticleEffect effect, ClientLevel level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ) {
+    @Override
+    public Particle createParticle(PathParticleEffect effect, @NonNull ClientLevel level, double x, double y, double z, double ignoredSpeedX, double ignoredSpeedY, double ignoredSpeedZ, @NonNull RandomSource random) {
         var glowParticle = new GlowParticle(level, x, y, z, 0.0, 0.0, 0.0, this.sprite) {
             @Override
-            public int getLightColor(float f) {
+            public int getLightCoords(float f) {
                 BlockPos blockPos = new BlockPos((int) this.x, (int) this.y, (int) this.z);
-                var lightColor = LevelRenderer.getLightColor(this.level, blockPos);
+                int lightColor = LevelRenderer.getLightCoords(this.level, blockPos);
 
-                int j = lightColor & 0xFF;
-                int k = lightColor >> 16 & 0xFF;
+                int block = LightCoordsUtil.block(lightColor);
+                int sky = LightCoordsUtil.sky(lightColor);
 
                 float brightness = Mth.clamp(((float) this.lifetime - ((float) this.age + f)) / (float) this.lifetime, 0.0f, 1.0f);
+                block = Math.min(block + (int) (brightness * 240), 240);
 
-                if ((j += (int) (brightness * 240)) > 240) {
-                    j = 240;
-                }
-
-                return j | k << 16;
+                return LightCoordsUtil.pack(block, sky);
             }
         };
 
-        int selectedColor = effect.selectColor(level.random);
+        int selectedColor = effect.selectColor(random);
 
         float r = (selectedColor >> 16) & 0x0ff;
         float g = (selectedColor >> 8) & 0x0ff;
@@ -75,12 +77,12 @@ public class PathParticleProvider implements ParticleProvider<PathParticleEffect
         glowParticle.setColor(r / 255, g / 255, b / 255);
 
         double SPEED_FACTOR = 0.02;
-        double xSpeed = ((level.random.nextDouble() * 2) - 1) * SPEED_FACTOR;
-        double ySpeed = ((level.random.nextDouble() * 2) - 1) * SPEED_FACTOR;
-        double zSpeed = ((level.random.nextDouble() * 2) - 1) * SPEED_FACTOR;
+        double xSpeed = ((random.nextDouble() * 2) - 1) * SPEED_FACTOR;
+        double ySpeed = ((random.nextDouble() * 2) - 1) * SPEED_FACTOR;
+        double zSpeed = ((random.nextDouble() * 2) - 1) * SPEED_FACTOR;
 
         glowParticle.setParticleSpeed(xSpeed, ySpeed, zSpeed);
-        glowParticle.setLifetime(level.random.nextInt(10) + 10);
+        glowParticle.setLifetime(random.nextInt(10) + 10);
 
         return glowParticle;
     }

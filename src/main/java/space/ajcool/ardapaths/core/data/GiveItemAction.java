@@ -3,7 +3,7 @@ package space.ajcool.ardapaths.core.data;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +30,7 @@ public final class GiveItemAction {
         String trimmed = value.trim();
         if (trimmed.isEmpty() || isClear(trimmed)) return null;
 
-        ResourceLocation id = ResourceLocation.tryParse(trimmed);
+        Identifier id = Identifier.tryParse(trimmed);
         if (id == null) return null;
 
         return BuiltInRegistries.ITEM.getOptional(id).orElse(null);

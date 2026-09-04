@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -593,12 +593,12 @@ public class TrailRenderer {
      */
     private static void updateLastVisitedTrailNode(String currentChapterId, PathMarkerBlockEntity closestValidMarker) {
 
-        ResourceLocation worldId = null;
+        Identifier worldId = null;
 
         if (closestValidMarker.getLevel() != null)
             worldId = closestValidMarker.getLevel()
                     .dimension()
-                    .location();
+                    .identifier();
 
         ArdaPathsClient.lastVisitedTrailNodeData = new LastVisitedTrailNodeData(currentChapterId,
                 closestValidMarker.getBlockPos().getX(),
@@ -711,7 +711,7 @@ public class TrailRenderer {
 
         var worldId = player.level()
                 .dimension()
-                .location();
+                .identifier();
 
         return new PlayerTeleportPacket(playerPos.getX(), playerPos.getY(), playerPos.getZ(), worldId);
     }

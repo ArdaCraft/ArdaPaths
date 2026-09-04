@@ -4,10 +4,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.screens.GuiTextures;
 
@@ -17,6 +19,8 @@ import java.util.function.IntConsumer;
 /**
  * A compact tab selector for switching between fixed content panels in configuration screens.
  */
+// Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+@SuppressWarnings("unused")
 public class TabBarWidget extends AbstractWidget {
 
     /**
@@ -49,6 +53,8 @@ public class TabBarWidget extends AbstractWidget {
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int selectedIndex;
 
     /**
@@ -65,6 +71,8 @@ public class TabBarWidget extends AbstractWidget {
      * @param contentBackgroundColor ARGB color for the tab content background, or zero for the default
      */
     @Builder(builderClassName = "TabBarBuilder", builderMethodName = "create", setterPrefix = "set")
+    // Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     public TabBarWidget(int x, int y, int width, int height, List<Component> tabs, int selectedIndex, IntConsumer onSelect,
                         int contentHeight, int contentBackgroundColor) {
         super(x, y, width, height, Component.empty());
@@ -85,7 +93,7 @@ public class TabBarWidget extends AbstractWidget {
      */
     @SuppressWarnings("resource")
     @Override
-    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    protected void extractWidgetRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         if (tabs.isEmpty()) return;
 
         Font textRenderer = Client.mc().font;
@@ -110,18 +118,19 @@ public class TabBarWidget extends AbstractWidget {
 
             GuiTextures.PanelState state = hovered || selected ? GuiTextures.PanelState.HOVERED : GuiTextures.PanelState.IDLE;
             GuiTextures.drawPanelSegment(context, cellX, getY(), cellWidth, getHeight(), state, GuiTextures.SliceCap.FULL);
-            context.drawString(textRenderer, tab, textX, textY, color);
+            context.text(textRenderer, tab, textX, textY, color);
         }
     }
 
     /**
      * Selects the tab under the cursor and notifies listeners when the selected index changes.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
+     * @param event   mouse event describing the click
+     * @param doubled whether this click is a double-click
      */
     @Override
-    public void onClick(double mouseX, double mouseY) {
+    public void onClick(MouseButtonEvent event, boolean doubled) {
+        double mouseX = event.x();
         if (tabs.isEmpty()) return;
 
         int index = (int) ((mouseX - getX()) / (getWidth() / (double) tabs.size()));
@@ -132,7 +141,7 @@ public class TabBarWidget extends AbstractWidget {
             onSelect.accept(index);
         }
 
-        super.onClick(mouseX, mouseY);
+        super.onClick(event, doubled);
     }
 
     /**
@@ -141,7 +150,7 @@ public class TabBarWidget extends AbstractWidget {
      * @param builder the narration builder receiving widget narration
      */
     @Override
-    protected void updateWidgetNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(@NonNull NarrationElementOutput builder) {
         defaultButtonNarrationText(builder);
     }
 }

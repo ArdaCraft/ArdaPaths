@@ -3,11 +3,10 @@ package space.ajcool.ardapaths.core.backup;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.MarkerTestSupport;
-import space.ajcool.ardapaths.core.Fabric;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +35,8 @@ class MarkerScannerScanChunkTest {
         List<ScannedMarkerData> markers = new ArrayList<>();
         List<ScannedMarkerData> emptyMarkers = new ArrayList<>();
 
-        try (MockedStatic<Fabric> fabric = mockStatic(Fabric.class)) {
-            fabric.when(Fabric::isClient).thenReturn(false);
+        try (MockedStatic<ArdaPaths> ardaPaths = mockStatic(ArdaPaths.class)) {
+            ardaPaths.when(ArdaPaths::amITheServer).thenReturn(true);
 
             new MarkerScanner(null).scanChunk(chunk, "minecraft:overworld", markers, emptyMarkers);
 
@@ -99,7 +98,7 @@ class MarkerScannerScanChunkTest {
      */
     private static CompoundTag legacyMarker(BlockPos position) {
         CompoundTag marker = baseBlockEntity(MarkerScanner.PATH_MARKER_BLOCK_ENTITY_ID, position);
-        marker.put("targetOffset-0", NbtUtils.writeBlockPos(new BlockPos(5, 6, 7)));
+        marker.store("targetOffset-0", BlockPos.CODEC, new BlockPos(5, 6, 7));
         marker.putString("proximityMessage", "legacy");
         return marker;
     }

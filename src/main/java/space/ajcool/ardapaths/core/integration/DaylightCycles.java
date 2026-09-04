@@ -277,7 +277,7 @@ public final class DaylightCycles {
         if (Client.world() == null)
             return currentBase;
 
-        long currentTime = Client.world().getDayTime();
+        long currentTime = Client.world().getOverworldClockTime();
         currentBase = Math.floorDiv(currentTime, 24000L) * 24000L;
         baseDayTicks = currentBase;
         return currentBase;
@@ -332,7 +332,7 @@ public final class DaylightCycles {
         }
 
         try {
-            long currentTime = Client.world().getDayTime();
+            long currentTime = Client.world().getOverworldClockTime();
             baseDayTicks = Math.floorDiv(currentTime, 24000L) * 24000L;
             Object cycle = getStaticCycle(access);
             if (access.staticTime().isInstance(cycle)) {

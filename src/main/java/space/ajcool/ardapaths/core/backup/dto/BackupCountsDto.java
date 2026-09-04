@@ -11,6 +11,7 @@ import com.google.gson.annotations.SerializedName;
  * @param chapters   the number of chapters exported
  * @param nodes      the number of per-path chapter marker nodes exported
  */
+@SuppressWarnings("unused")
 public record BackupCountsDto(
         @SerializedName("dimensions") int dimensions,
         @SerializedName("markers") int markers,

@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.screens;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -179,7 +179,6 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
      */
     @Override
     public void onClose() {
-        if (minecraft == null) return;
         minecraft.setScreen(parentScreen);
     }
 
@@ -202,11 +201,11 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
      * @param context draw context
      * @param mouseX  current mouse x coordinate
      * @param mouseY  current mouse y coordinate
-     * @param delta   partial tick delta
+     * @param partialTick   partial tick delta
      */
     @Override
-    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        context.drawCenteredString(this.font, this.title, this.width / 2, this.height / 2 - 65, 0xFFFFFF);
+    protected void extractModContent(GuiGraphicsExtractor context, int mouseX, int mouseY, float partialTick) {
+        context.centeredText(this.font, this.title, this.width / 2, this.height / 2 - 65, 0xFFFFFFFF);
     }
 
     /**

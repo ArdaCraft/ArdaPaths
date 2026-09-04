@@ -4,7 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.InteractionHand;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
@@ -39,7 +39,7 @@ public class ProximityRenderer {
     /** The title currently being displayed, or null if none */
     private AnimatedTitle currentDisplayedTitle;
 
-    public static void render(GuiGraphics context, DeltaTracker delta) {
+    public static void render(GuiGraphicsExtractor context, DeltaTracker delta) {
         INSTANCE.renderNextItem(context, delta.getGameTimeDeltaTicks());
         updateVisualMessageStack(context);
     }
@@ -53,7 +53,7 @@ public class ProximityRenderer {
      * @param context      the drawing context for rendering
      * @param ignoredDelta the time delta since last frame
      */
-    private void renderNextItem(GuiGraphics context, float ignoredDelta) {
+    private void renderNextItem(GuiGraphicsExtractor context, float ignoredDelta) {
 
         var nextItem = renderQueue.peek();
 
@@ -82,7 +82,7 @@ public class ProximityRenderer {
      *
      * @param context the drawing context for rendering
      */
-    private static void updateVisualMessageStack(GuiGraphics context) {
+    private static void updateVisualMessageStack(GuiGraphicsExtractor context) {
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
@@ -100,7 +100,7 @@ public class ProximityRenderer {
         if (!stackInHand.is(ModItems.PATH_REVEALER)) return;
 
         // Get the slot index for the active hand item
-        int slotIndex = activeHand == InteractionHand.MAIN_HAND ? player.getInventory().selected : 40;
+        int slotIndex = activeHand == InteractionHand.MAIN_HAND ? player.getInventory().getSelectedSlot() : 40;
 
         // Calculate screen position (assuming hotbar rendering)
         int x = context.guiWidth() / 2 - 90 + slotIndex * 20 + 18;
@@ -108,12 +108,12 @@ public class ProximityRenderer {
 
         // Draw the count
         String countText = Integer.toString(count);
-        context.drawString(
+        context.text(
                 Minecraft.getInstance().font,
                 countText,
                 x - Minecraft.getInstance().font.width(countText),
                 y,
-                0xFFFFFF,
+                0xFFFFFFFF,
                 true
         );
     }

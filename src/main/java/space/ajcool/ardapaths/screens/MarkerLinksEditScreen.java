@@ -14,7 +14,6 @@ import space.ajcool.ardapaths.screens.layout.ScreenLayout;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.*;
-import java.util.function.Supplier;
 
 /**
  * Screen for editing and managing which paths and chapters a marker is linked to.
@@ -92,15 +91,11 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
                     chapterName.alignRight();
                     this.addRenderableWidget(chapterName);
 
-                    var unlinkButton = new Button(
-                            centerX + 5,
-                            y,
-                            40,
-                            20,
-                            Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.unlink"),
-                            button -> unlinkMarkerToPathAndChapter(pathEntryKey, chapterId),
-                            Supplier::get
-                    );
+                    var unlinkButton = Button.builder(
+                                    Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.unlink"),
+                                    _ -> unlinkMarkerToPathAndChapter(pathEntryKey, chapterId))
+                            .bounds(centerX + 5, y, 40, 20)
+                            .build();
                     boolean samePath = Objects.equals(ArdaPathsClient.CONFIG.getSelectedPathId(), pathEntryKey);
                     boolean sameChapter = Objects.equals(ArdaPathsClient.CONFIG.getCurrentChapterId(), chapterId);
 
@@ -231,7 +226,6 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
      */
     @Override
     public void onClose() {
-        if (this.minecraft != null)
-            this.minecraft.setScreen(new MarkerEditScreen(MARKER, originalPathAndChapterData));
+        this.minecraft.setScreen(new MarkerEditScreen(MARKER, originalPathAndChapterData));
     }
 }

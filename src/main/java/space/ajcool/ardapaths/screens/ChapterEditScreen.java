@@ -6,8 +6,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -128,7 +130,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
         applyColorChangesButton = Button.builder(
                         Component.translatable("ardapaths.generic.apply"),
-                        button -> saveColorsToPath())
+                        _ -> saveColorsToPath())
                 .pos(centerX + 90, y)
                 .size(50, 20)
                 .tooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors_apppy_tooltip")))
@@ -232,7 +234,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
         this.addRenderableWidget(Button.builder(
                         Component.literal("＋"),
-                        button ->
+                        _ ->
                         {
                             resetFields();
                             indexInput.reset(String.valueOf(chapterDropdown.getOptions().size() + 1));
@@ -245,7 +247,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
         this.addRenderableWidget(Button.builder(
                         Component.literal("-"),
-                        button -> deleteChapter())
+                        _ -> deleteChapter())
                 .pos(centerX + 120, addButtonY)
                 .size(20, 20)
                 .tooltip(Tooltip.create(Component.translatable("ardapaths.client.chapter.configuration.screens.delete_chapter")))
@@ -254,7 +256,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
         this.addRenderableWidget(Button.builder(
                         Component.translatable("ardapaths.generic.clear"),
-                        button ->
+                        _ ->
                         {
                             resetFields();
                             creatingNew = false;
@@ -266,7 +268,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
         this.addRenderableWidget(Button.builder(
                         Component.translatable("ardapaths.generic.save"),
-                        button ->
+                        _ ->
                         {
                             if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText())
                                 return;
@@ -322,7 +324,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 .setX(x)
                 .setY(y)
                 .setWidth(60)
-                .setHeight(17)
+                .setHeight(20)
                 .setEnabled(true)
                 .setValidator(text ->
                 {
@@ -404,8 +406,6 @@ public class ChapterEditScreen extends ArdaPathsScreen {
 
     private void deleteChapter() {
 
-        assert minecraft != null;
-
         PathData path = pathDropdown.getSelected();
         if (path == null) return;
 
@@ -438,13 +438,12 @@ public class ChapterEditScreen extends ArdaPathsScreen {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return super.mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
+        return super.mouseReleased(event);
     }
 
     @Override
     public void onClose() {
-        if (this.minecraft != null)
-            this.minecraft.setScreen(this.parent);
+        this.minecraft.setScreen(this.parent);
     }
 }

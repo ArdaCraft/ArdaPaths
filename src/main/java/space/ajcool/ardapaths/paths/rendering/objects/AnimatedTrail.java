@@ -84,18 +84,24 @@ public class AnimatedTrail {
      * Starting block position of this trail segment.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final BlockPos start;
 
     /**
      * End position (in world coordinates) of this trail segment.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final Vec3 end;
 
     /**
      * Center position of the trail start, reused for interpolation.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final Vec3 startPos;
 
     /**
@@ -127,12 +133,16 @@ public class AnimatedTrail {
      * Current animated position along the trail.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private Vec3 currentPos;
 
     /**
      * Current rendered position, accounting for terrain height adjustments.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private Vec3 currentRenderPos;
 
     /**

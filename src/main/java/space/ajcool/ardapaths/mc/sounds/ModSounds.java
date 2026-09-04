@@ -2,7 +2,7 @@ package space.ajcool.ardapaths.mc.sounds;
 
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import space.ajcool.ardapaths.core.ModConstants;
 
@@ -25,7 +25,7 @@ public class ModSounds {
      */
     @SuppressWarnings("SameParameterValue")
     private static SoundEvent register(final String id) {
-        final ResourceLocation identifier = ModConstants.modId(id);
+        final Identifier identifier = ModConstants.modId(id);
         return Registry.register(BuiltInRegistries.SOUND_EVENT, identifier, SoundEvent.createVariableRangeEvent(identifier));
     }
 

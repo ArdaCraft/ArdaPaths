@@ -1,5 +1,8 @@
+//file:noinspection GrUnresolvedAccess
+import java.nio.file.Files
+
 plugins {
-    id "net.fabricmc.fabric-loom-remap" version "${loom_version}"
+    id "net.fabricmc.fabric-loom" version "${loom_version}"
     id "maven-publish"
     id "checkstyle"
 }
@@ -14,10 +17,7 @@ base {
 repositories {
     mavenCentral()
     maven { url = "https://api.modrinth.com/maven" }
-    maven { url = "https://oss.sonatype.org/content/repositories/snapshots" }
-    maven { url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1" }
     maven { url = "https://cursemaven.com/" }
-    maven { url = "https://repo.william278.net/releases" }
 }
 
 dependencies {
@@ -31,27 +31,25 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok:${project.lombok_version}")
 
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
 
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     implementation 'com.google.code.gson:gson:2.12.1'
 
     // Permissions API is bundled so permission checks work without forcing LuckPerms.
-    // Non-transitive: its POM pins an older Fabric API BOM, which would drag stale
-    // Fabric modules onto the run classpath instead of the 1.21.1 API declared here.
+    // Non-transitive: keep the active Fabric API modules on the run classpath.
     // The nested jar only needs fabric-api-base, which the main Fabric API already provides.
-    include(modImplementation("me.lucko:fabric-permissions-api:0.3.1") {
+    include(implementation("me.lucko:fabric-permissions-api:${project.permissions_api_version}") {
         transitive = false
     })
 
     // Optional integrations - compile against them, never require them at runtime.
-    compileOnly(files("stubs/ArdaRegionsStub-${project.ardaregions_version}+1.21.1.jar"))
-    compileOnly(files("stubs/ArdaMapsStub-${project.ardamaps_version}+1.21.1.jar"))
-    compileOnly("net.william278.huskhomes:huskhomes-common:4.10")
-    compileOnly("net.william278.huskhomes:huskhomes-fabric:4.10+1.21.1")
+    compileOnly(files("stubs/ArdaRegionsStub-${project.ardaregions_version}+mc.26.1.jar"))
+    compileOnly(files("libs/ArdaMaps-${project.ardamaps_version}.jar"))
+    compileOnly(files("libs/HuskHomes-Fabric-${project.huskhomes_version}+mc.26.1.2.jar"))
+    compileOnly(files("libs/HuskHomes-Common-${project.huskhomes_version}.jar"))
 
-    modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
+    localRuntime("net.litetex.mcm:dev-auth-neo:${devauth_version}")
 
     // Testing
     testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
@@ -61,23 +59,7 @@ dependencies {
 
 test {
     useJUnitPlatform()
-}
-
-loom {
-    accessWidenerPath = file("src/main/resources/arda-path.accesswidener")
-
-    runs {
-        client {
-            property("devauth.configDir", getRootProject().file(".devauth").absolutePath)
-            runDir = "run"
-            client()
-        }
-
-        server {
-            runDir = "runServer"
-            server()
-        }
-    }
+    jvmArgs '-Dnet.bytebuddy.experimental=true'
 }
 
 processResources {
@@ -85,7 +67,7 @@ processResources {
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
     inputs.property "minecraft_dependency", ">=${project.minecraft_version}"
-    filteringCharset "UTF-8"
+    filteringCharset = "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
@@ -95,7 +77,35 @@ processResources {
     }
 }
 
-def targetJavaVersion = 21
+def clientRunDir = "run-26_1"
+def serverRunDir = "run-server-26_1"
+def devRuntimeMods = [
+        [name: 'HuskHomes-Fabric', version: "${project.huskhomes_version}+mc.26.1.2", source: file("libs/HuskHomes-Fabric-${project.huskhomes_version}+mc.26.1.2.jar"), runtimeEnv: "server"],
+        [name: 'ArdaRegionsStub', version: "${project.ardaregions_version}+mc.26.1", source: file("stubs/ArdaRegionsStub-${project.ardaregions_version}+mc.26.1.jar"), runtimeEnv: "both"],
+        [name: 'ArdaMaps', version: "${project.ardamaps_version}", source: file("libs/ArdaMaps-${project.ardamaps_version}.jar"), runtimeEnv: "both"],
+        [name: 'DaylightChangerStruggle', version: '0.0.4', source: file("libs/DaylightChangerStruggle-0.0.4.jar"), runtimeEnv: "client"],
+        [name: 'weather-changer', version: '1.4.0-beta1', source: file("libs/weather-changer-1.4.0-beta1.jar"), runtimeEnv: "client"]
+]
+
+loom {
+    accessWidenerPath = file("src/main/resources/arda-path.accesswidener")
+
+    runs {
+        client {
+            client()
+            getRunDirectory().set(layout.projectDirectory.dir(clientRunDir))
+            getSystemProperties().put("devauth.enabled", "1")
+            getSystemProperties().put("devauth.account", "main")
+        }
+
+        server {
+            server()
+            getRunDirectory().set(layout.projectDirectory.dir(serverRunDir))
+        }
+    }
+}
+
+def targetJavaVersion = 25
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.compilerArgs.add("-processor")
@@ -106,15 +116,83 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    }
     withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.register('setupDevEnv') {
+    description = 'Sets up the development environment with optional integration mods'
+    group = 'ide'
+
+    doLast {
+        def serverDir = file(serverRunDir)
+        def serverModsDir = new File(serverDir, 'mods')
+        def clientDir = file(clientRunDir)
+        def clientModsDir = new File(clientDir, 'mods')
+
+        if (!serverDir.exists()) {
+            serverDir.mkdirs()
+            println "Created directory: ${serverRunDir}"
+        }
+
+        if (!serverModsDir.exists()) {
+            serverModsDir.mkdirs()
+            println "Created directory: ${serverRunDir}/mods"
+        }
+
+        if (!clientDir.exists()) {
+            clientDir.mkdirs()
+            println "Created directory: ${clientRunDir}"
+        }
+
+        if (!clientModsDir.exists()) {
+            clientModsDir.mkdirs()
+            println "Created directory: ${clientRunDir}/mods"
+        }
+
+        devRuntimeMods.each { mod ->
+            def copyToServer = mod.runtimeEnv == "server" || mod.runtimeEnv == "both"
+            def copyToClient = mod.runtimeEnv == "client" || mod.runtimeEnv == "both"
+
+            if (copyToServer) {
+                def serverFile = new File(serverModsDir, "${mod.name}-${mod.version}.jar")
+                if (!serverFile.exists()) {
+                    if (!mod.source.exists()) {
+                        println "Skipping ${mod.name}; local jar is missing at ${mod.source}"
+                        return
+                    }
+
+                    println "Copying ${mod.name} to server..."
+                    Files.copy(mod.source.toPath(), serverFile.toPath())
+                    println "Copied ${mod.name} to server"
+                } else {
+                    println "${mod.name} already exists in server, skipping"
+                }
+            }
+
+            if (copyToClient) {
+                def clientFile = new File(clientModsDir, "${mod.name}-${mod.version}.jar")
+                if (!clientFile.exists()) {
+                    if (!mod.source.exists()) {
+                        println "Skipping ${mod.name}; local jar is missing at ${mod.source}"
+                        return
+                    }
+
+                    println "Copying ${mod.name} to client..."
+                    Files.copy(mod.source.toPath(), clientFile.toPath())
+                    println "Copied ${mod.name} to client"
+                } else {
+                    println "${mod.name} already exists in client, skipping"
+                }
+            }
+        }
+    }
 }
 
 checkstyle {
-    toolVersion = "10.21.4"
+    toolVersion = "13.4.2"
     configDirectory = layout.projectDirectory.dir("config/checkstyle")
 }
 

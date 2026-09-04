@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.screens.marker;
 
+import net.minecraft.client.input.MouseButtonEvent;
 import space.ajcool.ardapaths.screens.MarkerEditScreen;
 
 /**
@@ -33,12 +34,10 @@ public interface MarkerEditorTab {
     /**
      * Handles mouse release events for widgets that need manual delegation.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button the mouse button code
+     * @param event released mouse button event
      * @return true if the event was handled
      */
-    default boolean mouseReleased(double mouseX, double mouseY, int button) {
+    default boolean mouseReleased(MouseButtonEvent event) {
         return false;
     }
 

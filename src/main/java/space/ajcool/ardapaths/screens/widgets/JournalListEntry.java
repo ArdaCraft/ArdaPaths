@@ -2,9 +2,10 @@ package space.ajcool.ardapaths.screens.widgets;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.NotNull;
@@ -74,33 +75,30 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
      * Render the journal entry.
      *
      * @param context     The draw context
-     * @param index       The index of the entry
-     * @param y           The y position to render at
-     * @param x           The x position to render at
-     * @param entryWidth  The width of the entry
-     * @param entryHeight The height of the entry
      * @param mouseX      The x position of the mouse
      * @param mouseY      The y position of the mouse
      * @param hovered     Whether the entry is hovered
      * @param tickDelta   The partial tick
      */
     @Override
-    public void render(GuiGraphics context, int index, int y, int x, int entryWidth, int entryHeight,
-                       int mouseX, int mouseY, boolean hovered, float tickDelta) {
+    public void extractContent(GuiGraphicsExtractor context, int mouseX, int mouseY, boolean hovered, float tickDelta) {
+        int x = getX();
+        int y = getY();
+        int entryWidth = getWidth();
         Font textRenderer = client.font;
 
         // Recalculate if width changed
         getHeight(entryWidth);
 
         // Draw type
-        context.drawString(textRenderer, heading, x + 5, y + 2, 0xFFFFFF, false);
+        context.text(textRenderer, heading, x + 5, y + 2, 0xFFFFFFFF, false);
 
         // Draw wrapped description
         if (wrappedDescription != null && !wrappedDescription.isEmpty()) {
             int lineY = y + 14;
             int lineHeight = textRenderer.lineHeight + 2;
             for (FormattedCharSequence line : wrappedDescription) {
-                context.drawString(textRenderer, line, x + 5, lineY, color, false);
+                context.text(textRenderer, line, x + 5, lineY, color, false);
                 lineY += lineHeight;
             }
         }
@@ -109,7 +107,7 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
 
             teleportButton.setX(x + entryWidth - 65);
             teleportButton.setY(y + 2);
-            teleportButton.render(context, mouseX, mouseY, tickDelta);
+            teleportButton.extractRenderState(context, mouseX, mouseY, tickDelta);
         }
     }
 
@@ -154,16 +152,17 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
     /**
      * Handle mouse clicks for the entry.
      *
-     * @param mouseX The x position of the mouse
-     * @param mouseY The y position of the mouse
-     * @param button The mouse button
+     * @param event   The mouse button event
+     * @param doubled whether this click is a double-click
      * @return true if the click was handled, false otherwise
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        double mouseX = event.x();
+        double mouseY = event.y();
 
-        if (this.teleportButton.isMouseOver(mouseX, mouseY)) {
-            return this.teleportButton.mouseClicked(mouseX, mouseY, button);
+        if (this.teleportButton != null && this.teleportButton.isMouseOver(mouseX, mouseY)) {
+            return this.teleportButton.mouseClicked(event, doubled);
         }
         return false;
     }

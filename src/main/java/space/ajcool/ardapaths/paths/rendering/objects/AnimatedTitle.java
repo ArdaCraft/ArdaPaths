@@ -1,11 +1,9 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
@@ -37,6 +35,8 @@ public class AnimatedTitle extends TextRenderable {
      * The title text to display
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final String title;
 
     /**
@@ -79,7 +79,7 @@ public class AnimatedTitle extends TextRenderable {
      * @param drawContext the drawing context used for rendering
      */
     @Override
-    public void render(GuiGraphics drawContext) {
+    public void render(GuiGraphicsExtractor drawContext) {
         if (!showing) return;
 
         // Initialize start time on first render
@@ -94,12 +94,7 @@ public class AnimatedTitle extends TextRenderable {
         var width = client.getWindow().getGuiScaledWidth();
         var height = client.getWindow().getGuiScaledHeight();
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-
         renderAnimatedTitle(drawContext, elapsedMillis, font, width, height);
-
-        RenderSystem.disableBlend();
     }
 
     /**
@@ -119,7 +114,7 @@ public class AnimatedTitle extends TextRenderable {
      * @param width         screen width in scaled pixels
      * @param height        screen height in scaled pixels
      */
-    private void renderAnimatedTitle(GuiGraphics drawContext, long elapsedMillis, Font font, int width, int height) {
+    private void renderAnimatedTitle(GuiGraphicsExtractor drawContext, long elapsedMillis, Font font, int width, int height) {
 
         int opacity;
 
@@ -176,21 +171,21 @@ public class AnimatedTitle extends TextRenderable {
      * @param textScale   the scale factor to apply
      * @param textOffsetY vertical offset to apply after scaling
      */
-    private void drawTitleText(String text, Color color, GuiGraphics drawContext, Font font, int x, int y, int opacity, float textScale, int textOffsetY) {
+    private void drawTitleText(String text, Color color, GuiGraphicsExtractor drawContext, Font font, int x, int y, int opacity, float textScale, int textOffsetY) {
 
-        PoseStack matrices = drawContext.pose();
-        matrices.pushPose();
+        var matrices = drawContext.pose();
+        matrices.pushMatrix();
 
-        matrices.scale(textScale, textScale, 1f);
+        matrices.scale(textScale, textScale);
 
-        drawContext.drawCenteredString(
+        drawContext.centeredText(
                 font,
                 text,
                 x,
                 y + textOffsetY,
                 GuiTextures.argb(opacity, color.r, color.g, color.b));
 
-        matrices.popPose();
+        matrices.popMatrix();
     }
 
     /**

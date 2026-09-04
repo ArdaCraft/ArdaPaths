@@ -1,10 +1,10 @@
 package space.ajcool.ardapaths.core.networking.packets.client;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.ModConstants;
@@ -27,7 +27,7 @@ public record MarkerTimeSpreadResponsePacket(UUID requestId, TimeSpreadStatus st
     /**
      * Network channel used for marker time-spread responses.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("marker_time_spread_response");
+    public static final Identifier CHANNEL = ModConstants.modId("marker_time_spread_response");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -82,7 +82,7 @@ public record MarkerTimeSpreadResponsePacket(UUID requestId, TimeSpreadStatus st
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUUID(requestId);
         buf.writeEnum(status);
         buf.writeInt(updatedCount);

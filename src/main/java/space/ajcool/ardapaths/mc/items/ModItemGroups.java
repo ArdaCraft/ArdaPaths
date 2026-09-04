@@ -1,7 +1,7 @@
 package space.ajcool.ardapaths.mc.items;
 
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -30,7 +30,7 @@ public class ModItemGroups {
      */
     public static final CreativeModeTab PATH = register(
             PATH_KEY,
-            FabricItemGroup.builder()
+            FabricCreativeModeTab.builder()
                     .icon(ModItems.PATH_REVEALER::getDefaultInstance)
                     .title(Component.translatable("itemGroup.ardapaths.ardapaths"))
                     .build(),
@@ -49,11 +49,11 @@ public class ModItemGroups {
     @SuppressWarnings("SameParameterValue")
     private static CreativeModeTab register(final ResourceKey<CreativeModeTab> key, final CreativeModeTab group, Item... items) {
         if (BuiltInRegistries.CREATIVE_MODE_TAB.containsKey(key)) {
-            return BuiltInRegistries.CREATIVE_MODE_TAB.get(key);
+            return BuiltInRegistries.CREATIVE_MODE_TAB.getValue(key);
         }
 
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, key, group);
-        ItemGroupEvents.modifyEntriesEvent(key).register(itemGroup ->
+        CreativeModeTabEvents.modifyOutputEvent(key).register(itemGroup ->
         {
             for (Item item : items) {
                 itemGroup.accept(item.getDefaultInstance());

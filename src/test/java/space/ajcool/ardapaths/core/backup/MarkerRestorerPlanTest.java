@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.backup.dto.*;
+import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.List;
@@ -100,7 +101,7 @@ class MarkerRestorerPlanTest {
 
         assertEquals(1, planned.size());
         assertEquals(indexed.asLong(), planned.getFirst().packedPos());
-        assertEquals("kept", planned.getFirst().pathsNbt().getCompound("frodo").getCompound("shire").getString("proximity_message"));
+        assertEquals("kept", NbtEncodeable.getCompound(NbtEncodeable.getCompound(planned.getFirst().pathsNbt(), "frodo"), "shire").getStringOr("proximity_message", ""));
     }
 
     /**
@@ -177,9 +178,9 @@ class MarkerRestorerPlanTest {
 
         CompoundTag paths = planned.getFirst().pathsNbt();
 
-        assertEquals("shire", paths.getCompound("frodo").getCompound("shire").getString("proximity_message"));
-        assertEquals("moria", paths.getCompound("frodo").getCompound("moria").getString("proximity_message"));
-        assertEquals("rohan", paths.getCompound("aragorn").getCompound("rohan").getString("proximity_message"));
-        assertEquals("gondor", paths.getCompound("aragorn").getCompound("gondor").getString("proximity_message"));
+        assertEquals("shire", NbtEncodeable.getCompound(NbtEncodeable.getCompound(paths, "frodo"), "shire").getStringOr("proximity_message", ""));
+        assertEquals("moria", NbtEncodeable.getCompound(NbtEncodeable.getCompound(paths, "frodo"), "moria").getStringOr("proximity_message", ""));
+        assertEquals("rohan", NbtEncodeable.getCompound(NbtEncodeable.getCompound(paths, "aragorn"), "rohan").getStringOr("proximity_message", ""));
+        assertEquals("gondor", NbtEncodeable.getCompound(NbtEncodeable.getCompound(paths, "aragorn"), "gondor").getStringOr("proximity_message", ""));
     }
 }

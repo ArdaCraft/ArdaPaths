@@ -29,7 +29,6 @@ import space.ajcool.ardapaths.screens.widgets.TextWidget;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Screen for selecting and managing which path and chapter the player is currently following.
@@ -250,21 +249,17 @@ public class PathSelectionScreen extends ArdaPathsScreen {
      */
     private @NotNull Button initializeReturnToChapterStartButton(int center, int y) {
 
-        Button returnChapterStartButton = new Button(
-                center, y,
-                UI_ELEMENT_WIDTH,
-                UI_ELEMENT_HEIGHT,
-                Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start").getString()),
-                button ->
-                {
+        Button returnChapterStartButton = Button.builder(
+                        Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start").getString()),
+                        _ -> {
                     this.onClose();
                     if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
                         ProximityRenderer.clear();
                         Paths.gotoChapter(selectedChapterId);
                     }
-                },
-                Supplier::get
-        );
+                })
+                .bounds(center, y, UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
+                .build();
         returnChapterStartButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start_tooltip")));
 
         return returnChapterStartButton;
@@ -278,19 +273,15 @@ public class PathSelectionScreen extends ArdaPathsScreen {
      * @return the configured return to path button
      */
     private @NotNull Button initializeReturnToPathButton(int center, int y) {
-        Button returnToPathButton = new Button(
-                center, y,
-                UI_ELEMENT_WIDTH,
-                UI_ELEMENT_HEIGHT,
-                Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_path").getString()),
-                button ->
-                {
+        Button returnToPathButton = Button.builder(
+                        Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_path").getString()),
+                        _ -> {
                     ArdaPathsClient.callingForTeleport = true;
                     TrailRenderer.clearTrails();
                     this.onClose();
-                },
-                Supplier::get
-        );
+                })
+                .bounds(center, y, UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
+                .build();
         returnToPathButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_path_tooltip")));
 
         return returnToPathButton;
@@ -523,19 +514,14 @@ public class PathSelectionScreen extends ArdaPathsScreen {
      */
     private @NotNull Button initializeJournalButton(int x, int y) {
 
-        Button journalButton = new Button(
-                x, y,
-                UI_ELEMENT_WIDTH,
-                UI_ELEMENT_HEIGHT,
-                Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()),
-                button ->
-                {
+        Button journalButton = Button.builder(
+                        Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()),
+                        _ -> {
                     this.onClose();
-                    if (this.minecraft != null)
-                        this.minecraft.setScreen(new JournalScreen());
-                },
-                Supplier::get
-        );
+                            this.minecraft.setScreen(new JournalScreen());
+                })
+                .bounds(x, y, UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
+                .build();
         journalButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.journal.screen.title.tooltip")));
         journalButton.active = !Journal.getEntries().isEmpty();
 

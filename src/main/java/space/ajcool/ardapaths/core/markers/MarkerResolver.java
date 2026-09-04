@@ -8,6 +8,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import space.ajcool.ardapaths.core.backup.ChunkStorageAccess;
+import space.ajcool.ardapaths.core.backup.Minecraft261ChunkStorageAccess;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
@@ -29,6 +31,9 @@ public class MarkerResolver {
     /** Request-local cache of persisted chunk existence probes. */
     private final Map<Long, Boolean> chunkExistsCache = new HashMap<>();
 
+    /** Accessor for persisted chunk data without chunk generation. */
+    private final ChunkStorageAccess storageAccess;
+
     /**
      * Constructs a marker resolver with an empty per-request chunk cache.
      *
@@ -38,6 +43,7 @@ public class MarkerResolver {
     public MarkerResolver(ServerLevel world, String dimensionId) {
         this.world = world;
         this.dimensionId = dimensionId;
+        this.storageAccess = new Minecraft261ChunkStorageAccess();
     }
 
     /**
@@ -47,14 +53,14 @@ public class MarkerResolver {
      * @return resolved marker, or empty when absent or unreadable
      */
     public Optional<ResolvedMarker> resolve(BlockPos pos) {
-        ChunkPos chunkPos = new ChunkPos(pos);
-        boolean loaded = world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z);
+        ChunkPos chunkPos = ChunkPos.containing(pos);
+        boolean loaded = world.getChunkSource().hasChunk(chunkPos.x(), chunkPos.z());
         if (!loaded && !chunkExistsOnDisk(chunkPos)) {
             return Optional.empty();
         }
 
         if (!loaded) {
-            world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+            world.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL, true);
         }
 
         BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -74,8 +80,8 @@ public class MarkerResolver {
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean chunkExistsOnDisk(ChunkPos chunkPos) {
         try {
-            return chunkExistsCache.computeIfAbsent(chunkPos.toLong(), ignored ->
-                    world.getChunkSource().chunkMap.read(chunkPos).join().isPresent());
+            return chunkExistsCache.computeIfAbsent(chunkPos.pack(), ignored ->
+                    storageAccess.readChunkNbt(world, chunkPos).isPresent());
         } catch (CompletionException exception) {
             log.warn("Failed to probe ArdaPaths marker chunk {}", chunkPos, exception);
             return false;
@@ -89,11 +95,11 @@ public class MarkerResolver {
      * @return resolved markers present in the chunk
      */
     public List<ResolvedMarker> resolveChunkMarkers(ChunkPos chunkPos) {
-        if (!world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z) && !chunkExistsOnDisk(chunkPos)) {
+        if (!world.getChunkSource().hasChunk(chunkPos.x(), chunkPos.z()) && !chunkExistsOnDisk(chunkPos)) {
             return List.of();
         }
 
-        ChunkAccess chunk = world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+        ChunkAccess chunk = world.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL, true);
         if (!(chunk instanceof LevelChunk worldChunk)) {
             return List.of();
         }

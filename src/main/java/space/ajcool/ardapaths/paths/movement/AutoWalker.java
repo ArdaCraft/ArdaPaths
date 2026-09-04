@@ -44,6 +44,8 @@ public class AutoWalker {
 
     /** Whether auto-walk is currently controlling the player. */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private static boolean active = false;
 
     /** Ordered world-space trail followed by the active controller. */

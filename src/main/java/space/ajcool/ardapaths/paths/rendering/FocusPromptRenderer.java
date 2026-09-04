@@ -1,15 +1,14 @@
 package space.ajcool.ardapaths.paths.rendering;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.mc.items.ModItems;
@@ -25,7 +24,7 @@ public final class FocusPromptRenderer {
     /**
      * Texture used to indicate the focus action.
      */
-    private static final ResourceLocation EYE_ICON = ModConstants.modId("eye-icon");
+    private static final Identifier EYE_ICON = ModConstants.modId("eye-icon");
 
     /**
      * Drawn icon size in screen pixels.
@@ -48,7 +47,7 @@ public final class FocusPromptRenderer {
      * @param context      the drawing context used for HUD rendering
      * @param ignoredDelta the frame delta supplied by Fabric
      */
-    public static void render(GuiGraphics context, DeltaTracker ignoredDelta) {
+    public static void render(GuiGraphicsExtractor context, DeltaTracker ignoredDelta) {
         if (!FocusController.hasCandidate() || FocusController.isEngaged() || ArdaPathsClient.FOCUS_KEY == null) return;
 
         Minecraft client = Minecraft.getInstance();
@@ -62,12 +61,7 @@ public final class FocusPromptRenderer {
         int x = (context.guiWidth() - rowWidth) / 2;
         int y = context.guiHeight() - HOTBAR_CLEARANCE - ICON_TEXT_GAP - ICON_SIZE;
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-
         GuiTextures.blitSprite(context, EYE_ICON, x, y, ICON_SIZE, ICON_SIZE);
-        context.drawString(textRenderer, label, x + ICON_SIZE + ICON_TEXT_GAP, y + 2, 0xFFFFFF, true);
-
-        RenderSystem.disableBlend();
+        context.text(textRenderer, label, x + ICON_SIZE + ICON_TEXT_GAP, y + 2, 0xFFFFFFFF, true);
     }
 }

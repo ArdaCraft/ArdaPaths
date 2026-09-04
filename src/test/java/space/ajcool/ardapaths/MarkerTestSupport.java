@@ -1,7 +1,9 @@
 package space.ajcool.ardapaths;
 
 import com.google.gson.Gson;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.Bootstrap;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -15,7 +17,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 /**
- * Shared fixtures for Path Marker NBT tests that avoid Minecraft registry bootstrap.
+ * Shared fixtures for Path Marker NBT tests.
  */
 public final class MarkerTestSupport {
 
@@ -48,6 +50,8 @@ public final class MarkerTestSupport {
      * @throws ReflectiveOperationException if the private marker field cannot be initialized
      */
     public static PathMarkerBlockEntity markerWithPathData(BlockPos position) throws ReflectiveOperationException {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         PathMarkerBlockEntity marker = mock(PathMarkerBlockEntity.class, CALLS_REAL_METHODS);
         setField(marker, "pathData", new HashMap<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>>());
         doReturn(position).when(marker).getBlockPos();

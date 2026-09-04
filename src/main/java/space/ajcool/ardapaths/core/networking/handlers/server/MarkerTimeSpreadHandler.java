@@ -130,8 +130,8 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @return status result for the client editor
      */
     private MarkerTimeSpreadResponsePacket handleBatched(ServerPlayer player, MarkerTimeSpreadPacket packet, BackupJobRunner.ServerGate gate) {
-        ServerLevel world = gate.call(player::serverLevel);
-        String dimensionId = world.dimension().location().toString();
+        ServerLevel world = gate.call(player::level);
+        String dimensionId = world.dimension().identifier().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         BlockPos sourcePos = BlockPos.of(packet.sourcePackedPos());
         Optional<BlockPos> source = gate.call(() -> snapshot(resolver, sourcePos, packet.pathId(), packet.chapterId(), true));
@@ -222,7 +222,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
             }
 
             current = next.get();
-            batchChunks.add(new ChunkPos(nextPos).toLong());
+            batchChunks.add(ChunkPos.pack(nextPos));
             if (batchChunks.size() >= MarkerBatching.CHUNKS_PER_BATCH) {
                 batchChunks.clear();
                 MarkerBatching.paceBetweenBatches(markers.size(), MAX_HOPS);
@@ -296,7 +296,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
                     updates,
                     batchStart,
                     ignored -> "",
-                    update -> new ChunkPos(update.position()).toLong()
+                    update -> ChunkPos.pack(update.position())
             );
             int fromIndex = batchStart;
             applied += gate.call(() -> applySpreadBatch(resolver, updates.subList(fromIndex, toIndex), pathId, chapterId));

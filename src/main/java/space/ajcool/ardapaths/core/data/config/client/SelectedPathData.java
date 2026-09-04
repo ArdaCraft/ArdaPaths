@@ -13,6 +13,8 @@ public class SelectedPathData {
      * The ID of the currently selected path.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("path")
     private String pathId;
 
@@ -20,6 +22,8 @@ public class SelectedPathData {
      * The ID of the currently selected chapter within the path.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("chapter")
     private String chapterId;
 

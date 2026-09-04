@@ -1,8 +1,8 @@
 package space.ajcool.ardapaths.screens.marker;
 
 import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -10,6 +10,7 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.screens.MarkerEditScreen;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
+import space.ajcool.ardapaths.screens.widgets.StyledMultiLineEditBox;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 /**
@@ -21,7 +22,7 @@ public class GeneralTabSection implements MarkerEditorTab {
     private static final int INPUT_WIDTH = 40;
 
     /** Multi-line text editor for the proximity message. */
-    private MultiLineEditBox multiLineEditBox;
+    private StyledMultiLineEditBox multiLineEditBox;
 
     /** Input field for character reveal speed parameter. */
     private InputBoxWidget charRevealInput;
@@ -82,17 +83,15 @@ public class GeneralTabSection implements MarkerEditorTab {
      * @param y      the y coordinate of the edit box
      * @param state  mutable form state to update from edits
      */
-    @SuppressWarnings("resource")
     private void buildMultilineEditBox(MarkerEditScreen screen, int x, int y, MarkerFormState state) {
-        multiLineEditBox = screen.add(new MultiLineEditBox(
-                Client.mc().font,
-                x,
-                y,
-                180,
-                100,
-                Component.translatable("ardapaths.client.marker.configuration.screens.proximity_message_placeholder"),
-                Component.empty()
-        ));
+        multiLineEditBox = screen.add(StyledMultiLineEditBox.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(180)
+                .setHeight(100)
+                .setTitle(Component.empty())
+                .setPlaceholder(Component.translatable("ardapaths.client.marker.configuration.screens.proximity_message_placeholder"))
+                .build());
         multiLineEditBox.setCharacterLimit(1000);
         multiLineEditBox.setValueListener(state::setProximityMessage);
         multiLineEditBox.setValue(state.getProximityMessage());
@@ -143,7 +142,7 @@ public class GeneralTabSection implements MarkerEditorTab {
                 .setX(x)
                 .setY(y)
                 .setWidth(INPUT_WIDTH)
-                .setHeight(17)
+                .setHeight(20)
                 .setEnabled(true)
                 .setPlaceholder(Component.empty())
                 .setValidator(MarkerFields.rangeValidator(min, max))
@@ -224,14 +223,12 @@ public class GeneralTabSection implements MarkerEditorTab {
     /**
      * Delegates mouse release to the multi-line edit box.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button the mouse button code
+     * @param event released mouse button event
      * @return true if the multi-line edit box handled the release
      */
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return multiLineEditBox != null && multiLineEditBox.mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return multiLineEditBox != null && multiLineEditBox.mouseReleased(event);
     }
 
     /**

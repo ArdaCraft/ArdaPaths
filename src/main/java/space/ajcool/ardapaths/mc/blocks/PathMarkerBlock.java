@@ -22,6 +22,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
@@ -81,7 +82,7 @@ public class PathMarkerBlock extends BaseEntityBlock {
      * @return the action result (CONSUME if handled, PASS otherwise)
      */
     @Override
-    protected @NotNull InteractionResult useWithoutItem(BlockState blockState, Level level, BlockPos blockPos, Player player, BlockHitResult blockHitResult) {
+    protected @NotNull InteractionResult useWithoutItem(@NonNull BlockState blockState, Level level, @NonNull BlockPos blockPos, @NonNull Player player, @NonNull BlockHitResult blockHitResult) {
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
         if (selectedBlockEntity == null) return InteractionResult.PASS;
@@ -156,28 +157,28 @@ public class PathMarkerBlock extends BaseEntityBlock {
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
+    protected boolean propagatesSkylightDown(@NonNull BlockState blockState) {
         return true;
     }
 
     @Override
-    public @NotNull RenderShape getRenderShape(BlockState blockState) {
+    public @NotNull RenderShape getRenderShape(@NonNull BlockState blockState) {
         return RenderShape.INVISIBLE;
     }
 
     @Override
-    public float getShadeBrightness(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
+    public float getShadeBrightness(@NonNull BlockState blockState, @NonNull BlockGetter blockGetter, @NonNull BlockPos blockPos) {
         return 1.0F;
     }
 
     @Override
-    public @NotNull VoxelShape getShape(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos, CollisionContext collisionContext) {
+    public @NotNull VoxelShape getShape(@NonNull BlockState blockState, @NonNull BlockGetter blockGetter, @NonNull BlockPos blockPos, CollisionContext collisionContext) {
         return collisionContext.isHoldingItem(ModItems.PATH_MARKER) ? Shapes.block() : Shapes.empty();
     }
 
     @Nullable
     @Override
-    public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
+    public BlockEntity newBlockEntity(@NonNull BlockPos blockPos, @NonNull BlockState blockState) {
         return new PathMarkerBlockEntity(blockPos, blockState);
     }
 }

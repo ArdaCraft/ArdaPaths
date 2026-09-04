@@ -19,6 +19,8 @@ public final class ArdaRegionsState {
      */
     @Setter
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private static volatile boolean displaying = false;
 
 }

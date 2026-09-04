@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
@@ -19,7 +19,7 @@ public record ChapterPlayerTeleportPacket(String pathId, String chapterId) imple
     /**
      * Network channel used for chapter-start teleport requests.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("chapter_player_teleport");
+    public static final Identifier CHANNEL = ModConstants.modId("chapter_player_teleport");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -44,7 +44,7 @@ public record ChapterPlayerTeleportPacket(String pathId, String chapterId) imple
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUtf(pathId);
         buf.writeUtf(chapterId);
         return buf;

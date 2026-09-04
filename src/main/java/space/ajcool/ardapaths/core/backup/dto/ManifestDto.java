@@ -12,6 +12,7 @@ import java.util.Map;
  * @param counts        the exported object counts
  * @param files         the per-file SHA-256 hashes keyed by relative path
  */
+@SuppressWarnings("unused")
 public record ManifestDto(
         @SerializedName("schema_version") int schemaVersion,
         @SerializedName("created") String created,

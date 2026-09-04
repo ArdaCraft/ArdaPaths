@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.conversions;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
-import space.ajcool.ardapaths.core.Fabric;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 
@@ -37,7 +37,7 @@ public class PathMarkerBlockEntityConverter {
             return oldNbt;
         }
 
-        List<PathData> paths = Fabric.isClient() ? ArdaPathsClient.CONFIG.getPaths() : ArdaPaths.CONFIG.getPaths();
+        List<PathData> paths = ArdaPaths.amITheServer() ? ArdaPaths.CONFIG.getPaths() : ArdaPathsClient.CONFIG.getPaths();
 
         if (!hasLegacyMarkerDataForConfiguredPaths(oldNbt, paths.size())) {
             return oldNbt;
@@ -53,8 +53,13 @@ public class PathMarkerBlockEntityConverter {
         for (PathData path : paths) {
             String legacyKey = "targetOffset-" + i;
             if (oldNbt.contains(legacyKey)) {
+                Tag targetTag = oldNbt.get(legacyKey);
+                if (targetTag == null) {
+                    i++;
+                    continue;
+                }
                 CompoundTag dataCompound = new CompoundTag();
-                dataCompound.put("target", oldNbt.get(legacyKey));
+                dataCompound.put("target", targetTag);
                 NbtEncodeable.putStringIfNotEmpty(dataCompound, "proximity_message", proximityMessage);
                 NbtEncodeable.putIntIfNonZero(dataCompound, "activation_range", activationRange);
 
@@ -88,7 +93,7 @@ public class PathMarkerBlockEntityConverter {
             return true;
         }
 
-        for (String key : oldNbt.getAllKeys()) {
+        for (String key : oldNbt.keySet()) {
             if (key.startsWith("targetOffset-")) {
                 return true;
             }

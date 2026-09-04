@@ -14,6 +14,8 @@ import space.ajcool.ardapaths.paths.Paths;
  */
 @Slf4j(topic = "ardapaths")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+// Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+@SuppressWarnings("unused")
 public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
     /**

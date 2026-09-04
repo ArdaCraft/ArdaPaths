@@ -15,6 +15,8 @@ import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
+import java.util.Set;
+
 /**
  * Handles player teleportation requests from the client.
  * Processes incoming {@link PlayerTeleportPacket} and teleports the player to the specified coordinates,
@@ -42,11 +44,11 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
 
         BlockPos destination = BlockPos.containing(packet.x(), packet.y(), packet.z());
         if (!isAllowedDestination(serverWorld, destination)) {
-            log.warn("Rejected teleport request from {} to unauthorized destination {} in {}", player.getStringUUID(), destination, serverWorld.dimension().location());
+            log.warn("Rejected teleport request from {} to unauthorized destination {} in {}", player.getStringUUID(), destination, serverWorld.dimension().identifier());
             return;
         }
 
-        player.teleportTo(serverWorld, packet.x(), packet.y(), packet.z(), player.getYRot(), player.getXRot());
+        player.teleportTo(serverWorld, packet.x(), packet.y(), packet.z(), Set.of(), player.getYRot(), player.getXRot(), true);
     }
 
     /**
@@ -59,7 +61,7 @@ public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPac
      */
     private ServerLevel resolveWorld(MinecraftServer server, ServerPlayer player, PlayerTeleportPacket packet) {
         if (packet.worldId() == null) {
-            return player.serverLevel();
+            return player.level();
         }
 
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, packet.worldId());

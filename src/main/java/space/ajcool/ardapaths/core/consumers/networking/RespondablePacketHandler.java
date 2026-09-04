@@ -47,12 +47,16 @@ public abstract class RespondablePacketHandler<T extends IRespondablePacket<T>, 
      * The channel identifier used for sending response packets back to the client.
      */
     @Getter
+    // Read by the packet codec at registration time; not accessible from a static entry point.
+    @SuppressWarnings("unused")
     private final CustomPacketPayload.Type<U> responseType;
 
     /**
      * Stream codec registered for response packets.
      */
     @Getter
+    // Read by the packet codec at registration time; not accessible from a static entry point.
+    @SuppressWarnings("unused")
     private final net.minecraft.network.codec.StreamCodec<net.minecraft.network.RegistryFriendlyByteBuf, U> responseCodec;
 
     /**

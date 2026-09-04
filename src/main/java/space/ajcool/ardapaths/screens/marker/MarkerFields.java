@@ -2,7 +2,7 @@ package space.ajcool.ardapaths.screens.marker;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import space.ajcool.ardapaths.core.data.GiveItemAction;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WarpTarget;
@@ -161,7 +161,7 @@ public final class MarkerFields {
         if (value.isEmpty()) return;
         if (GiveItemAction.isClear(value)) return;
 
-        ResourceLocation id = ResourceLocation.tryParse(value);
+        Identifier id = Identifier.tryParse(value);
         if (id != null && BuiltInRegistries.ITEM.containsKey(id)) return;
 
         throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.give_item.invalid").getString());

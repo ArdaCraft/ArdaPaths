@@ -10,7 +10,6 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import space.ajcool.ardapaths.api.ArdaPathsApi;
@@ -108,9 +107,9 @@ public class ArdaPaths implements ModInitializer {
             var itemsStack = player.getItemInHand(hand);
 
             if (!canUsePathMarkerItem(player, itemsStack))
-                return InteractionResultHolder.fail(itemsStack);
+                return InteractionResult.FAIL;
 
-            return InteractionResultHolder.pass(itemsStack);
+            return InteractionResult.PASS;
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->

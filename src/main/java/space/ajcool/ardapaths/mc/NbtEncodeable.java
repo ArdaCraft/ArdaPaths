@@ -41,7 +41,7 @@ public interface NbtEncodeable {
      * @return the nested compound, or an empty compound when the key is absent
      */
     static CompoundTag getCompound(CompoundTag nbt, String key) {
-        return nbt.getCompound(key);
+        return nbt.getCompoundOrEmpty(key);
     }
 
     /**
@@ -52,7 +52,7 @@ public interface NbtEncodeable {
      * @return the decoded position, or empty when no position exists
      */
     static Optional<BlockPos> getBlockPos(CompoundTag nbt, String key) {
-        return NbtUtils.readBlockPos(nbt, key);
+        return nbt.read(key, BlockPos.CODEC);
     }
 
     /**
@@ -64,7 +64,7 @@ public interface NbtEncodeable {
      */
     static void putBlockPosIfPresent(CompoundTag nbt, String key, @Nullable BlockPos pos) {
         if (pos != null) {
-            nbt.put(key, NbtUtils.writeBlockPos(pos));
+            nbt.store(key, BlockPos.CODEC, pos);
         }
     }
 
@@ -76,7 +76,7 @@ public interface NbtEncodeable {
      * @return the stored string, or an empty string when absent
      */
     static String getStringOrEmpty(CompoundTag nbt, String key) {
-        return nbt.get(key) instanceof StringTag ? nbt.getString(key) : "";
+        return nbt.getStringOr(key, "");
     }
 
     /**
@@ -99,7 +99,7 @@ public interface NbtEncodeable {
      * @return the stored integer, or the supplied default when absent
      */
     static int getIntOrDefault(CompoundTag nbt, String key, int defaultValue) {
-        return nbt.get(key) instanceof IntTag ? nbt.getInt(key) : defaultValue;
+        return nbt.getIntOr(key, defaultValue);
     }
 
     /**
@@ -111,7 +111,7 @@ public interface NbtEncodeable {
      * @return the stored boolean, or the supplied default when absent
      */
     static boolean getBooleanOrDefault(CompoundTag nbt, String key, boolean defaultValue) {
-        return nbt.get(key) instanceof ByteTag ? nbt.getBoolean(key) : defaultValue;
+        return nbt.getBooleanOr(key, defaultValue);
     }
 
     /**
@@ -123,7 +123,7 @@ public interface NbtEncodeable {
      * @return the stored long, or the supplied default when absent
      */
     static long getLongOrDefault(CompoundTag nbt, String key, long defaultValue) {
-        return nbt.get(key) instanceof LongTag ? nbt.getLong(key) : defaultValue;
+        return nbt.getLongOr(key, defaultValue);
     }
 
     /**

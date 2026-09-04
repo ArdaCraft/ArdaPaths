@@ -1,11 +1,13 @@
 package space.ajcool.ardapaths.screens.widgets;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A custom list widget for displaying journal entries with variable heights.
@@ -23,14 +25,13 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
      */
     public JournalListWidget(Minecraft client, int width, int top, int bottom, int itemHeight) {
         super(client, width, bottom - top, top, itemHeight);
-        setRenderHeader(false, 0);
     }
 
     /**
      * Position the scrollbar on the right side of the list.
      */
     @Override
-    protected int getScrollbarPosition() {
+    protected int scrollBarX() {
         return this.getX() + this.width - 6;
     }
 
@@ -56,12 +57,12 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
      * Calculate the maximum scroll position based on variable entry heights.
      */
     @Override
-    protected int getMaxPosition() {
+    protected int contentHeight() {
         int total = 0;
         for (int i = 0; i < this.getItemCount(); i++) {
-            total += this.getEntry(i).getHeight(getRowWidth());
+            total += this.children().get(i).getHeight(getRowWidth());
         }
-        return total + this.headerHeight;
+        return total;
     }
 
     /**
@@ -81,20 +82,24 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
      * @param delta   The delta time
      */
     @Override
-    protected void renderListItems(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    protected void extractListItems(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 
         int rowLeft = this.getRowLeft();
         int rowWidth = this.getRowWidth();
-        int currentY = this.getY() + 4 - (int) this.getScrollAmount();
+        int currentY = this.getY() + 4 - (int) this.scrollAmount();
 
         for (int i = 0; i < this.getItemCount(); i++) {
 
-            JournalListEntry entry = this.getEntry(i);
+            JournalListEntry entry = this.children().get(i);
             int entryHeight = entry.getHeight(rowWidth);
 
             if (currentY + entryHeight >= this.getY() && currentY <= this.getBottom()) {
-                entry.render(context, i, currentY, rowLeft, rowWidth, entryHeight,
-                        mouseX, mouseY, this.isMouseOver(mouseX, mouseY) && this.getEntryAtPosition(mouseX, mouseY) == entry, delta);
+                entry.setX(rowLeft);
+                entry.setY(currentY);
+                entry.setWidth(rowWidth);
+                entry.setHeight(entryHeight);
+                entry.extractContent(context, mouseX, mouseY,
+                        this.isMouseOver(mouseX, mouseY) && getJournalEntryAtPosition(mouseX, mouseY) == entry, delta);
             }
             currentY += entryHeight;
         }
@@ -104,13 +109,14 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
      * Handle mouse clicks to delegate to entries.
      * This is necessary because entries have variable heights.
      *
-     * @param mouseX The mouse x position
-     * @param mouseY The mouse y position
-     * @param button The mouse button
+     * @param event   The mouse button event
+     * @param doubled whether this click is a double-click
      * @return true if the click was handled by an entry, false otherwise.
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        double mouseX = event.x();
+        double mouseY = event.y();
 
         if (!this.isMouseOver(mouseX, mouseY)) {
             return false;
@@ -118,12 +124,12 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
 
         JournalListEntry entry = getJournalEntryAtPosition(mouseX, mouseY);
         if (entry != null) {
-            if (entry.mouseClicked(mouseX, mouseY, button)) {
+            if (entry.mouseClicked(event, doubled)) {
                 return true;
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubled);
     }
 
     /**
@@ -136,10 +142,10 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
     @SuppressWarnings("unused")
     private JournalListEntry getJournalEntryAtPosition(double x, double y) {
 
-        int currentY = this.getY() + 4 - (int) this.getScrollAmount();
+        int currentY = this.getY() + 4 - (int) this.scrollAmount();
 
         for (int i = 0; i < this.getItemCount(); i++) {
-            JournalListEntry entry = this.getEntry(i);
+            JournalListEntry entry = this.children().get(i);
             int entryHeight = entry.getHeight(getRowWidth());
             if (y >= currentY && y < currentY + entryHeight) {
                 return entry;
@@ -153,7 +159,7 @@ public class JournalListWidget extends AbstractSelectionList<JournalListEntry> {
      * Append narration information for accessibility.
      */
     @Override
-    protected void updateWidgetNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(@NonNull NarrationElementOutput builder) {
 
         JournalListEntry selected = this.getSelected();
 

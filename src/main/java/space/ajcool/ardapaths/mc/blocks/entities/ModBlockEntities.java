@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.mc.blocks.entities;
 
+import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -48,7 +49,7 @@ public class ModBlockEntities {
      */
     public static final BlockEntityType<PathMarkerBlockEntity> PATH_MARKER = register(
             PATH_MARKER_KEY,
-            BlockEntityType.Builder.of(PathMarkerBlockEntity::new, ModBlocks.PATH_MARKER).build(null)
+            FabricBlockEntityTypeBuilder.create(PathMarkerBlockEntity::new, ModBlocks.PATH_MARKER).build()
     );
 
 }

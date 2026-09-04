@@ -21,6 +21,8 @@ import java.util.Objects;
  * Manages waypoints displayed on the ArdaMaps for the next trail node in the current path.
  */
 @Slf4j(topic = "ardapaths")
+// Instantiated by the Fabric entrypoint loader via fabric.mod.json; not called directly.
+@SuppressWarnings("unused")
 public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider {
 
     /**
@@ -62,7 +64,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
 
             assert Client.mc().level != null;
 
-            var dimension = Client.mc().level.dimension().location().toString();
+            var dimension = Client.mc().level.dimension().identifier().toString();
 
             if (currentWaypoint != null)
                 api.getWaypointsApi().removeWaypoints(ArdaPaths.MOD_ID);

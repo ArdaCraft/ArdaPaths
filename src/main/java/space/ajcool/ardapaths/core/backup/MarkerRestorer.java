@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import space.ajcool.ardapaths.core.backup.dto.MarkerIndexDto;
@@ -96,10 +95,21 @@ public class MarkerRestorer {
 
         plannedMarkers.sort(Comparator
                 .comparing(PlannedMarker::dimensionId)
-                .thenComparingLong(marker -> ChunkPos.asLong(BlockPos.of(marker.packedPos())))
+                .thenComparingLong(marker -> packedChunkForBlock(marker.packedPos()))
                 .thenComparingInt(marker -> BlockPos.of(marker.packedPos()).getY()));
 
         return plannedMarkers;
+    }
+
+    /**
+     * Packs the chunk coordinate for a packed block position without initializing Minecraft chunk registries.
+     *
+     * @param packedBlockPos packed block position
+     * @return packed chunk coordinate
+     */
+    private static long packedChunkForBlock(long packedBlockPos) {
+        BlockPos pos = BlockPos.of(packedBlockPos);
+        return ((long) (pos.getX() >> 4) & 0xFFFFFFFFL) | (((long) (pos.getZ() >> 4) & 0xFFFFFFFFL) << 32);
     }
 
     /**
@@ -129,7 +139,7 @@ public class MarkerRestorer {
                     CompoundTag markerPathsNbt = dimensionMarkers.get(node.pos());
                     if (markerPathsNbt == null) continue;
 
-                    CompoundTag pathNbt = markerPathsNbt.getCompound(path.id());
+                    CompoundTag pathNbt = markerPathsNbt.getCompoundOrEmpty(path.id());
                     CompoundTag chapterNbt = toChapterNbt(chapter.id(), node);
                     pathNbt.put(chapter.id(), chapterNbt);
                     markerPathsNbt.put(path.id(), pathNbt);

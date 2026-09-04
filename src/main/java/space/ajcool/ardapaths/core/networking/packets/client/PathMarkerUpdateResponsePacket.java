@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.client;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
@@ -23,7 +23,7 @@ public record PathMarkerUpdateResponsePacket(UUID requestId,
                                              long packedPos) implements IRespondablePacket<PathMarkerUpdateResponsePacket> {
 
     /** Network channel used for marker update responses. */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("path_marker_update_response");
+    public static final Identifier CHANNEL = ModConstants.modId("path_marker_update_response");
 
     /** Custom payload type used for typed Fabric networking. */
     public static final CustomPacketPayload.Type<PathMarkerUpdateResponsePacket> TYPE = new CustomPacketPayload.Type<>(CHANNEL);
@@ -75,7 +75,7 @@ public record PathMarkerUpdateResponsePacket(UUID requestId,
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUUID(requestId);
         buf.writeEnum(status);
         buf.writeLong(packedPos);

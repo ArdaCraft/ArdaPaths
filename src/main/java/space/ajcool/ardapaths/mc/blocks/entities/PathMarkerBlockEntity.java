@@ -11,12 +11,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
@@ -31,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * Block entity for Path Marker blocks that stores trail configuration data.
@@ -45,6 +51,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * Allows a single marker to be part of multiple paths and chapters.
      */
     @Getter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     private Map<String, Map<String, ChapterNbtData>> pathData;
 
     /**
@@ -64,7 +72,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param world the world this marker belongs to
      */
     @Override
-    public void setLevel(Level world) {
+    public void setLevel(@NonNull Level world) {
         super.setLevel(world);
         if (world.isClientSide()) {
             Paths.addTickingMarker(this);
@@ -118,7 +126,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return the NBT compound
      */
     @Override
-    public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.@NonNull Provider provider) {
         return this.saveWithoutMetadata(provider);
     }
 
@@ -136,16 +144,12 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Read NBT data from a compound tag and apply it to the entity.
      *
-     * @param compoundTag The NBT compound tag
-     * @param provider    registry lookup provider for vanilla serialization
+     * @param input the value input supplied by vanilla world loading
      */
     @Override
-    protected void loadAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
-        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
-
-        super.loadAdditional(converted, provider);
-
-        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"));
+    protected void loadAdditional(@NonNull ValueInput input) {
+        super.loadAdditional(input);
+        this.loadPathData(input, false);
     }
 
     /**
@@ -173,7 +177,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
 
         Map<String, Map<String, ChapterNbtData>> loadedPathData = new HashMap<>();
 
-        for (String pathKey : nbt.getAllKeys()) {
+        for (String pathKey : nbt.keySet()) {
             PathData configPath = ArdaPaths.CONFIG == null ? null : ArdaPaths.CONFIG.getPath(pathKey);
 
             if (configPath == null && validate) {
@@ -189,7 +193,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
 
             var nbtEntry = NbtEncodeable.getCompound(nbt, pathKey);
 
-            for (String chapterKey : nbtEntry.getAllKeys()) {
+            for (String chapterKey : nbtEntry.keySet()) {
                 if (configPath != null && configPath.getChapter(chapterKey) == null && validate) {
                     log.warn("Refusing to apply marker NBT at {} with unknown chapter '{}:{}'", this.getBlockPos(), pathKey, chapterKey);
                     continue;
@@ -215,21 +219,72 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @param compoundTag The NBT compound tag
      */
     public void loadValidated(CompoundTag compoundTag) {
-        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
-
-        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"), true);
+        HolderLookup.Provider provider = HolderLookup.Provider.create(Stream.empty());
+        ValueInput input = TagValueInput.create(ProblemReporter.DISCARDING, provider, compoundTag);
+        this.loadPathData(input, true);
     }
 
     /**
      * Write NBT data to a compound tag.
      *
-     * @param compoundTag The NBT compound tag
-     * @param provider    registry lookup provider for vanilla serialization
+     * @param output the value output supplied by vanilla world saving
      */
     @Override
-    protected void saveAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
-        super.saveAdditional(compoundTag, provider);
-        this.toNbt(compoundTag);
+    protected void saveAdditional(@NonNull ValueOutput output) {
+        super.saveAdditional(output);
+        CompoundTag nbt = this.toNbt();
+        nbt.getCompound("paths").ifPresent(paths -> output.store("paths", CompoundTag.CODEC, paths));
+    }
+
+    /**
+     * Loads current or legacy marker path data from vanilla's value input abstraction.
+     *
+     * @param input    source of serialized marker data
+     * @param validate whether unknown server-config paths and chapters should be rejected
+     */
+    private void loadPathData(ValueInput input, boolean validate) {
+        CompoundTag loaded = input.read("paths", CompoundTag.CODEC)
+                .map(paths -> {
+                    CompoundTag current = new CompoundTag();
+                    current.put("paths", paths);
+                    return current;
+                })
+                .orElseGet(() -> readLegacyMarkerData(input));
+        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(loaded);
+        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"), validate);
+    }
+
+    /**
+     * Copies the finite legacy marker keys exposed by {@link ValueInput} into a raw tag for conversion.
+     *
+     * @param input source of legacy marker fields
+     * @return scratch NBT compound containing any discovered legacy marker fields
+     */
+    private CompoundTag readLegacyMarkerData(ValueInput input) {
+        CompoundTag legacy = new CompoundTag();
+        input.getString("proximityMessage").ifPresent(value -> legacy.putString("proximityMessage", value));
+        input.getInt("activationRange").ifPresent(value -> legacy.putInt("activationRange", value));
+
+        int pathCount = configuredPathCount();
+        for (int i = 0; i < pathCount; i++) {
+            String key = "targetOffset-" + i;
+            input.read(key, BlockPos.CODEC).ifPresent(position -> legacy.store(key, BlockPos.CODEC, position));
+        }
+
+        return legacy;
+    }
+
+    /**
+     * Counts configured paths for bounded legacy target-offset probing.
+     *
+     * @return number of paths currently configured on the active side
+     */
+    private int configuredPathCount() {
+        if (ArdaPaths.amITheServer()) {
+            return ArdaPaths.CONFIG == null ? 0 : ArdaPaths.CONFIG.getPaths().size();
+        }
+
+        return space.ajcool.ardapaths.ArdaPathsClient.CONFIG == null ? 0 : space.ajcool.ardapaths.ArdaPathsClient.CONFIG.getPaths().size();
     }
 
     /**
@@ -343,76 +398,104 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
          * The proximity message shown when the player enters this marker's activation range.
          */
         @NotNull
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private String proximityMessage;
 
         /**
          * The distance from this marker at which the proximity message becomes active.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private int activationRange;
 
         /**
          * The offset target used to render this marker's outgoing trail, or null when no target is set.
          */
         @Nullable
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private BlockPos target;
 
         /**
          * Absolute world position this marker asks the player to look at, or null when unset.
          */
         @Nullable
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private BlockPos lookAt;
 
         /**
          * The chapter ID this NBT entry belongs to.
          */
         @NotNull
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private String chapterId;
 
         /**
          * Whether this marker is configured as the start marker for its chapter.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private boolean isChapterStart;
 
         /**
          * Whether this marker should trigger the chapter title while following a trail.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private boolean isDisplayChapterTitleOnTrail;
 
         /**
          * Whether the rendered trail should rise above terrain instead of following direct block offsets.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private boolean displayAboveBlocks;
 
         /**
          * Persisted ordinal of the configured weather type, or {@link #UNSET} when unset.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private int weather;
 
         /**
          * Configured time of day in daytime ticks, or {@link #UNSET} when unset.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private int timeOfDay;
 
         /**
          * Distance in blocks over which the configured time of day transitions.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private int timeTransitionRange;
 
         /**
          * Server-executed teleport target triggered when a player reaches this marker.
          */
         @NotNull
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private String autoTeleportTarget;
 
         /**
          * Server-executed item grant triggered when a player reaches this marker.
          */
         @NotNull
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private String giveItem;
 
         /**
          * Packed proximity message animation values encoded with {@link space.ajcool.ardapaths.core.data.BitPacker}.
          */
+        // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+        @SuppressWarnings("unused")
         private long packedMessageData;
 
         private ChapterNbtData(CompoundTag nbt) {

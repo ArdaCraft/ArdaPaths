@@ -13,6 +13,8 @@ import space.ajcool.ardapaths.core.integration.ArdaRegionsState;
  * and updates the ArdaRegionsState accordingly.
  */
 @Slf4j(topic = "ardapaths")
+// Instantiated by the Fabric entrypoint loader via fabric.mod.json; not called directly.
+@SuppressWarnings("unused")
 public class ArdaRegionsConsumer implements ArdaRegionsApiEntrypoint {
 
     /**

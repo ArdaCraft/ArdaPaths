@@ -1,6 +1,7 @@
-accessWidener v1 named
+accessWidener v2 official
 accessible field net/minecraft/client/multiplayer/ClientLevel MARKER_PARTICLE_ITEMS Ljava/util/Set;
 mutable field net/minecraft/client/multiplayer/ClientLevel MARKER_PARTICLE_ITEMS Ljava/util/Set;
 accessible method net/minecraft/client/particle/GlowParticle <init> (Lnet/minecraft/client/multiplayer/ClientLevel;DDDDDDLnet/minecraft/client/particle/SpriteSet;)V
 accessible method net/minecraft/client/gui/components/Button <init> (IIIILnet/minecraft/network/chat/Component;Lnet/minecraft/client/gui/components/Button$OnPress;Lnet/minecraft/client/gui/components/Button$CreateNarration;)V
 accessible method net/minecraft/client/gui/components/AbstractSliderButton setValue (D)V
+accessible field net/minecraft/client/color/item/ItemTintSources ID_MAPPER Lnet/minecraft/util/ExtraCodecs$LateBoundIdMapper;

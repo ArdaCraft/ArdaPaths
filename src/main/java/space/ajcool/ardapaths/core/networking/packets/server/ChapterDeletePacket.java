@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
@@ -22,7 +22,7 @@ public record ChapterDeletePacket(
     /**
      * Network channel used for chapter deletion requests.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("path_chapter_delete");
+    public static final Identifier CHANNEL = ModConstants.modId("path_chapter_delete");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -47,7 +47,7 @@ public record ChapterDeletePacket(
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUtf(pathId);
         buf.writeUtf(chapterId);
         return buf;

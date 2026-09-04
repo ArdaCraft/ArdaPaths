@@ -552,7 +552,7 @@ public final class EnvironmentController {
         ClientLevel world = Client.world();
         appliedTime = world == null
                 ? 0.0D
-                : Math.floorMod(world.getDayTime(), DAY_TICKS);
+                : Math.floorMod(world.getOverworldClockTime(), DAY_TICKS);
         desiredTime = appliedTime;
         hasAppliedTime = true;
     }

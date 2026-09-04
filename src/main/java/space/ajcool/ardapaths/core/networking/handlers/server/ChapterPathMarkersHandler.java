@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -115,7 +115,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
 
         if (dimensionId == null) return Optional.empty();
 
-        ResourceKey<Level> worldKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(dimensionId));
+        ResourceKey<Level> worldKey = ResourceKey.create(Registries.DIMENSION, Identifier.parse(dimensionId));
 
         return Optional.of(new Anchor(worldKey, start));
     }
@@ -154,7 +154,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             return response(ChapterMarkersStatus.INVALID_DATA, List.of());
         }
 
-        String dimensionId = world.dimension().location().toString();
+        String dimensionId = world.dimension().identifier().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         Optional<ResolvedMarker> start = findNearestChapterStart(resolver, anchor.get().position(), packet.pathId(), packet.chapterId(), gate);
         if (start.isEmpty()) {
@@ -232,13 +232,13 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @return resolved markers inside the search cube
      */
     private List<ResolvedMarker> collectMarkersInCube(MarkerResolver resolver, BlockPos centre, int radius, BackupJobRunner.ServerGate gate) {
-        ChunkPos minChunk = new ChunkPos(centre.offset(-radius, 0, -radius));
-        ChunkPos maxChunk = new ChunkPos(centre.offset(radius, 0, radius));
+        ChunkPos minChunk = ChunkPos.containing(centre.offset(-radius, 0, -radius));
+        ChunkPos maxChunk = ChunkPos.containing(centre.offset(radius, 0, radius));
         List<ResolvedMarker> markers = new ArrayList<>();
         int inspectedChunks = 0;
 
-        for (int chunkX = minChunk.x; chunkX <= maxChunk.x; chunkX++) {
-            for (int chunkZ = minChunk.z; chunkZ <= maxChunk.z; chunkZ++) {
+        for (int chunkX = minChunk.x(); chunkX <= maxChunk.x(); chunkX++) {
+            for (int chunkZ = minChunk.z(); chunkZ <= maxChunk.z(); chunkZ++) {
                 ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
                 for (ResolvedMarker marker : readChunkCandidates(resolver, chunkPos, gate)) {
                     if (withinCube(centre, marker.position(), radius)) {
@@ -381,7 +381,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             }
 
             current = next.get();
-            batchChunks.add(new ChunkPos(nextPos).toLong());
+            batchChunks.add(ChunkPos.pack(nextPos));
             if (batchChunks.size() >= MarkerBatching.CHUNKS_PER_BATCH) {
                 batchChunks.clear();
                 MarkerBatching.paceBetweenBatches(markers.size(), MAX_HOPS);

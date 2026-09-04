@@ -1,11 +1,13 @@
 package space.ajcool.ardapaths.screens.widgets;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 
@@ -23,9 +25,9 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @param bottom     the bottom list boundary
      * @param itemHeight the fixed row height
      */
+    @SuppressWarnings("unused")
     public MarkerListWidget(Minecraft client, int width, int top, int bottom, int itemHeight) {
         super(client, width, bottom - top, top, itemHeight);
-        setRenderHeader(false, 0);
     }
 
     /**
@@ -47,8 +49,8 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @param delta   the partial tick
      */
     @Override
-    public void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.renderWidget(context, mouseX, mouseY, delta);
+    public void extractWidgetRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+        super.extractWidgetRenderState(context, mouseX, mouseY, delta);
 
         MarkerListEntry hovered = this.getHovered();
         if (hovered != null) {
@@ -62,7 +64,7 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @return the scrollbar x coordinate
      */
     @Override
-    protected int getScrollbarPosition() {
+    protected int scrollBarX() {
         return this.getX() + this.width - 6;
     }
 
@@ -72,8 +74,9 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @param markers          the entries to display
      * @param scrollToSelected whether to center the row for the marker being edited
      */
+    @SuppressWarnings("unused")
     public void setMarkers(List<MarkerListEntry> markers, boolean scrollToSelected) {
-        double scrollAmount = this.getScrollAmount();
+        double scrollAmount = this.scrollAmount();
         this.clearEntries();
 
         for (MarkerListEntry marker : markers) {
@@ -96,21 +99,33 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
     }
 
     /**
+     * Returns the current scroll offset for composite parent widgets.
+     *
+     * @return current scroll amount
+     */
+    @SuppressWarnings("unused")
+    public double getScrollAmount() {
+        return this.scrollAmount();
+    }
+
+    /**
      * Routes right-clicks through row hit-testing because the vanilla list only selects with left clicks.
      *
-     * @param mouseX mouse x coordinate
-     * @param mouseY mouse y coordinate
-     * @param button clicked mouse button
+     * @param event   clicked mouse button event
+     * @param doubled whether this click is a double-click
      * @return true when a row or the list consumes the click
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 1) {
             MarkerListEntry entry = this.getEntryAtPosition(mouseX, mouseY);
-            return entry != null && entry.mouseClicked(mouseX, mouseY, button);
+            return entry != null && entry.mouseClicked(event, doubled);
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubled);
     }
 
     /**
@@ -119,7 +134,7 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @param builder the narration builder to populate
      */
     @Override
-    protected void updateWidgetNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(@NonNull NarrationElementOutput builder) {
         MarkerListEntry selected = this.getSelected();
 
         if (selected != null)

@@ -30,7 +30,11 @@ public class ModItems {
      */
     public static final PathRevealerItem PATH_REVEALER = register(
             PATH_REVEALER_KEY,
-            new PathRevealerItem(new Item.Properties().stacksTo(1).fireResistant().rarity(Rarity.EPIC))
+            new PathRevealerItem(new Item.Properties()
+                    .setId(PATH_REVEALER_KEY)
+                    .stacksTo(1)
+                    .fireResistant()
+                    .rarity(Rarity.EPIC))
     );
 
     /**

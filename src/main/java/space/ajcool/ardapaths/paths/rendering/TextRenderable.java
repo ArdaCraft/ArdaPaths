@@ -1,7 +1,7 @@
 package space.ajcool.ardapaths.paths.rendering;
 
 import lombok.Getter;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Base class for text-based UI elements that can be rendered, animated, and managed.
@@ -18,12 +18,16 @@ public abstract class TextRenderable {
      * Indicates whether this renderable is currently visible on screen.
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     protected boolean showing;
 
     /**
      * Indicates whether this renderable has completed its lifecycle
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     protected boolean done;
 
     /**
@@ -42,7 +46,7 @@ public abstract class TextRenderable {
      * @param drawContext the drawing context used for rendering
      */
     @SuppressWarnings("unused")
-    public abstract void render(GuiGraphics drawContext);
+    public abstract void render(GuiGraphicsExtractor drawContext);
 
     /**
      * Checks if this renderable has finished its animation or display cycle.

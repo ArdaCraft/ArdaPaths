@@ -2,7 +2,7 @@ package space.ajcool.ardapaths.mc.particles;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
+import net.fabricmc.fabric.api.client.particle.v1.ParticleProviderRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -71,7 +71,7 @@ public class ModParticles {
      */
     @Environment(EnvType.CLIENT)
     public static void initClient() {
-        ParticleFactoryRegistry registry = ParticleFactoryRegistry.getInstance();
+        ParticleProviderRegistry registry = ParticleProviderRegistry.getInstance();
         registry.register(PATH, PathParticleProvider::new);
     }
 }

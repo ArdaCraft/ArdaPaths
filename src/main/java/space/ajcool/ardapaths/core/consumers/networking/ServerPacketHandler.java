@@ -24,7 +24,7 @@ public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandl
      * Constructs a ServerPacketHandler with a channel identifier and packet reader.
      *
      * @param type   the payload type for this packet handler
-     * @param reader function to deserialize packets from PacketByteBuf
+     * @param reader function to deserialize packets from a friendly byte buffer
      */
     public ServerPacketHandler(final net.minecraft.network.protocol.common.custom.CustomPacketPayload.Type<T> type, final Function<FriendlyByteBuf, T> reader) {
         super(type, IPacket.codec(reader));

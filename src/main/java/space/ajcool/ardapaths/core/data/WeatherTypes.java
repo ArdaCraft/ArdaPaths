@@ -18,6 +18,8 @@ public enum WeatherTypes {
 
     /** The display name for this weather type */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final String displayName;
 
     /**

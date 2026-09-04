@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.core.data;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Data class to store the last visited trail node information.
@@ -12,6 +12,6 @@ import net.minecraft.resources.ResourceLocation;
  * @param worldId           The identifier of the world where the trail node is located.
  */
 public record LastVisitedTrailNodeData(String selectedChapterId, int posX, int posY, int posZ,
-                                       ResourceLocation worldId) {
+                                       Identifier worldId) {
 
 }

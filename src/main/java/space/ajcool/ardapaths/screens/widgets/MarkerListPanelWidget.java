@@ -4,17 +4,19 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
@@ -29,6 +31,8 @@ import java.util.function.Consumer;
 /**
  * Composite marker navigation column for the marker editor.
  */
+// Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+@SuppressWarnings("unused")
 public class MarkerListPanelWidget implements Renderable, GuiEventListener, NarratableEntry {
 
     /**
@@ -54,52 +58,52 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     /**
      * Header color used while showing marker data stored on the local marker.
      */
-    private static final int HEADER_LOCAL_COLOR = 0xFFAA00;
+    private static final int HEADER_LOCAL_COLOR = 0xFFFFAA00;
 
     /**
      * Header color used while showing server-provided chapter marker data.
      */
-    private static final int HEADER_CHAPTER_COLOR = 0x55FF55;
+    private static final int HEADER_CHAPTER_COLOR = 0xFF55FF55;
 
     /**
      * Icon texture for an active weather marker filter.
      */
-    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("cloud-icon");
+    private static final Identifier CLOUD_ICON = ModConstants.modId("cloud-icon");
 
     /**
      * Icon texture for an inactive weather marker filter.
      */
-    private static final ResourceLocation CLOUD_ICON_OUTLINED = ModConstants.modId("cloud-icon-outlined");
+    private static final Identifier CLOUD_ICON_OUTLINED = ModConstants.modId("cloud-icon-outlined");
 
     /**
      * Icon texture for an active time marker filter.
      */
-    private static final ResourceLocation MOON_ICON = ModConstants.modId("moon-icon");
+    private static final Identifier MOON_ICON = ModConstants.modId("moon-icon");
 
     /**
      * Icon texture for an inactive time marker filter.
      */
-    private static final ResourceLocation MOON_ICON_OUTLINED = ModConstants.modId("moon-icon-outlined");
+    private static final Identifier MOON_ICON_OUTLINED = ModConstants.modId("moon-icon-outlined");
 
     /**
      * Icon texture for an active proximity text marker filter.
      */
-    private static final ResourceLocation TEXT_ICON = ModConstants.modId("text-icon");
+    private static final Identifier TEXT_ICON = ModConstants.modId("text-icon");
 
     /**
      * Icon texture for an inactive proximity text marker filter.
      */
-    private static final ResourceLocation TEXT_ICON_OUTLINED = ModConstants.modId("text-icon-outlined");
+    private static final Identifier TEXT_ICON_OUTLINED = ModConstants.modId("text-icon-outlined");
 
     /**
      * Icon texture for an active miscellaneous marker action filter.
      */
-    private static final ResourceLocation GEAR_ICON = ModConstants.modId("gear-icon");
+    private static final Identifier GEAR_ICON = ModConstants.modId("gear-icon");
 
     /**
      * Icon texture for an inactive miscellaneous marker action filter.
      */
-    private static final ResourceLocation GEAR_ICON_OUTLINED = ModConstants.modId("gear-icon-outlined");
+    private static final Identifier GEAR_ICON_OUTLINED = ModConstants.modId("gear-icon-outlined");
 
     /**
      * Whether the marker list hides markers without selected-chapter weather data.
@@ -181,6 +185,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int x;
 
     /**
@@ -188,6 +194,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int y;
 
     /**
@@ -195,6 +203,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int screenHeight;
 
     /**
@@ -202,6 +212,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int listBottom;
 
     /**
@@ -209,6 +221,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int dividerX;
 
     /**
@@ -216,6 +230,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Getter
     @Setter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private int dividerHeight;
 
     /**
@@ -244,6 +260,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @param onFiltersChanged callback fired after a filter toggle changes
      */
     @Builder(builderClassName = "MarkerListPanelBuilder", builderMethodName = "create", setterPrefix = "set")
+    // Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     public MarkerListPanelWidget(int x, int y, int screenHeight, int listBottom, int dividerX, int dividerHeight,
                                  Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
                                  Consumer<BlockPos> onRangeSelect,
@@ -644,13 +662,13 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @param delta   the partial tick delta
      */
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        header.render(context, mouseX, mouseY, delta);
-        weatherFilter.render(context, mouseX, mouseY, delta);
-        timeFilter.render(context, mouseX, mouseY, delta);
-        proximityTextFilter.render(context, mouseX, mouseY, delta);
-        miscFilter.render(context, mouseX, mouseY, delta);
-        markerList.render(context, mouseX, mouseY, delta);
+    public void extractRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+        header.extractRenderState(context, mouseX, mouseY, delta);
+        weatherFilter.extractRenderState(context, mouseX, mouseY, delta);
+        timeFilter.extractRenderState(context, mouseX, mouseY, delta);
+        proximityTextFilter.extractRenderState(context, mouseX, mouseY, delta);
+        miscFilter.extractRenderState(context, mouseX, mouseY, delta);
+        markerList.extractRenderState(context, mouseX, mouseY, delta);
 
         if (dividerHeight > 0) {
             context.fill(dividerX, y, dividerX + 1, y + dividerHeight, 0xFFFFFFFF);
@@ -660,52 +678,47 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     /**
      * Forwards mouse press handling to panel children.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button clicked mouse button
+     * @param event   clicked mouse button event
+     * @param doubled whether this click is a double-click
      * @return true when a child consumes the click
      */
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return header.mouseClicked(mouseX, mouseY, button) ||
-                weatherFilter.mouseClicked(mouseX, mouseY, button) ||
-                timeFilter.mouseClicked(mouseX, mouseY, button) ||
-                proximityTextFilter.mouseClicked(mouseX, mouseY, button) ||
-                miscFilter.mouseClicked(mouseX, mouseY, button) ||
-                markerList.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubled) {
+        return header.mouseClicked(event, doubled) ||
+                weatherFilter.mouseClicked(event, doubled) ||
+                timeFilter.mouseClicked(event, doubled) ||
+                proximityTextFilter.mouseClicked(event, doubled) ||
+                miscFilter.mouseClicked(event, doubled) ||
+                markerList.mouseClicked(event, doubled);
     }
 
     /**
      * Forwards mouse release handling to panel children.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button released mouse button
+     * @param event released mouse button event
      * @return true when a child consumes the release
      */
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return header.mouseReleased(mouseX, mouseY, button) ||
-                weatherFilter.mouseReleased(mouseX, mouseY, button) ||
-                timeFilter.mouseReleased(mouseX, mouseY, button) ||
-                proximityTextFilter.mouseReleased(mouseX, mouseY, button) ||
-                miscFilter.mouseReleased(mouseX, mouseY, button) ||
-                markerList.mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(@NonNull MouseButtonEvent event) {
+        return header.mouseReleased(event) ||
+                weatherFilter.mouseReleased(event) ||
+                timeFilter.mouseReleased(event) ||
+                proximityTextFilter.mouseReleased(event) ||
+                miscFilter.mouseReleased(event) ||
+                markerList.mouseReleased(event);
     }
 
     /**
      * Forwards mouse drag handling to panel children.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button dragged mouse button
+     * @param event  dragged mouse button event
      * @param deltaX cursor x delta
      * @param deltaY cursor y delta
      * @return true when a child consumes the drag
      */
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        return markerList.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    public boolean mouseDragged(@NonNull MouseButtonEvent event, double deltaX, double deltaY) {
+        return markerList.mouseDragged(event, deltaX, deltaY);
     }
 
     /**
@@ -776,7 +789,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @param builder narration builder receiving child narration
      */
     @Override
-    public void updateNarration(NarrationElementOutput builder) {
+    public void updateNarration(@NonNull NarrationElementOutput builder) {
         markerList.updateNarration(builder);
     }
 

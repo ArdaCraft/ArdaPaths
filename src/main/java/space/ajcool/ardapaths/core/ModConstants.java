@@ -1,6 +1,6 @@
 package space.ajcool.ardapaths.core;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import space.ajcool.ardapaths.ArdaPaths;
 
 /**
@@ -20,7 +20,7 @@ public final class ModConstants {
      * @param path resource path within the ArdaPaths namespace
      * @return namespaced resource identifier
      */
-    public static ResourceLocation modId(String path) {
-        return ResourceLocation.tryBuild(ArdaPaths.MOD_ID, path);
+    public static Identifier modId(String path) {
+        return Identifier.tryBuild(ArdaPaths.MOD_ID, path);
     }
 }

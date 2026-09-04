@@ -1,11 +1,11 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
@@ -24,7 +24,7 @@ public record PathMarkerUpdatePacket(UUID requestId, BlockPos position, Compound
     /**
      * Network channel used for marker NBT updates.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("path_marker_update");
+    public static final Identifier CHANNEL = ModConstants.modId("path_marker_update");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -77,7 +77,7 @@ public record PathMarkerUpdatePacket(UUID requestId, BlockPos position, Compound
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUUID(requestId);
         buf.writeBlockPos(position);
         buf.writeNbt(data);

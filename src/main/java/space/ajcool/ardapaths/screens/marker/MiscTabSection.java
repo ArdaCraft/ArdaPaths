@@ -69,7 +69,7 @@ public class MiscTabSection implements MarkerEditorTab {
                 .setX(inputX)
                 .setY(y)
                 .setWidth(INPUT_WIDTH)
-                .setHeight(17)
+                .setHeight(20)
                 .setEnabled(true)
                 .setPlaceholder(Component.translatable("ardapaths.client.marker.configuration.screens." + translationKeyPrefix + "_placeholder"))
                 .setValidator(validator)

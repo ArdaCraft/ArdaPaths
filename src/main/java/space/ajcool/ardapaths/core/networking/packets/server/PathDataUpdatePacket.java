@@ -1,9 +1,9 @@
 package space.ajcool.ardapaths.core.networking.packets.server;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
@@ -28,7 +28,7 @@ public record PathDataUpdatePacket(
     /**
      * Network channel used for path metadata updates.
      */
-    public static final ResourceLocation CHANNEL = ModConstants.modId("path_data_update_request");
+    public static final Identifier CHANNEL = ModConstants.modId("path_data_update_request");
 
     /**
      * Custom payload type used for typed Fabric networking.
@@ -56,7 +56,7 @@ public record PathDataUpdatePacket(
 
     @Override
     public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeUtf(id);
         buf.writeUtf(name);
         buf.writeInt(primaryColor);

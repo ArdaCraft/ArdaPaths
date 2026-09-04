@@ -23,7 +23,7 @@
         </module>
 
         <module name="JavadocVariable">
-            <property name="scope" value="private"/>
+            <property name="accessModifiers" value="public,protected,package,private"/>
             <property name="tokens" value="VARIABLE_DEF,ENUM_CONSTANT_DEF"/>
         </module>
     </module>

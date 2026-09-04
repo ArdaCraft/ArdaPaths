@@ -25,6 +25,7 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.mc.items.ModItems;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -73,7 +74,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
     @SuppressWarnings("resource")
     @Override
     protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, MarkerActionTriggerPacket packet, PacketSender sender) {
-        BlockEntity blockEntity = player.serverLevel().getBlockEntity(packet.markerPos());
+        BlockEntity blockEntity = player.level().getBlockEntity(packet.markerPos());
         if (!(blockEntity instanceof PathMarkerBlockEntity marker)) return;
 
         PathMarkerBlockEntity.ChapterNbtData chapterData = marker.getChapterData(packet.pathId(), packet.chapterId(), false);
@@ -122,13 +123,13 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
 
         BlockPos coordinates = WarpTarget.parseCoordinates(target);
         if (coordinates != null) {
-            player.teleportTo(player.serverLevel(), coordinates.getX() + 0.5D, coordinates.getY(), coordinates.getZ() + 0.5D, player.getYRot(), player.getXRot());
+            player.teleportTo(player.level(), coordinates.getX() + 0.5D, coordinates.getY(), coordinates.getZ() + 0.5D, Set.of(), player.getYRot(), player.getXRot(), true);
             return;
         }
 
         Runnable fallback = () -> {
             log.warn("Failed to resolve marker auto-teleport warp {} for player {}", target, player.getStringUUID());
-            player.displayClientMessage(Component.literal("Failed to teleport to marker target \"" + target + "\""), false);
+            player.sendSystemMessage(Component.literal("Failed to teleport to marker target \"" + target + "\""));
         };
 
         log.info("Attempting marker auto-teleport warp for player {} at {}", player.getStringUUID(), target);
@@ -268,7 +269,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
         if (storeInInventory(player, stack)) return;
 
         player.setItemInHand(hand, stack);
-        player.displayClientMessage(Component.translatable("ardapaths.client.marker.give_item.inventory_full", stack.getHoverName().getString()), false);
+        player.sendSystemMessage(Component.translatable("ardapaths.client.marker.give_item.inventory_full", stack.getHoverName().getString()));
     }
 
     /**
@@ -332,7 +333,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
      * @return the Pathfinder item
      */
     private Item pathfinderItem() {
-        return BuiltInRegistries.ITEM.get(ModConstants.modId(ModItems.PATH_REVEALER_ID));
+        return BuiltInRegistries.ITEM.getValue(ModConstants.modId(ModItems.PATH_REVEALER_ID));
     }
 
     /**
@@ -342,7 +343,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
      * @param itemId the configured item identifier that failed
      */
     private void failGiveItem(ServerPlayer player, String itemId) {
-        player.displayClientMessage(Component.translatable("ardapaths.client.marker.give_item.failed", itemId), false);
+        player.sendSystemMessage(Component.translatable("ardapaths.client.marker.give_item.failed", itemId));
     }
 
     /**

@@ -2,7 +2,6 @@ package space.ajcool.ardapaths.mc;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -46,7 +45,7 @@ class NbtEncodeableTest {
         CompoundTag nbt = new CompoundTag();
         BlockPos pos = new BlockPos(12, 64, -5);
         nbt.put("compound", new CompoundTag());
-        nbt.put("pos", NbtUtils.writeBlockPos(pos));
+        nbt.store("pos", BlockPos.CODEC, pos);
         nbt.putString("string", "value");
         nbt.putInt("int", 42);
         nbt.putBoolean("boolean", true);
@@ -86,17 +85,17 @@ class NbtEncodeableTest {
 
         assertEquals(Optional.of(pos), NbtEncodeable.getBlockPos(nbt, "present_pos"));
         assertFalse(nbt.contains("missing_pos"));
-        assertEquals("value", nbt.getString("string"));
+        assertEquals("value", nbt.getStringOr("string", ""));
         assertFalse(nbt.contains("empty_string"));
-        assertEquals(5, nbt.getInt("int"));
+        assertEquals(5, nbt.getIntOr("int", 0));
         assertFalse(nbt.contains("zero_int"));
-        assertEquals(9, nbt.getInt("custom_int"));
+        assertEquals(9, nbt.getIntOr("custom_int", 0));
         assertFalse(nbt.contains("default_int"));
-        assertTrue(nbt.getBoolean("true_bool"));
+        assertTrue(nbt.getBooleanOr("true_bool", false));
         assertFalse(nbt.contains("false_bool_as_true"));
-        assertFalse(nbt.getBoolean("false_bool"));
+        assertFalse(nbt.getBooleanOr("false_bool", true));
         assertFalse(nbt.contains("true_bool_as_false"));
-        assertEquals(10L, nbt.getLong("custom_long"));
+        assertEquals(10L, nbt.getLongOr("custom_long", 0L));
         assertFalse(nbt.contains("default_long"));
     }
 }

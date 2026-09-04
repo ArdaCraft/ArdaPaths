@@ -25,6 +25,8 @@ public class ServerConfig {
      * List of all paths available on this server.
      */
     @Getter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("paths")
     private final List<PathData> paths = new ArrayList<>();
 

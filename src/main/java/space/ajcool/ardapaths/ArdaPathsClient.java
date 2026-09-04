@@ -3,30 +3,30 @@ package space.ajcool.ardapaths;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.item.ItemTintSources;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import org.lwjgl.glfw.GLFW;
+import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.LastVisitedTrailNodeData;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
-import space.ajcool.ardapaths.core.data.config.shared.Color;
-import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
 import space.ajcool.ardapaths.mc.blocks.PathMarkerBlock;
 import space.ajcool.ardapaths.mc.items.ModItems;
+import space.ajcool.ardapaths.mc.items.SelectedPathTintSource;
 import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.movement.AutoWalker;
@@ -77,6 +77,11 @@ public class ArdaPathsClient implements ClientModInitializer {
     public static KeyMapping FOCUS_KEY;
 
     /**
+     * Controls menu category for ArdaPaths keybindings.
+     */
+    private static final KeyMapping.Category KEY_CATEGORY = KeyMapping.Category.register(ModConstants.modId("ardapaths"));
+
+    /**
      * Fabric client mod initialization entry point.
      * Initializes client-side systems including UI rendering, event listeners, and particle effects.
      */
@@ -90,30 +95,30 @@ public class ArdaPathsClient implements ClientModInitializer {
         ClientLevel.MARKER_PARTICLE_ITEMS = Set.copyOf(markerSet);
 
         ModParticles.initClient();
-        registerPathfinderColorProvider();
-        AUTO_WALK_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        registerPathfinderTintSource();
+        AUTO_WALK_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.ardapaths.auto_walk",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_NUM_LOCK,
-                "key.category.ardapaths"
+                KEY_CATEGORY
         ));
-        FOCUS_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        FOCUS_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.ardapaths.focus",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_LEFT_ALT,
-                "key.category.ardapaths"
+                KEY_CATEGORY
         ));
 
-        HudRenderCallback.EVENT.register(ProximityRenderer::render);
-        HudRenderCallback.EVENT.register(FocusPromptRenderer::render);
-        WorldRenderEvents.START.register(context ->
+        HudElementRegistry.addLast(ModConstants.modId("proximity"), ProximityRenderer::render);
+        HudElementRegistry.addLast(ModConstants.modId("focus_prompt"), FocusPromptRenderer::render);
+        LevelRenderEvents.END_EXTRACTION.register(context ->
         {
             FocusController.renderCameraFrame();
             AutoWalker.renderCameraFrame();
-            EnvironmentController.renderFrame(context.tickCounter().getGameTimeDeltaTicks());
+            EnvironmentController.renderFrame(context.deltaTracker().getGameTimeDeltaTicks());
         });
 
-        ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);
+        ClientTickEvents.END_LEVEL_TICK.register(TrailRenderer::render);
 
         ClientTickEvents.START_CLIENT_TICK.register(AutoWalker::tick);
 
@@ -133,7 +138,7 @@ public class ArdaPathsClient implements ClientModInitializer {
             FocusController.reset();
         });
 
-        ClientTickEvents.START_WORLD_TICK.register(level ->
+        ClientTickEvents.START_LEVEL_TICK.register(level ->
         {
             if (PathMarkerBlock.selectedBlockPosition != null && Minecraft.getInstance().player != null && !Minecraft.getInstance().player.getMainHandItem().is(ModItems.PATH_MARKER)) {
                 PathMarkerBlock.selectedBlockPosition = null;
@@ -145,7 +150,7 @@ public class ArdaPathsClient implements ClientModInitializer {
                 Minecraft.getInstance().player.sendSystemMessage(message);
 
             } else if (PathMarkerBlock.selectedBlockPosition != null) {
-                var random = level.random;
+                var random = level.getRandom();
                 level.addParticle(ParticleTypes.COMPOSTER, PathMarkerBlock.selectedBlockPosition.getX() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getY() + random.nextDouble(), PathMarkerBlock.selectedBlockPosition.getZ() + random.nextDouble(), 0.0, 0.0, 0.0);
             }
         });
@@ -199,16 +204,9 @@ public class ArdaPathsClient implements ClientModInitializer {
     }
 
     /**
-     * Registers the Pathfinder item colour provider once for the client process.
+     * Registers the Pathfinder item tint source used by its item definition.
      */
-    private void registerPathfinderColorProvider() {
-        ColorProviderRegistry.ITEM.register((itemStack, tintIndex) ->
-        {
-            PathData selectedPath = CONFIG.getSelectedPath();
-            if (selectedPath != null) {
-                return selectedPath.getPrimaryColor().asHex();
-            }
-            return Color.fromRgb(100, 100, 100).asHex();
-        }, ModItems.PATH_REVEALER);
+    private void registerPathfinderTintSource() {
+        ItemTintSources.ID_MAPPER.put(ModConstants.modId("selected_path"), SelectedPathTintSource.MAP_CODEC);
     }
 }

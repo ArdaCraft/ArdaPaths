@@ -36,7 +36,7 @@ public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartU
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
         final BlockPos start = packet.position();
-        final String dimension = player.serverLevel().dimension().location().toString();
+        final String dimension = player.level().dimension().identifier().toString();
         ArdaPaths.CONFIG.setChapterStart(pathId, chapterId, PositionData.fromBlockPos(start), dimension);
         ArdaPaths.CONFIG_MANAGER.save();
     }

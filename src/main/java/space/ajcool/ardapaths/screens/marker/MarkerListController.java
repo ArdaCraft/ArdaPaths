@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.Client;
@@ -316,14 +317,13 @@ public class MarkerListController {
     /**
      * Lets an open context menu consume a mouse click before the screen handles it.
      *
-     * @param mouseX mouse x coordinate
-     * @param mouseY mouse y coordinate
-     * @param button clicked mouse button
+     * @param event   clicked mouse button event
+     * @param doubled whether this click is a double-click
      * @return true when the click is consumed by context-menu handling
      */
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (contextMenu != null) {
-            if (contextMenu.mouseClicked(mouseX, mouseY, button)) {
+            if (contextMenu.mouseClicked(event, doubled)) {
                 return true;
             }
             closeContextMenu();

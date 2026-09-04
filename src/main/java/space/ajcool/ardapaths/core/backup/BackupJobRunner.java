@@ -415,11 +415,11 @@ public class BackupJobRunner {
         /**
          * Creates a successful launch result.
          *
-         * @param snapshot started job progress
+         * @param _snapshot started job progress
          * @return launch result
          */
-        public static JobStartResult started(ProgressSnapshot snapshot) {
-            return new JobStartResult(true, snapshot);
+        public static JobStartResult started(ProgressSnapshot _snapshot) {
+            return new JobStartResult(true, _snapshot);
         }
 
         /**

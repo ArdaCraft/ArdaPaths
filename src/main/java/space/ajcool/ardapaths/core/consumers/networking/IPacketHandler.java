@@ -3,7 +3,7 @@ package space.ajcool.ardapaths.core.consumers.networking;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Base interface for packet handlers that process network packets.
@@ -16,7 +16,7 @@ public interface IPacketHandler {
      * @return the channel identifier
      */
     @SuppressWarnings("unused")
-    ResourceLocation getChannelId();
+    Identifier getChannelId();
 
     /**
      * Gets the registered custom payload type for this handler.

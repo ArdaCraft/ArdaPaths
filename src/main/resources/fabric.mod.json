@@ -28,12 +28,10 @@
       "space.ajcool.ardapaths.core.consumers.ArdaMapsConsumer"
     ]
   },
-  "mixins": [
-  ],
   "accessWidener": "arda-path.accesswidener",
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "fabric": "*",
+    "fabric-api": "*",
     "minecraft": "${minecraft_dependency}",
     "fabric-permissions-api-v0": "*"
   },

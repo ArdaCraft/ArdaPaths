@@ -67,6 +67,8 @@ public abstract class ConfigManager<T> {
      */
     @Setter
     @Getter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     protected T config;
 
     /**

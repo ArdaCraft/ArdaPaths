@@ -5,6 +5,7 @@ import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -64,7 +65,7 @@ public class PermissionHelper {
             return false;
         }
 
-        boolean result = Permissions.check(serverPlayer, ArdaPaths.MOD_EDIT_PERMISSION, 2);
+        boolean result = Permissions.check(serverPlayer, ArdaPaths.MOD_EDIT_PERMISSION, PermissionLevel.GAMEMASTERS);
         log.debug("Server check edit permission for player {} - {}", player.getName(), result);
 
         return result;

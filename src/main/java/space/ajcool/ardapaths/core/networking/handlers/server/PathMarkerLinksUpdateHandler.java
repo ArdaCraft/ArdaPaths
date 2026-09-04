@@ -40,8 +40,8 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     @Override
     protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerLinksUpdatePacket packet, PacketSender sender) {
         BackupJobRunner.submitMarkerWork(server, gate -> {
-            ServerLevel world = gate.call(player::serverLevel);
-            String dimensionId = world.dimension().location().toString();
+            ServerLevel world = gate.call(player::level);
+            String dimensionId = world.dimension().identifier().toString();
             MarkerResolver resolver = new MarkerResolver(world, dimensionId);
             BlockPos blockPos = packet.position();
 
@@ -120,14 +120,14 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     private Map<String, Map<String, CompoundTag>> getPaths(CompoundTag nbt) {
         Map<String, Map<String, CompoundTag>> result = new HashMap<>();
 
-        CompoundTag paths = nbt.getCompound("paths");
+        CompoundTag paths = nbt.getCompoundOrEmpty("paths");
 
-        for (String pathKey : paths.getAllKeys()) {
-            CompoundTag chapters = paths.getCompound(pathKey);
+        for (String pathKey : paths.keySet()) {
+            CompoundTag chapters = paths.getCompoundOrEmpty(pathKey);
 
             Map<String, CompoundTag> chapterMap = new HashMap<>();
-            for (String chapterKey : chapters.getAllKeys()) {
-                chapterMap.put(chapterKey, chapters.getCompound(chapterKey));
+            for (String chapterKey : chapters.keySet()) {
+                chapterMap.put(chapterKey, chapters.getCompoundOrEmpty(chapterKey));
             }
             result.put(pathKey, chapterMap);
         }

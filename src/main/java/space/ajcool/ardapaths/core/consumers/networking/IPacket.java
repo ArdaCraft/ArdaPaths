@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import java.util.function.Function;
 
 /**
- * Interface for network packets that can be built into a PacketByteBuf.
+ * Interface for network packets that can be built into a friendly byte buffer.
  * Implementations must expose a static {@code read(FriendlyByteBuf)} factory.
  */
 public interface IPacket extends CustomPacketPayload {
@@ -27,7 +27,7 @@ public interface IPacket extends CustomPacketPayload {
     /**
      * Build the packet.
      *
-     * @return the packet as a PacketByteBuf
+     * @return the packet as a friendly byte buffer
      */
     FriendlyByteBuf build();
 }

@@ -1,11 +1,10 @@
 package space.ajcool.ardapaths.paths.rendering.objects;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
@@ -36,6 +35,8 @@ public class AnimatedMessage extends TextRenderable {
      * The text content to display
      */
     @Getter
+    // Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
     private final String message;
 
     /**
@@ -136,7 +137,7 @@ public class AnimatedMessage extends TextRenderable {
      * @param drawContext the drawing context used for rendering
      */
     @Override
-    public void render(GuiGraphics drawContext) {
+    public void render(GuiGraphicsExtractor drawContext) {
         if (!showing) return;
 
         // Initialize start time on first render
@@ -152,12 +153,7 @@ public class AnimatedMessage extends TextRenderable {
         var width = client.getWindow().getGuiScaledWidth();
         var height = client.getWindow().getGuiScaledHeight();
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-
         renderAnimatedMessage(drawContext, elapsedMillis, font, width, height);
-
-        RenderSystem.disableBlend();
     }
 
     /**
@@ -169,7 +165,7 @@ public class AnimatedMessage extends TextRenderable {
      * @param width         screen width in scaled pixels
      * @param height        screen height in scaled pixels
      */
-    private void renderAnimatedMessage(GuiGraphics drawContext, long elapsedMillis, Font font, int width, int height) {
+    private void renderAnimatedMessage(GuiGraphicsExtractor drawContext, long elapsedMillis, Font font, int width, int height) {
 
         // Calculate number of characters to reveal
         int textLength = message.length() + 1;
@@ -221,7 +217,7 @@ public class AnimatedMessage extends TextRenderable {
             if (ArdaRegionsState.isDisplaying()) y += (int) ((height / 2f) + titleOffset);
             else y += (int) ((height - titleOffset) / 5);
 
-            drawContext.drawCenteredString(
+            drawContext.centeredText(
                     font,
                     lines.get(i),
                     width / 2,

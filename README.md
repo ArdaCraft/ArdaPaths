@@ -7,6 +7,13 @@ The mod is initially configured for use on ArdaCraft and with their recreation o
 
 Whether it's Frodo's perilous trek to Mount Doom or Aragorn's valiant march to reclaim his throne, each path can be meticulously plotted using the features in this mod.
 
+## Requirements
+
+- Minecraft 26.1.2
+- Fabric Loader 0.19.3 or newer
+- Fabric API 0.155.2+26.1.2 or a compatible newer 26.1.2 build
+- Java 25
+
 ## Blocks and Items
 
 ### Path Marker

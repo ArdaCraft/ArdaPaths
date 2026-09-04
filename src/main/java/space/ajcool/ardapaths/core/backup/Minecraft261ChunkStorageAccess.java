@@ -14,9 +14,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Minecraft 1.20.1 implementation of backup access to vanilla chunk storage.
+ * Minecraft 26.1 implementation of backup access to vanilla chunk storage.
  */
-public class Minecraft120ChunkStorageAccess implements ChunkStorageAccess {
+public class Minecraft261ChunkStorageAccess implements ChunkStorageAccess {
 
     /**
      * NBT query selecting the root chunk block entity list.
@@ -32,7 +32,7 @@ public class Minecraft120ChunkStorageAccess implements ChunkStorageAccess {
 
     @Override
     public void flushWorker(ServerLevel world) {
-        world.getChunkSource().chunkMap.flushWorker();
+        world.getChunkSource().chunkMap.synchronize(true).join();
     }
 
     @Override
@@ -49,6 +49,6 @@ public class Minecraft120ChunkStorageAccess implements ChunkStorageAccess {
 
     @Override
     public boolean isChunkLoaded(ServerLevel world, ChunkPos chunkPos) {
-        return world.getChunkSource().hasChunk(chunkPos.x, chunkPos.z);
+        return world.getChunkSource().hasChunk(chunkPos.x(), chunkPos.z());
     }
 }

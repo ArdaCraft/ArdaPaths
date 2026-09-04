@@ -2,11 +2,13 @@ package space.ajcool.ardapaths.screens.widgets;
 
 import lombok.Builder;
 import lombok.Setter;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.function.Consumer;
@@ -14,17 +16,19 @@ import java.util.function.Consumer;
 /**
  * Square icon button that toggles between active and inactive states.
  */
+// Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+@SuppressWarnings("unused")
 public class IconToggleWidget extends AbstractButton {
 
     /**
      * Texture displayed while the toggle is active.
      */
-    private final ResourceLocation activeTexture;
+    private final Identifier activeTexture;
 
     /**
      * Texture displayed while the toggle is inactive.
      */
-    private final ResourceLocation inactiveTexture;
+    private final Identifier inactiveTexture;
 
     /**
      * Callback invoked when the active state changes.
@@ -56,7 +60,9 @@ public class IconToggleWidget extends AbstractButton {
      * @param onChange        callback invoked when the active state changes
      */
     @Builder(builderClassName = "IconToggleBuilder", builderMethodName = "create", setterPrefix = "set")
-    public IconToggleWidget(int x, int y, int width, int height, ResourceLocation activeTexture, ResourceLocation inactiveTexture,
+    // Instantiated via screen/builder factory; IntelliJ entry-point analysis can't follow it.
+    @SuppressWarnings("unused")
+    public IconToggleWidget(int x, int y, int width, int height, Identifier activeTexture, Identifier inactiveTexture,
                             boolean active, boolean enabled, Consumer<Boolean> onChange) {
         super(x, y, width, height, Component.empty());
         this.activeTexture = activeTexture;
@@ -67,7 +73,7 @@ public class IconToggleWidget extends AbstractButton {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    protected void extractContents(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         int x = this.getX();
         int y = this.getY();
         int size = Math.min(this.width, this.height);
@@ -78,12 +84,12 @@ public class IconToggleWidget extends AbstractButton {
             context.fill(x, y, x + this.width, y + this.height, 0x33FFFFFF);
         }
 
-        ResourceLocation texture = active ? activeTexture : inactiveTexture;
+        Identifier texture = active ? activeTexture : inactiveTexture;
         GuiTextures.blitSprite(context, texture, x, y, size, size);
     }
 
     @Override
-    public void onPress() {
+    public void onPress(@NonNull InputWithModifiers input) {
         if (!enabled) {
             return;
         }
@@ -95,7 +101,7 @@ public class IconToggleWidget extends AbstractButton {
     }
 
     @Override
-    protected void updateWidgetNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(@NonNull NarrationElementOutput builder) {
         this.defaultButtonNarrationText(builder);
     }
 }

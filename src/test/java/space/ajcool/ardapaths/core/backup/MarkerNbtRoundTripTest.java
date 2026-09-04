@@ -12,16 +12,21 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Integrity tests for the backup exporter and restorer marker NBT contract.
  */
+// Instantiated and invoked by the JUnit test runner via reflection.
+@SuppressWarnings("unused")
 class MarkerNbtRoundTripTest {
 
     /**
      * Verifies exported nodes restore to the same chapter compound written by marker NBT.
      */
     @Test
+    // Instantiated and invoked by the JUnit test runner via reflection.
+    @SuppressWarnings("unused")
     void exportedNodeRestoresEquivalentChapterNbt() {
         BlockPos markerPosition = new BlockPos(-33, 70, 48);
         PathMarkerBlockEntity.ChapterNbtData original = PathMarkerBlockEntity.ChapterNbtData.empty("shire");
@@ -48,6 +53,7 @@ class MarkerNbtRoundTripTest {
         CompoundTag restored = new MarkerRestorer().toChapterNbt("shire", node.orElseThrow());
 
         assertEquals(original.toNbt(new CompoundTag()), restored);
+        assertNotNull(original.getTarget(), "target should be set in the test fixture");
         assertEquals(markerPosition.offset(original.getTarget()).asLong(), node.orElseThrow().next());
         assertEquals("-1000 65 2048", node.orElseThrow().lookAt());
     }
@@ -56,6 +62,8 @@ class MarkerNbtRoundTripTest {
      * Verifies default-valued exported node fields restore to a compact chapter compound.
      */
     @Test
+    // Instantiated and invoked by the JUnit test runner via reflection.
+    @SuppressWarnings("unused")
     void defaultNodeFieldsRemainElidedAfterRoundTrip() {
         PathMarkerBlockEntity.ChapterNbtData original = PathMarkerBlockEntity.ChapterNbtData.empty("moria");
         original.setProximityMessage("Only non-default");

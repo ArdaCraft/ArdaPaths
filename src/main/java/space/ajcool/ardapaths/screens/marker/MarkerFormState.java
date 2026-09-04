@@ -14,6 +14,8 @@ import java.util.Objects;
  */
 @Getter
 @Setter
+// Accessed via Lombok-generated accessor; IntelliJ entry-point analysis can't follow it.
+@SuppressWarnings("unused")
 public class MarkerFormState {
 
     /** Whether this marker marks the start of a chapter. */

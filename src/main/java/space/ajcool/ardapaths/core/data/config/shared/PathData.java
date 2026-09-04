@@ -17,6 +17,8 @@ public class PathData {
     /**
      * Map of chapter IDs to chapter data objects, representing all chapters in this path.
      */
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("chapters")
     private final Map<String, ChapterData> chapters = new HashMap<>();
 
@@ -24,6 +26,8 @@ public class PathData {
      * The unique identifier for this path.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("id")
     private String id;
 
@@ -31,6 +35,8 @@ public class PathData {
      * The display name of this path.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("name")
     private String name;
 
@@ -38,6 +44,8 @@ public class PathData {
      * The primary colour used for rendering this path's trails.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("primaryColor")
     private Color primaryColor;
 
@@ -45,6 +53,8 @@ public class PathData {
      * The secondary colour used for rendering this path's trails.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("secondaryColor")
     private Color secondaryColor;
 
@@ -52,6 +62,8 @@ public class PathData {
      * The tertiary colour used for rendering this path's trails.
      */
     @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
     @SerializedName("tertiaryColor")
     private Color tertiaryColor;
 

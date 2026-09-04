@@ -6,19 +6,21 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.screens.Screens;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The Path Revealer item used to activate path rendering and trail visualization.
@@ -42,11 +44,11 @@ public class PathRevealerItem extends Item {
      * @param level           the world
      * @param player          the player using the item
      * @param interactionHand the hand used
-     * @return the action result with the item stack
+     * @return the action result
      */
     @Environment(EnvType.CLIENT)
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand interactionHand) {
+    public @NonNull InteractionResult use(@NonNull Level level, @NonNull Player player, @NonNull InteractionHand interactionHand) {
         openSelectionScreen(level);
 
         return super.use(level, player, interactionHand);
@@ -71,13 +73,16 @@ public class PathRevealerItem extends Item {
      *
      * @param itemStack   the item stack
      * @param context     the item tooltip context
-     * @param list        the tooltip lines to append to
+     * @param tooltipDisplay tooltip component visibility settings
+     * @param tooltip     tooltip line sink
      * @param tooltipFlag the tooltip context
      */
+    // Dynamic client-config tooltip still uses Minecraft's item override in 26.1.2.
+    @SuppressWarnings("deprecation")
     @Override
-    public void appendHoverText(ItemStack itemStack, TooltipContext context, List<Component> list, TooltipFlag tooltipFlag) {
-        super.appendHoverText(itemStack, context, list, tooltipFlag);
-        list.addAll(createTooltipLines());
+    public void appendHoverText(@NonNull ItemStack itemStack, @NonNull TooltipContext context, @NonNull TooltipDisplay tooltipDisplay, @NonNull Consumer<Component> tooltip, @NonNull TooltipFlag tooltipFlag) {
+        super.appendHoverText(itemStack, context, tooltipDisplay, tooltip, tooltipFlag);
+        createTooltipLines().forEach(tooltip);
     }
 
     /**

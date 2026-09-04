@@ -75,8 +75,8 @@ public class PathMarkerUpdateHandler extends RespondablePacketHandler<PathMarker
      * @return marker update response
      */
     private PathMarkerUpdateResponsePacket update(ServerPlayer player, PathMarkerUpdatePacket packet, BackupJobRunner.ServerGate gate) {
-        ServerLevel world = gate.call(player::serverLevel);
-        String dimensionId = world.dimension().location().toString();
+        ServerLevel world = gate.call(player::level);
+        String dimensionId = world.dimension().identifier().toString();
         MarkerResolver resolver = new MarkerResolver(world, dimensionId);
         BlockPos blockPos = packet.position();
         CompoundTag nbt = packet.data();

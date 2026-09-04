@@ -4,7 +4,7 @@
   "itemGroup.ardapaths.ardapaths": "Arda Paths",
   "key.ardapaths.auto_walk": "Toggle Auto-Walk",
   "key.ardapaths.focus": "Focus",
-  "key.category.ardapaths": "Arda Paths",
+  "key.categories.ardapaths": "Arda Paths",
   "ardapaths.client.focus.prompt": "%s to focus",
   "ardapaths.client.next.trail.waypoint": "Next Trail Waypoint",
   "ardapaths.client.message.trail_does_not_belong_to_chapter": "Last visited trail does not belong to the current chapter. Teleporting to chapter start instead...",

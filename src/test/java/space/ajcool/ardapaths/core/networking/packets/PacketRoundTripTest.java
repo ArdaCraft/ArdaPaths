@@ -3,7 +3,7 @@ package space.ajcool.ardapaths.core.networking.packets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
@@ -35,7 +35,7 @@ class PacketRoundTripTest {
      * Verifies every current packet record can be serialized and decoded back to equivalent data.
      */
     @Test
-    void packetsRoundTripThroughPacketByteBuf() {
+    void packetsRoundTripThroughFriendlyByteBuf() {
         CompoundTag markerNbt = markerNbt();
 
         assertRoundTrip(new ArdaPathsPermissionCheckResponsePacket(true), ArdaPathsPermissionCheckResponsePacket::read);
@@ -67,7 +67,7 @@ class PacketRoundTripTest {
         assertRoundTrip(new PathMarkerLinksUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerLinksUpdatePacket::read);
         assertRoundTrip(new PathMarkerRemoteDataPacket(987654321L), PathMarkerRemoteDataPacket::read);
         assertRoundTrip(new PathMarkerUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerUpdatePacket::read);
-        assertRoundTrip(new PlayerTeleportPacket(1.25D, 64.0D, -9.5D, ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")), PlayerTeleportPacket::read);
+        assertRoundTrip(new PlayerTeleportPacket(1.25D, 64.0D, -9.5D, Identifier.fromNamespaceAndPath("minecraft", "overworld")), PlayerTeleportPacket::read);
     }
 
     /**

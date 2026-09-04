@@ -6,6 +6,7 @@ import com.mojang.brigadier.context.CommandContext;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.permissions.PermissionLevel;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 
@@ -29,7 +30,7 @@ public class ArdaPathsCommand {
      */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("ardapaths")
-                .requires(source -> Permissions.check(source, ArdaPaths.MOD_EDIT_PERMISSION, 2))
+                .requires(source -> Permissions.check(source, ArdaPaths.MOD_EDIT_PERMISSION, PermissionLevel.GAMEMASTERS))
                 .then(literal("backup")
                         .executes(ArdaPathsCommand::backup))
                 .then(literal("restore")
@@ -37,7 +38,7 @@ public class ArdaPathsCommand {
                         .then(literal("hard")
                                 .executes(context -> restore(context, null, true)))
                         .then(argument("file", StringArgumentType.string())
-                                .suggests((context, builder) -> {
+                                .suggests((_, builder) -> {
                                     BACKUP_RUNNER.listBackupZipNames().forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
