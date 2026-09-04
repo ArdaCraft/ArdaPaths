@@ -18,4 +18,5 @@ public record ManifestDto(
         @SerializedName("counts") BackupCountsDto counts,
         @SerializedName("files") Map<String, String> files
 ) {
+
 }

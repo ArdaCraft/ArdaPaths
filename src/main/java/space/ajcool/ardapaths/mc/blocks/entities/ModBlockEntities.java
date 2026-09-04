@@ -13,6 +13,7 @@ import space.ajcool.ardapaths.mc.blocks.ModBlocks;
  * Handles registration of block entity types with the Minecraft registry.
  */
 public class ModBlockEntities {
+
     /**
      * Registry key for the Path Marker block entity type.
      */
@@ -24,8 +25,8 @@ public class ModBlockEntities {
     /**
      * Register a block entity type.
      *
-     * @param <T> the type of block entity type
-     * @param key the block entity type registry key
+     * @param <T>  the type of block entity type
+     * @param key  the block entity type registry key
      * @param type the block entity type to register
      * @return the registered block entity type
      */
@@ -35,14 +36,6 @@ public class ModBlockEntities {
     }
 
     /**
-     * The block entity type for Path Marker blocks, used to store and load marker configuration.
-     */
-    public static final BlockEntityType<PathMarkerBlockEntity> PATH_MARKER = register(
-            PATH_MARKER_KEY,
-            BlockEntityType.Builder.of(PathMarkerBlockEntity::new, ModBlocks.PATH_MARKER).build(null)
-    );
-
-    /**
      * Initializes the block entity type registry by forcing class loading.
      * This method is called during mod initialization.
      */
@@ -50,5 +43,12 @@ public class ModBlockEntities {
     public static void init() {
     }
 
+    /**
+     * The block entity type for Path Marker blocks, used to store and load marker configuration.
+     */
+    public static final BlockEntityType<PathMarkerBlockEntity> PATH_MARKER = register(
+            PATH_MARKER_KEY,
+            BlockEntityType.Builder.of(PathMarkerBlockEntity::new, ModBlocks.PATH_MARKER).build(null)
+    );
 
 }

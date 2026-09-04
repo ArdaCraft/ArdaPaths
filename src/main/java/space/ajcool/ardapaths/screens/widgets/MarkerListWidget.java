@@ -1,12 +1,13 @@
 package space.ajcool.ardapaths.screens.widgets;
 
-import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 /**
  * Scrollable list of loaded path markers available from the marker editor.
@@ -18,16 +19,13 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      *
      * @param client     the Minecraft client
      * @param width      the list width
-     * @param height     the screen height
      * @param top        the top list boundary
      * @param bottom     the bottom list boundary
      * @param itemHeight the fixed row height
      */
-    public MarkerListWidget(Minecraft client, int width, int height, int top, int bottom, int itemHeight) {
-        super(client, width, height, top, bottom, itemHeight);
-        setRenderBackground(false);
+    public MarkerListWidget(Minecraft client, int width, int top, int bottom, int itemHeight) {
+        super(client, width, bottom - top, top, itemHeight);
         setRenderHeader(false, 0);
-        setRenderTopAndBottom(false);
     }
 
     /**
@@ -43,14 +41,14 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
     /**
      * Renders the marker list, then draws any hovered row tooltip outside of the list clipping bounds.
      *
-     * @param context   the draw context
-     * @param mouseX    the mouse x coordinate
-     * @param mouseY    the mouse y coordinate
-     * @param delta     the partial tick
+     * @param context the draw context
+     * @param mouseX  the mouse x coordinate
+     * @param mouseY  the mouse y coordinate
+     * @param delta   the partial tick
      */
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
+    public void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        super.renderWidget(context, mouseX, mouseY, delta);
 
         MarkerListEntry hovered = this.getHovered();
         if (hovered != null) {
@@ -65,7 +63,7 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      */
     @Override
     protected int getScrollbarPosition() {
-        return this.x0 + this.width - 6;
+        return this.getX() + this.width - 6;
     }
 
     /**
@@ -121,7 +119,7 @@ public class MarkerListWidget extends AbstractSelectionList<MarkerListEntry> {
      * @param builder the narration builder to populate
      */
     @Override
-    public void updateNarration(NarrationElementOutput builder) {
+    protected void updateWidgetNarration(NarrationElementOutput builder) {
         MarkerListEntry selected = this.getSelected();
 
         if (selected != null)

@@ -9,6 +9,7 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
  * All screen opening logic goes through this class to ensure proper client-side checks.
  */
 public class Screens {
+
     /**
      * Opens the Path Marker editor screen for the given marker block entity.
      * Only executes on the client side.

@@ -15,6 +15,7 @@ import space.ajcool.ardapaths.core.ModConstants;
  * Handles block registration with the Minecraft registry.
  */
 public class ModBlocks {
+
     /**
      * The registry identifier for the Path Marker block.
      */
@@ -46,8 +47,8 @@ public class ModBlocks {
     /**
      * Register a block and its respective item.
      *
-     * @param <T> the type of block
-     * @param key the block's registry key
+     * @param <T>   the type of block
+     * @param key   the block's registry key
      * @param block the block to register
      * @return the registered block
      */

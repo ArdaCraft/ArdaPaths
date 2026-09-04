@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -18,9 +19,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.conversions.PathMarkerBlockEntityConverter;
-import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
@@ -38,6 +39,7 @@ import java.util.Objects;
  */
 @Slf4j(topic = "ardapaths")
 public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable {
+
     /**
      * Map structure: pathId → (chapterId → ChapterNbtData).
      * Allows a single marker to be part of multiple paths and chapters.
@@ -83,9 +85,9 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Create a trail using the path's target and the given color.
      *
-     * @param pathId the path ID to use when getting the target
+     * @param pathId    the path ID to use when getting the target
      * @param chapterId the chapter ID to use when getting the target
-     * @param colors the colors of the trail
+     * @param colors    the colors of the trail
      */
     public void createTrail(@NotNull String pathId, @NotNull String chapterId, @NotNull Color[] colors) {
         if (!this.pathData.containsKey(pathId)) return;
@@ -116,8 +118,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * @return the NBT compound
      */
     @Override
-    public @NotNull CompoundTag getUpdateTag() {
-        return this.saveWithoutMetadata();
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+        return this.saveWithoutMetadata(provider);
     }
 
     /**
@@ -135,27 +137,15 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
      * Read NBT data from a compound tag and apply it to the entity.
      *
      * @param compoundTag The NBT compound tag
+     * @param provider    registry lookup provider for vanilla serialization
      */
     @Override
-    public void load(CompoundTag compoundTag) {
+    protected void loadAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
         CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
 
-        super.load(converted);
+        super.loadAdditional(converted, provider);
 
         this.applyNbt(NbtEncodeable.getCompound(converted, "paths"));
-    }
-
-    /**
-     * Reads NBT data from a remote update and validates it against the server config.
-     *
-     * @param compoundTag The NBT compound tag
-     */
-    public void loadValidated(CompoundTag compoundTag) {
-        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
-
-        super.load(converted);
-
-        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"), true);
     }
 
     /**
@@ -171,7 +161,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Apply a paths NBT compound to the entity.
      *
-     * @param nbt the paths NBT compound
+     * @param nbt      the paths NBT compound
      * @param validate whether unknown server-config paths and chapters should be rejected
      */
     private void applyNbt(CompoundTag nbt, boolean validate) {
@@ -220,13 +210,25 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     }
 
     /**
-     * Write NBT data to a compound tag.
+     * Reads NBT data from a remote update and validates it against the server config.
      *
      * @param compoundTag The NBT compound tag
      */
+    public void loadValidated(CompoundTag compoundTag) {
+        CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(compoundTag);
+
+        this.applyNbt(NbtEncodeable.getCompound(converted, "paths"), true);
+    }
+
+    /**
+     * Write NBT data to a compound tag.
+     *
+     * @param compoundTag The NBT compound tag
+     * @param provider    registry lookup provider for vanilla serialization
+     */
     @Override
-    public void saveAdditional(CompoundTag compoundTag) {
-        super.saveAdditional(compoundTag);
+    protected void saveAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        super.saveAdditional(compoundTag, provider);
         this.toNbt(compoundTag);
     }
 
@@ -284,7 +286,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Get the NBT data for the given path and chapter IDs.
      *
-     * @param pathId the path ID
+     * @param pathId    the path ID
      * @param chapterId the chapter ID
      * @return the chapter NBT data, never null
      */
@@ -295,8 +297,8 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     /**
      * Get the NBT data for the given path and chapter IDs.
      *
-     * @param pathId the path ID
-     * @param chapterId the chapter ID
+     * @param pathId       the path ID
+     * @param chapterId    the chapter ID
      * @param createIfNull whether to create an empty NBT set if no data is found
      * @return the chapter NBT data, or null if not found and createIfNull is false
      */
@@ -326,6 +328,7 @@ public class PathMarkerBlockEntity extends BlockEntity implements NbtEncodeable 
     @Setter
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
     public static class ChapterNbtData implements NbtEncodeable {
+
         /**
          * Marker value used when optional chapter marker settings are unset.
          */

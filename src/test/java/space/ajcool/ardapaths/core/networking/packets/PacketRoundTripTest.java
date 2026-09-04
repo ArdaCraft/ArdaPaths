@@ -1,36 +1,19 @@
 package space.ajcool.ardapaths.core.networking.packets;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
 import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
 import space.ajcool.ardapaths.core.data.ChapterMarkersStatus;
 import space.ajcool.ardapaths.core.data.PathMarkerRemoteDataStatus;
+import space.ajcool.ardapaths.core.data.PathMarkerUpdateStatus;
 import space.ajcool.ardapaths.core.data.TimeSpreadStatus;
-import space.ajcool.ardapaths.core.networking.packets.client.ArdaPathsPermissionCheckResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.client.ChapterPathMarkersResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.client.MarkerBulkClearResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.client.MarkerTimeSpreadResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.client.PathDataResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerRemoteDataResponsePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterPathMarkersPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterPlayerTeleportPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.MarkerActionTriggerPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.MarkerBulkClearPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.MarkerTimeSpreadPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerLinksUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerRemoteDataPacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PathMarkerUpdatePacket;
-import space.ajcool.ardapaths.core.networking.packets.server.PlayerTeleportPacket;
+import space.ajcool.ardapaths.core.networking.packets.client.*;
+import space.ajcool.ardapaths.core.networking.packets.server.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Round-trip tests for packet build/read wire contracts.
  */
 class PacketRoundTripTest {
+
     /**
      * Representative request id used to verify respondable packet correlation.
      */
@@ -67,6 +51,7 @@ class PacketRoundTripTest {
         assertRoundTrip(new MarkerTimeSpreadResponsePacket(TimeSpreadStatus.OK, 3, null), MarkerTimeSpreadResponsePacket::read);
         assertRoundTrip(new PathDataResponsePacket("{\"paths\":[]}"), PathDataResponsePacket::read);
         assertRoundTrip(new PathMarkerRemoteDataResponsePacket(PathMarkerRemoteDataStatus.OK, 99L, markerNbt), PathMarkerRemoteDataResponsePacket::read);
+        assertRoundTrip(new PathMarkerUpdateResponsePacket(PathMarkerUpdateStatus.OK, 99L), PathMarkerUpdateResponsePacket::read);
         assertRoundTrip(new EmptyPacket(), EmptyPacket::read);
 
         assertRoundTrip(new ChapterDeletePacket("frodo", "shire"), ChapterDeletePacket::read);
@@ -82,7 +67,32 @@ class PacketRoundTripTest {
         assertRoundTrip(new PathMarkerLinksUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerLinksUpdatePacket::read);
         assertRoundTrip(new PathMarkerRemoteDataPacket(987654321L), PathMarkerRemoteDataPacket::read);
         assertRoundTrip(new PathMarkerUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerUpdatePacket::read);
-        assertRoundTrip(new PlayerTeleportPacket(1.25D, 64.0D, -9.5D, new ResourceLocation("minecraft", "overworld")), PlayerTeleportPacket::read);
+        assertRoundTrip(new PlayerTeleportPacket(1.25D, 64.0D, -9.5D, ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")), PlayerTeleportPacket::read);
+    }
+
+    /**
+     * Creates representative nested marker data for NBT-carrying packets.
+     *
+     * @return marker NBT payload
+     */
+    private static CompoundTag markerNbt() {
+        CompoundTag markerNbt = new CompoundTag();
+        CompoundTag chapterNbt = new CompoundTag();
+        chapterNbt.putString("proximity_message", "Look east");
+        chapterNbt.putInt("activation_range", 8);
+        markerNbt.put("default", chapterNbt);
+        return markerNbt;
+    }
+
+    /**
+     * Asserts one packet survives build/read with equal record data.
+     *
+     * @param packet packet instance to encode
+     * @param reader static packet reader
+     * @param <T>    packet type
+     */
+    private static <T extends IPacket> void assertRoundTrip(T packet, Function<FriendlyByteBuf, T> reader) {
+        assertEquals(packet, reader.apply(packet.build()));
     }
 
     /**
@@ -98,22 +108,13 @@ class PacketRoundTripTest {
         assertRespondableRoundTrip(new MarkerTimeSpreadResponsePacket(TimeSpreadStatus.OK, 1, new BlockPos(1, 2, 3)), MarkerTimeSpreadResponsePacket::read);
         assertRespondableRoundTrip(new PathDataResponsePacket("{\"paths\":[]}"), PathDataResponsePacket::read);
         assertRespondableRoundTrip(new PathMarkerRemoteDataResponsePacket(PathMarkerRemoteDataStatus.OK, 4L, markerNbt), PathMarkerRemoteDataResponsePacket::read);
+        assertRespondableRoundTrip(new PathMarkerUpdateResponsePacket(PathMarkerUpdateStatus.OK, 4L), PathMarkerUpdateResponsePacket::read);
         assertRespondableRoundTrip(new EmptyPacket(), EmptyPacket::read);
         assertRespondableRoundTrip(new ChapterPathMarkersPacket("frodo", "shire", 123L), ChapterPathMarkersPacket::read);
         assertRespondableRoundTrip(new MarkerBulkClearPacket(List.of(1L, 2L), "frodo", "shire", true, false), MarkerBulkClearPacket::read);
         assertRespondableRoundTrip(new MarkerTimeSpreadPacket(1L, 2L, 1000, 12000, "frodo", "shire", false), MarkerTimeSpreadPacket::read);
         assertRespondableRoundTrip(new PathMarkerRemoteDataPacket(5L), PathMarkerRemoteDataPacket::read);
-    }
-
-    /**
-     * Asserts one packet survives build/read with equal record data.
-     *
-     * @param packet packet instance to encode
-     * @param reader static packet reader
-     * @param <T> packet type
-     */
-    private static <T extends IPacket> void assertRoundTrip(T packet, Function<FriendlyByteBuf, T> reader) {
-        assertEquals(packet, reader.apply(packet.build()));
+        assertRespondableRoundTrip(new PathMarkerUpdatePacket(new BlockPos(4, 5, 6), markerNbt), PathMarkerUpdatePacket::read);
     }
 
     /**
@@ -121,26 +122,13 @@ class PacketRoundTripTest {
      *
      * @param packet packet instance to encode
      * @param reader static packet reader
-     * @param <T> packet type
+     * @param <T>    packet type
      */
+    @SuppressWarnings("unused")
     private static <T extends IRespondablePacket<T>> void assertRespondableRoundTrip(T packet, Function<FriendlyByteBuf, T> reader) {
         T correlatedPacket = packet.withRequestId(REQUEST_ID);
         T decodedPacket = reader.apply(correlatedPacket.build());
         assertEquals(correlatedPacket, decodedPacket);
         assertEquals(REQUEST_ID, decodedPacket.requestId());
-    }
-
-    /**
-     * Creates representative nested marker data for NBT-carrying packets.
-     *
-     * @return marker NBT payload
-     */
-    private static CompoundTag markerNbt() {
-        CompoundTag markerNbt = new CompoundTag();
-        CompoundTag chapterNbt = new CompoundTag();
-        chapterNbt.putString("proximity_message", "Look east");
-        chapterNbt.putInt("activation_range", 8);
-        markerNbt.put("default", chapterNbt);
-        return markerNbt;
     }
 }

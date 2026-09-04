@@ -14,4 +14,5 @@ public record PathColorDto(
         @SerializedName("secondary") int[] secondary,
         @SerializedName("tertiary") int[] tertiary
 ) {
+
 }

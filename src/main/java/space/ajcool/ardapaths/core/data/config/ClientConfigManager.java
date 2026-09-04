@@ -23,6 +23,7 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 @Slf4j(topic = "ardapaths")
 public class ClientConfigManager extends ConfigManager<ClientConfig> {
+
     /**
      * Constructs a ClientConfigManager and loads configuration from the given path.
      *
@@ -48,7 +49,7 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
             ServerConfigManager serverConfigManager = ArdaPaths.CONFIG_MANAGER;
             this.onPathData(serverConfigManager.getConfig().getPaths());
         } else {
-            PacketRegistry.PATH_DATA_REQUEST.send(new EmptyPacket(), response ->
+            PacketRegistry.PATH_DATA_REQUEST.send(new EmptyPacket(EmptyPacket.PATH_DATA_REQUEST_TYPE), response ->
             {
                 String json = response.json();
 
@@ -75,7 +76,7 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
         this.config.setPaths(paths);
 
         if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty()) {
-            this.config.setSelectedPath(paths.get(0).getId());
+            this.config.setSelectedPath(paths.getFirst().getId());
         }
 
         this.save();

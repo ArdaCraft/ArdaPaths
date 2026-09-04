@@ -6,14 +6,13 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests for screen layout measurement helpers.
  */
 class ScreenLayoutTest {
+
     /**
      * Verifies empty widget groups have no vertical span.
      */
@@ -31,6 +30,20 @@ class ScreenLayoutTest {
         AbstractWidget second = widgetAt(5, 8);
 
         assertEquals(25, ScreenLayout.contentHeight(List.of(first, second)));
+    }
+
+    /**
+     * Creates a mocked clickable widget with stable bounds.
+     *
+     * @param y      top edge
+     * @param height widget height
+     * @return mocked widget
+     */
+    private static AbstractWidget widgetAt(int y, int height) {
+        AbstractWidget widget = mock(AbstractWidget.class);
+        when(widget.getY()).thenReturn(y);
+        when(widget.getHeight()).thenReturn(height);
+        return widget;
     }
 
     /**
@@ -53,19 +66,5 @@ class ScreenLayoutTest {
 
         verify(first).setY(52);
         verify(second).setY(37);
-    }
-
-    /**
-     * Creates a mocked clickable widget with stable bounds.
-     *
-     * @param y top edge
-     * @param height widget height
-     * @return mocked widget
-     */
-    private static AbstractWidget widgetAt(int y, int height) {
-        AbstractWidget widget = mock(AbstractWidget.class);
-        when(widget.getY()).thenReturn(y);
-        when(widget.getHeight()).thenReturn(height);
-        return widget;
     }
 }

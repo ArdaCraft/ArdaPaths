@@ -1,16 +1,18 @@
 package space.ajcool.ardapaths.core.backup;
 
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Narrow access point for vanilla chunk storage operations used by backups.
  */
 public interface ChunkStorageAccess {
+
     /**
      * Finds the region file directory for a server world.
      *

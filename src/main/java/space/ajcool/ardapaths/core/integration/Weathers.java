@@ -49,24 +49,6 @@ public final class Weathers {
     private static volatile boolean invocationWarningLogged;
 
     /**
-     * @return true when a compatible weather provider is installed on this client
-     */
-    public static boolean isAvailable() {
-        Boolean currentAvailability = available;
-        if (currentAvailability == null) {
-            synchronized (Weathers.class) {
-                currentAvailability = available;
-                if (currentAvailability == null) {
-                    currentAvailability = resolveReflectionAccess();
-                    available = currentAvailability;
-                }
-            }
-        }
-
-        return currentAvailability;
-    }
-
-    /**
      * Sets the client-controlled weather through Weather Changer.
      *
      * @param type weather type to display on the client
@@ -91,35 +73,21 @@ public final class Weathers {
     }
 
     /**
-     * Restores Weather Changer to server-controlled weather rendering.
+     * @return true when a compatible weather provider is installed on this client
      */
-    public static void resetClientWeather() {
-        if (!isAvailable()) {
-            return;
+    public static boolean isAvailable() {
+        Boolean currentAvailability = available;
+        if (currentAvailability == null) {
+            synchronized (Weathers.class) {
+                currentAvailability = available;
+                if (currentAvailability == null) {
+                    currentAvailability = resolveReflectionAccess();
+                    available = currentAvailability;
+                }
+            }
         }
 
-        ReflectionAccess access = reflectionAccess;
-        if (access == null) {
-            return;
-        }
-
-        try {
-            setClientWeatherMode(access, "OFF");
-        } catch (ReflectiveOperationException | RuntimeException exception) {
-            logInvocationFailure(exception);
-        }
-    }
-
-    /**
-     * Applies a raw Weather Changer mode through the resolved reflective handle.
-     *
-     * @param access reflective handles for Weather Changer
-     * @param modeName Weather Changer enum constant name to apply
-     * @throws ReflectiveOperationException when the reflective invocation fails
-     */
-    private static void setClientWeatherMode(ReflectionAccess access, String modeName) throws ReflectiveOperationException {
-        Enum<?> mode = enumValue(access.wcMode(), modeName);
-        access.setMode().invoke(null, mode);
+        return currentAvailability;
     }
 
     /**
@@ -137,15 +105,37 @@ public final class Weathers {
     }
 
     /**
-     * Resolves a Weather Changer enum value from its runtime enum class.
+     * Applies a raw Weather Changer mode through the resolved reflective handle.
      *
-     * @param enumClass Weather Changer enum class
-     * @param name enum constant name to resolve
-     * @return enum value matching the supplied name
+     * @param access   reflective handles for Weather Changer
+     * @param modeName Weather Changer enum constant name to apply
+     * @throws ReflectiveOperationException when the reflective invocation fails
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Enum<?> enumValue(Class<?> enumClass, String name) {
-        return Enum.valueOf((Class<? extends Enum>) enumClass, name);
+    private static void setClientWeatherMode(ReflectionAccess access, String modeName) throws ReflectiveOperationException {
+        Enum<?> mode = enumValue(access.wcMode(), modeName);
+        access.setMode().invoke(null, mode);
+    }
+
+    /**
+     * Logs a weather invocation failure without repeating the warning every tick.
+     *
+     * @param exception failure raised while calling Weather Changer
+     */
+    private static void logInvocationFailure(Exception exception) {
+        if (invocationWarningLogged) {
+            return;
+        }
+
+        synchronized (Weathers.class) {
+            available = false;
+            reflectionAccess = null;
+            if (invocationWarningLogged) {
+                return;
+            }
+
+            invocationWarningLogged = true;
+            log.warn("[ArdaPaths] Weather Changer rejected a dynamic weather update. Dynamic weather changes will be disabled.", exception);
+        }
     }
 
     /**
@@ -173,24 +163,34 @@ public final class Weathers {
     }
 
     /**
-     * Logs a weather invocation failure without repeating the warning every tick.
+     * Resolves a Weather Changer enum value from its runtime enum class.
      *
-     * @param exception failure raised while calling Weather Changer
+     * @param enumClass Weather Changer enum class
+     * @param name      enum constant name to resolve
+     * @return enum value matching the supplied name
      */
-    private static void logInvocationFailure(Exception exception) {
-        if (invocationWarningLogged) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Enum<?> enumValue(Class<?> enumClass, String name) {
+        return Enum.valueOf((Class<? extends Enum>) enumClass, name);
+    }
+
+    /**
+     * Restores Weather Changer to server-controlled weather rendering.
+     */
+    public static void resetClientWeather() {
+        if (!isAvailable()) {
             return;
         }
 
-        synchronized (Weathers.class) {
-            available = false;
-            reflectionAccess = null;
-            if (invocationWarningLogged) {
-                return;
-            }
+        ReflectionAccess access = reflectionAccess;
+        if (access == null) {
+            return;
+        }
 
-            invocationWarningLogged = true;
-            log.warn("[ArdaPaths] Weather Changer rejected a dynamic weather update. Dynamic weather changes will be disabled.", exception);
+        try {
+            setClientWeatherMode(access, "OFF");
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            logInvocationFailure(exception);
         }
     }
 
@@ -198,8 +198,9 @@ public final class Weathers {
      * Reflective handles needed to drive Weather Changer without client commands.
      *
      * @param setMode method that applies a Weather Changer mode
-     * @param wcMode Weather Changer enum class used by {@code setMode}
+     * @param wcMode  Weather Changer enum class used by {@code setMode}
      */
     private record ReflectionAccess(Method setMode, Class<?> wcMode) {
+
     }
 }

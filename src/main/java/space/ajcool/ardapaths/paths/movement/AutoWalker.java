@@ -95,13 +95,6 @@ public class AutoWalker {
     }
 
     /**
-     * Requests the next camera frame begin recentering without waiting for the idle delay.
-     */
-    public static void requestImmediateRecenter() {
-        CAMERA.requestImmediateRecenter();
-    }
-
-    /**
      * Cancels auto-walk and clears the current trail cursor.
      *
      * @param reason the reason auto-walk is stopping
@@ -119,6 +112,131 @@ public class AutoWalker {
         ObstacleNavigator.reset();
         CAMERA.clear();
         stopHorizontalVelocity(Client.player());
+    }
+
+    /**
+     * Checks whether the player is holding the Pathfinder item.
+     *
+     * @param player the player to inspect
+     * @return true when either hand contains the Pathfinder
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private static boolean isHoldingPathfinder(LocalPlayer player) {
+        return player.getMainHandItem().is(ModItems.PATH_REVEALER) || player.getOffhandItem().is(ModItems.PATH_REVEALER);
+    }
+
+    /**
+     * Starts or retargets auto-walk for the selected path and chapter near the supplied position.
+     *
+     * @param pathId      the selected path ID
+     * @param chapterId   the selected chapter ID
+     * @param position    the player position to project onto the trail
+     * @param maxDistance the maximum horizontal distance allowed from the trail
+     * @return true when auto-walk has a usable trail cursor
+     */
+    private static boolean engage(String pathId, String chapterId, Vec3 position, double maxDistance) {
+        AutoWalkTrail nextTrail = AutoWalkTrail.build(pathId, chapterId, position);
+        AutoWalkTrail.Projection projection = nextTrail.nearestProjection(position);
+        if (projection == null || projection.distance() > maxDistance) return false;
+
+        trail = nextTrail;
+        ticksSinceRebuild = 0;
+        truncatedWaitTicks = 0;
+        segmentIndex = projection.segmentIndex();
+        segmentProgress = projection.segmentLength() * projection.segmentT();
+        activePathId = pathId;
+        activeChapterId = chapterId;
+        active = true;
+        ObstacleNavigator.reset();
+        CAMERA.reset(Client.player());
+        logEngaged(pathId, chapterId, nextTrail.nodes());
+        return true;
+    }
+
+    /**
+     * Logs the reason and current cursor state before auto-walk clears its state.
+     *
+     * @param reason the reason auto-walk is stopping
+     */
+    private static void logStop(StopReason reason) {
+        LocalPlayer player = Client.player();
+        int lastSegmentIndex = Math.max(0, trail.nodes().size() - 1);
+        if (player == null) {
+            log.info(
+                    "Auto-walk stopped: {} [position unavailable, path={}, chapter={}, segment={}/{}]",
+                    reason,
+                    activePathId,
+                    activeChapterId,
+                    segmentIndex,
+                    lastSegmentIndex
+            );
+            return;
+        }
+
+        log.info(
+                "Auto-walk stopped at ({}, {}, {}): {} [path={}, chapter={}, segment={}/{}]",
+                formatCoordinate(player.getX()),
+                formatCoordinate(player.getY()),
+                formatCoordinate(player.getZ()),
+                reason,
+                activePathId,
+                activeChapterId,
+                segmentIndex,
+                lastSegmentIndex
+        );
+    }
+
+    /**
+     * Removes any horizontal auto-walk velocity while preserving gravity and fall motion.
+     *
+     * @param player the player whose velocity should be cleared
+     */
+    private static void stopHorizontalVelocity(@Nullable Entity player) {
+        if (player == null) return;
+
+        Vec3 velocity = player.getDeltaMovement();
+        player.setDeltaMovement(0.0D, velocity.y, 0.0D);
+    }
+
+    /**
+     * Logs a successful auto-walk engagement with enough trail context to diagnose truncated marker chains.
+     *
+     * @param pathId     the path being followed
+     * @param chapterId  the chapter being followed
+     * @param trailNodes the ordered trail nodes available at engagement time
+     */
+    private static void logEngaged(String pathId, String chapterId, List<Vec3> trailNodes) {
+        Vec3 firstNode = trailNodes.getFirst();
+        Vec3 lastNode = trailNodes.getLast();
+        log.info(
+                "Auto-walk engaged on path={} chapter={}: {} nodes, trail start at ({}, {}, {}), trail end at ({}, {}, {})",
+                pathId,
+                chapterId,
+                trailNodes.size(),
+                formatCoordinate(firstNode.x),
+                formatCoordinate(firstNode.y),
+                formatCoordinate(firstNode.z),
+                formatCoordinate(lastNode.x),
+                formatCoordinate(lastNode.y),
+                formatCoordinate(lastNode.z)
+        );
+    }
+
+    /**
+     * Formats a world coordinate for compact diagnostic log output.
+     *
+     * @param coordinate the coordinate value
+     * @return the coordinate rounded to one decimal place
+     */
+    private static String formatCoordinate(double coordinate) {
+        return String.format(Locale.ROOT, "%.1f", coordinate);
+    }
+
+    /**
+     * Requests the next camera frame begin recentering without waiting for the idle delay.
+     */
+    public static void requestImmediateRecenter() {
+        CAMERA.requestImmediateRecenter();
     }
 
     /**
@@ -204,52 +322,6 @@ public class AutoWalker {
     }
 
     /**
-     * Smoothly rotates the camera toward the latest trail target once per rendered frame.
-     */
-    public static void renderCameraFrame() {
-        if (active) CAMERA.renderFrame();
-    }
-
-    /**
-     * Checks whether the player is holding the Pathfinder item.
-     *
-     * @param player the player to inspect
-     * @return true when either hand contains the Pathfinder
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private static boolean isHoldingPathfinder(LocalPlayer player) {
-        return player.getMainHandItem().is(ModItems.PATH_REVEALER) || player.getOffhandItem().is(ModItems.PATH_REVEALER);
-    }
-
-    /**
-     * Starts or retargets auto-walk for the selected path and chapter near the supplied position.
-     *
-     * @param pathId      the selected path ID
-     * @param chapterId   the selected chapter ID
-     * @param position    the player position to project onto the trail
-     * @param maxDistance the maximum horizontal distance allowed from the trail
-     * @return true when auto-walk has a usable trail cursor
-     */
-    private static boolean engage(String pathId, String chapterId, Vec3 position, double maxDistance) {
-        AutoWalkTrail nextTrail = AutoWalkTrail.build(pathId, chapterId, position);
-        AutoWalkTrail.Projection projection = nextTrail.nearestProjection(position);
-        if (projection == null || projection.distance() > maxDistance) return false;
-
-        trail = nextTrail;
-        ticksSinceRebuild = 0;
-        truncatedWaitTicks = 0;
-        segmentIndex = projection.segmentIndex();
-        segmentProgress = projection.segmentLength() * projection.segmentT();
-        activePathId = pathId;
-        activeChapterId = chapterId;
-        active = true;
-        ObstacleNavigator.reset();
-        CAMERA.reset(Client.player());
-        logEngaged(pathId, chapterId, nextTrail.nodes());
-        return true;
-    }
-
-    /**
      * Determines whether player input or selection state should stop auto-walk.
      * Movement key input is ignored while the camera is detached from the player, as in freecam.
      *
@@ -274,19 +346,6 @@ public class AutoWalker {
         }
 
         return null;
-    }
-
-    /**
-     * Checks whether the client view is detached from the player, as in freecam or while
-     * spectating another entity.
-     *
-     * @param client the current Minecraft client
-     * @param player the current client player
-     * @return true when the rendered camera is not the player's own
-     */
-    private static boolean isCameraDetached(Minecraft client, LocalPlayer player) {
-        Entity camera = client.getCameraEntity();
-        return camera != null && camera != player;
     }
 
     /**
@@ -316,82 +375,23 @@ public class AutoWalker {
     }
 
     /**
-     * Removes any horizontal auto-walk velocity while preserving gravity and fall motion.
+     * Checks whether the client view is detached from the player, as in freecam or while
+     * spectating another entity.
      *
-     * @param player the player whose velocity should be cleared
+     * @param client the current Minecraft client
+     * @param player the current client player
+     * @return true when the rendered camera is not the player's own
      */
-    private static void stopHorizontalVelocity(@Nullable Entity player) {
-        if (player == null) return;
-
-        Vec3 velocity = player.getDeltaMovement();
-        player.setDeltaMovement(0.0D, velocity.y, 0.0D);
+    private static boolean isCameraDetached(Minecraft client, LocalPlayer player) {
+        Entity camera = client.getCameraEntity();
+        return camera != null && camera != player;
     }
 
     /**
-     * Logs the reason and current cursor state before auto-walk clears its state.
-     *
-     * @param reason the reason auto-walk is stopping
+     * Smoothly rotates the camera toward the latest trail target once per rendered frame.
      */
-    private static void logStop(StopReason reason) {
-        LocalPlayer player = Client.player();
-        int lastSegmentIndex = Math.max(0, trail.nodes().size() - 1);
-        if (player == null) {
-            log.info(
-                    "Auto-walk stopped: {} [position unavailable, path={}, chapter={}, segment={}/{}]",
-                    reason,
-                    activePathId,
-                    activeChapterId,
-                    segmentIndex,
-                    lastSegmentIndex
-            );
-            return;
-        }
-
-        log.info(
-                "Auto-walk stopped at ({}, {}, {}): {} [path={}, chapter={}, segment={}/{}]",
-                formatCoordinate(player.getX()),
-                formatCoordinate(player.getY()),
-                formatCoordinate(player.getZ()),
-                reason,
-                activePathId,
-                activeChapterId,
-                segmentIndex,
-                lastSegmentIndex
-        );
-    }
-
-    /**
-     * Logs a successful auto-walk engagement with enough trail context to diagnose truncated marker chains.
-     *
-     * @param pathId     the path being followed
-     * @param chapterId  the chapter being followed
-     * @param trailNodes the ordered trail nodes available at engagement time
-     */
-    private static void logEngaged(String pathId, String chapterId, List<Vec3> trailNodes) {
-        Vec3 firstNode = trailNodes.get(0);
-        Vec3 lastNode = trailNodes.get(trailNodes.size() - 1);
-        log.info(
-                "Auto-walk engaged on path={} chapter={}: {} nodes, trail start at ({}, {}, {}), trail end at ({}, {}, {})",
-                pathId,
-                chapterId,
-                trailNodes.size(),
-                formatCoordinate(firstNode.x),
-                formatCoordinate(firstNode.y),
-                formatCoordinate(firstNode.z),
-                formatCoordinate(lastNode.x),
-                formatCoordinate(lastNode.y),
-                formatCoordinate(lastNode.z)
-        );
-    }
-
-    /**
-     * Formats a world coordinate for compact diagnostic log output.
-     *
-     * @param coordinate the coordinate value
-     * @return the coordinate rounded to one decimal place
-     */
-    private static String formatCoordinate(double coordinate) {
-        return String.format(Locale.ROOT, "%.1f", coordinate);
+    public static void renderCameraFrame() {
+        if (active) CAMERA.renderFrame();
     }
 
     /**

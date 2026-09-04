@@ -19,28 +19,35 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
 
     /** Color of the journal entry text */
     private final int color;
+
     /** Heading text displayed for this entry */
     private final Component heading;
+
     /** Description text displayed for this entry */
     private final Component description;
+
     /** Button widget for teleporting to the entry location */
     private final Button teleportButton;
+
     /** Minecraft client instance */
     private final Minecraft client;
+
     /** Wrapped description text lines */
     private List<FormattedCharSequence> wrappedDescription;
+
     /** Cached width value to avoid unnecessary recalculation */
     private int cachedWidth = -1;
+
     /** Calculated height of the entry */
     private int calculatedHeight;
 
     /**
      * Create a new JournalListEntry.
      *
-     * @param heading        The heading of the journal entry
+     * @param heading     The heading of the journal entry
      * @param description The description text of the journal entry
      * @param buttonText  The text for the teleport button (empty for no button)
-     * @param color        The color of the entry
+     * @param color       The color of the entry
      * @param onPress     The action to perform when the button is pressed
      */
     public JournalListEntry(Component heading, Component description, Component buttonText, int color, Button.OnPress onPress) {
@@ -61,44 +68,6 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
 
         // default minimum
         this.calculatedHeight = 32;
-    }
-
-    /**
-     * Get the height of this entry based on the given width.
-     *
-     * @param entryWidth The width available for the entry
-     * @return The calculated height of the entry
-     */
-    public int getHeight(int entryWidth) {
-
-        if (entryWidth != cachedWidth) {
-            cachedWidth = entryWidth;
-            recalculateHeight(entryWidth);
-        }
-        return calculatedHeight;
-    }
-
-    /**
-     * Recalculate the height of the entry based on the given width.
-     *
-     * @param entryWidth The width available for the entry
-     */
-    private void recalculateHeight(int entryWidth) {
-        Font textRenderer = client.font;
-        int textWidth = entryWidth - 80; // leave space for button
-
-        if (description != null) {
-            wrappedDescription = textRenderer.split(description, textWidth);
-        } else {
-            wrappedDescription = Collections.emptyList();
-        }
-
-        int lineHeight = textRenderer.lineHeight + 2;
-        int typeHeight = 14;
-        int descriptionHeight = wrappedDescription.size() * lineHeight;
-        int padding = 8;
-
-        calculatedHeight = Math.max(32, typeHeight + descriptionHeight + padding);
     }
 
     /**
@@ -145,11 +114,49 @@ public class JournalListEntry extends ObjectSelectionList.Entry<JournalListEntry
     }
 
     /**
+     * Get the height of this entry based on the given width.
+     *
+     * @param entryWidth The width available for the entry
+     * @return The calculated height of the entry
+     */
+    public int getHeight(int entryWidth) {
+
+        if (entryWidth != cachedWidth) {
+            cachedWidth = entryWidth;
+            recalculateHeight(entryWidth);
+        }
+        return calculatedHeight;
+    }
+
+    /**
+     * Recalculate the height of the entry based on the given width.
+     *
+     * @param entryWidth The width available for the entry
+     */
+    private void recalculateHeight(int entryWidth) {
+        Font textRenderer = client.font;
+        int textWidth = entryWidth - 80; // leave space for button
+
+        if (description != null) {
+            wrappedDescription = textRenderer.split(description, textWidth);
+        } else {
+            wrappedDescription = Collections.emptyList();
+        }
+
+        int lineHeight = textRenderer.lineHeight + 2;
+        int typeHeight = 14;
+        int descriptionHeight = wrappedDescription.size() * lineHeight;
+        int padding = 8;
+
+        calculatedHeight = Math.max(32, typeHeight + descriptionHeight + padding);
+    }
+
+    /**
      * Handle mouse clicks for the entry.
      *
      * @param mouseX The x position of the mouse
      * @param mouseY The y position of the mouse
-     * @param button  The mouse button
+     * @param button The mouse button
      * @return true if the click was handled, false otherwise
      */
     @Override

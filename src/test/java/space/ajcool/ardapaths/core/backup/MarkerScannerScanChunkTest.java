@@ -12,13 +12,14 @@ import space.ajcool.ardapaths.core.Fabric;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
 
 /**
  * Regression tests for extracting path marker data from chunk NBT.
  */
 class MarkerScannerScanChunkTest {
+
     /**
      * Verifies populated, empty, unrelated, and legacy block entities are separated correctly.
      */
@@ -42,7 +43,7 @@ class MarkerScannerScanChunkTest {
 
             assertEquals(2, markers.size());
             assertEquals(1, emptyMarkers.size());
-            assertEquals(new BlockPos(2, 64, 2), emptyMarkers.get(0).position());
+            assertEquals(new BlockPos(2, 64, 2), emptyMarkers.getFirst().position());
             assertEquals("current", markers.get(0).pathData().get("frodo").get("shire").getProximityMessage());
             assertEquals(new BlockPos(5, 6, 7), markers.get(1).pathData().get("frodo").get("default").getTarget());
         } finally {
@@ -106,7 +107,7 @@ class MarkerScannerScanChunkTest {
     /**
      * Creates common block entity coordinate fields.
      *
-     * @param id block entity identifier
+     * @param id       block entity identifier
      * @param position block entity position
      * @return block entity NBT
      */

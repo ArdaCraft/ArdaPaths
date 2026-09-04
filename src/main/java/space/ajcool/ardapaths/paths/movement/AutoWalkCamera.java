@@ -140,6 +140,18 @@ final class AutoWalkCamera {
     }
 
     /**
+     * Determines whether the current view differs from auto-walk's last accepted camera value.
+     *
+     * @param currentYaw   player's current yaw
+     * @param currentPitch player's current pitch
+     * @return true when the camera changed enough to count as mouse look
+     */
+    private boolean hasManualLookInput(float currentYaw, float currentPitch) {
+        return Math.abs(Mth.wrapDegrees(currentYaw - lastAppliedYaw)) > LOOK_INPUT_EPSILON
+                || Math.abs(currentPitch - lastAppliedPitch) > LOOK_INPUT_EPSILON;
+    }
+
+    /**
      * Resets free-look tracking so a new auto-walk engagement can steer immediately.
      *
      * @param player player whose current camera should be treated as the baseline
@@ -184,17 +196,5 @@ final class AutoWalkCamera {
     void requestImmediateRecenter() {
         lastLookInputTime = 0L;
         recenterStartMillis = 0L;
-    }
-
-    /**
-     * Determines whether the current view differs from auto-walk's last accepted camera value.
-     *
-     * @param currentYaw   player's current yaw
-     * @param currentPitch player's current pitch
-     * @return true when the camera changed enough to count as mouse look
-     */
-    private boolean hasManualLookInput(float currentYaw, float currentPitch) {
-        return Math.abs(Mth.wrapDegrees(currentYaw - lastAppliedYaw)) > LOOK_INPUT_EPSILON
-                || Math.abs(currentPitch - lastAppliedPitch) > LOOK_INPUT_EPSILON;
     }
 }

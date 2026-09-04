@@ -66,6 +66,54 @@ public final class FocusController {
     }
 
     /**
+     * Compares two nullable block positions by value.
+     *
+     * @param first  first position
+     * @param second second position
+     * @return true when both positions are non-null and equal
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private static boolean samePosition(@Nullable BlockPos first, @Nullable BlockPos second) {
+        return first != null && first.equals(second);
+    }
+
+    /**
+     * Begins restoring the camera to the view held when Focus was pressed.
+     */
+    private static void beginEaseOut() {
+        if (phase == Phase.IDLE || phase == Phase.EASING_OUT) return;
+
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
+        if (player == null) {
+            reset();
+            return;
+        }
+
+        phaseStartYaw = player.getYRot();
+        phaseStartPitch = player.getXRot();
+        phaseStartMillis = System.currentTimeMillis();
+        FRAME_CLOCK.reset();
+        phase = Phase.EASING_OUT;
+    }
+
+    /**
+     * Resets focus camera and input state after leaving a world or server.
+     */
+    public static void reset() {
+        phase = Phase.IDLE;
+        candidate = null;
+        focusTarget = null;
+        held = false;
+        phaseStartMillis = 0L;
+        phaseStartYaw = 0.0F;
+        phaseStartPitch = 0.0F;
+        returnYaw = 0.0F;
+        returnPitch = 0.0F;
+        FRAME_CLOCK.reset();
+    }
+
+    /**
      * Checks whether an in-range focus target is available.
      *
      * @return true when the player can press Focus for a look-at target
@@ -94,28 +142,35 @@ public final class FocusController {
     }
 
     /**
+     * Begins either an authored focus or an immediate auto-walk recenter.
+     */
+    private static void beginFocusOrRecenter() {
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
+        if (player == null) return;
+        if (client.screen != null || !player.isHolding(ModItems.PATH_REVEALER)) return;
+
+        if (candidate != null) {
+            returnYaw = player.getYRot();
+            returnPitch = player.getXRot();
+            focusTarget = candidate.immutable();
+            phaseStartYaw = returnYaw;
+            phaseStartPitch = returnPitch;
+            phaseStartMillis = System.currentTimeMillis();
+            FRAME_CLOCK.reset();
+            phase = Phase.EASING_IN;
+        } else if (AutoWalker.isActive()) {
+            AutoWalker.requestImmediateRecenter();
+        }
+    }
+
+    /**
      * Checks whether focus is currently controlling or restoring the camera.
      *
      * @return true for every state except idle
      */
     public static boolean isEngaged() {
         return phase != Phase.IDLE;
-    }
-
-    /**
-     * Resets focus camera and input state after leaving a world or server.
-     */
-    public static void reset() {
-        phase = Phase.IDLE;
-        candidate = null;
-        focusTarget = null;
-        held = false;
-        phaseStartMillis = 0L;
-        phaseStartYaw = 0.0F;
-        phaseStartPitch = 0.0F;
-        returnYaw = 0.0F;
-        returnPitch = 0.0F;
-        FRAME_CLOCK.reset();
     }
 
     /**
@@ -175,49 +230,6 @@ public final class FocusController {
     }
 
     /**
-     * Begins either an authored focus or an immediate auto-walk recenter.
-     */
-    private static void beginFocusOrRecenter() {
-        Minecraft client = Minecraft.getInstance();
-        LocalPlayer player = client.player;
-        if (player == null) return;
-        if (client.screen != null || !player.isHolding(ModItems.PATH_REVEALER)) return;
-
-        if (candidate != null) {
-            returnYaw = player.getYRot();
-            returnPitch = player.getXRot();
-            focusTarget = candidate.immutable();
-            phaseStartYaw = returnYaw;
-            phaseStartPitch = returnPitch;
-            phaseStartMillis = System.currentTimeMillis();
-            FRAME_CLOCK.reset();
-            phase = Phase.EASING_IN;
-        } else if (AutoWalker.isActive()) {
-            AutoWalker.requestImmediateRecenter();
-        }
-    }
-
-    /**
-     * Begins restoring the camera to the view held when Focus was pressed.
-     */
-    private static void beginEaseOut() {
-        if (phase == Phase.IDLE || phase == Phase.EASING_OUT) return;
-
-        Minecraft client = Minecraft.getInstance();
-        LocalPlayer player = client.player;
-        if (player == null) {
-            reset();
-            return;
-        }
-
-        phaseStartYaw = player.getYRot();
-        phaseStartPitch = player.getXRot();
-        phaseStartMillis = System.currentTimeMillis();
-        FRAME_CLOCK.reset();
-        phase = Phase.EASING_OUT;
-    }
-
-    /**
      * Checks whether current client state should end an active focus hold.
      *
      * @param client current Minecraft client
@@ -229,18 +241,6 @@ public final class FocusController {
                 || client.screen != null
                 || !player.isHolding(ModItems.PATH_REVEALER)
                 || !samePosition(candidate, focusTarget);
-    }
-
-    /**
-     * Compares two nullable block positions by value.
-     *
-     * @param first  first position
-     * @param second second position
-     * @return true when both positions are non-null and equal
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private static boolean samePosition(@Nullable BlockPos first, @Nullable BlockPos second) {
-        return first != null && first.equals(second);
     }
 
     /**
@@ -287,5 +287,6 @@ public final class FocusController {
      * @param pitch pitch angle in degrees
      */
     private record Aim(float yaw, float pitch) {
+
     }
 }

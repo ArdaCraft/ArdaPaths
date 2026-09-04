@@ -15,6 +15,7 @@ import java.util.Objects;
 @Getter
 @Setter
 public class MarkerFormState {
+
     /** Whether this marker marks the start of a chapter. */
     private boolean chapterStart;
 

@@ -2,7 +2,9 @@ package space.ajcool.ardapaths.core.networking.packets.client;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
 import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
@@ -19,11 +21,18 @@ import java.util.UUID;
  * @param status    status code describing the result
  * @param markers   ordered marker rows and optional chain-break separator
  */
-public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersStatus status, List<ChapterMarkerEntry> markers) implements IRespondablePacket<ChapterPathMarkersResponsePacket> {
+public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersStatus status,
+                                               List<ChapterMarkerEntry> markers) implements IRespondablePacket<ChapterPathMarkersResponsePacket> {
+
     /**
      * Network channel used for chapter marker chain responses.
      */
     public static final ResourceLocation CHANNEL = ModConstants.modId("chapter_path_markers_response");
+
+    /**
+     * Custom payload type used for typed Fabric networking.
+     */
+    public static final CustomPacketPayload.Type<ChapterPathMarkersResponsePacket> TYPE = new CustomPacketPayload.Type<>(CHANNEL);
 
     /**
      * Creates a chapter marker response before request correlation is assigned.
@@ -33,34 +42,6 @@ public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersSta
      */
     public ChapterPathMarkersResponsePacket(ChapterMarkersStatus status, List<ChapterMarkerEntry> markers) {
         this(IRespondablePacket.UNASSIGNED_REQUEST_ID, status, markers);
-    }
-
-    /**
-     * Creates a response with the supplied request id.
-     *
-     * @param requestId request correlation id
-     * @return packet carrying the supplied request id
-     */
-    @Override
-    public ChapterPathMarkersResponsePacket withRequestId(UUID requestId) {
-        return new ChapterPathMarkersResponsePacket(requestId, status, markers);
-    }
-
-    /**
-     * Serializes this response for server-to-client transmission.
-     *
-     * @return packet data buffer
-     */
-    @Override
-    public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
-        buf.writeUUID(requestId);
-        buf.writeEnum(status);
-        buf.writeInt(markers.size());
-        for (ChapterMarkerEntry marker : markers) {
-            writeMarker(buf, marker);
-        }
-        return buf;
     }
 
     /**
@@ -81,22 +62,6 @@ public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersSta
     }
 
     /**
-     * Writes one chapter marker row to a network buffer.
-     *
-     * @param buf    destination packet buffer
-     * @param marker marker row to write
-     */
-    private static void writeMarker(FriendlyByteBuf buf, ChapterMarkerEntry marker) {
-        buf.writeLong(marker.packedPos());
-        buf.writeInt(marker.timeOfDay());
-        buf.writeInt(marker.weather());
-        buf.writeUtf(marker.proximityMessage());
-        buf.writeBoolean(marker.hasMiscData());
-        buf.writeBoolean(marker.chapterStart());
-        buf.writeBoolean(marker.chainBreak());
-    }
-
-    /**
      * Reads one chapter marker row from a network buffer.
      *
      * @param buf source packet buffer
@@ -112,5 +77,54 @@ public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersSta
                 buf.readBoolean(),
                 buf.readBoolean()
         );
+    }
+
+    /**
+     * Creates a response with the supplied request id.
+     *
+     * @param requestId request correlation id
+     * @return packet carrying the supplied request id
+     */
+    @Override
+    public ChapterPathMarkersResponsePacket withRequestId(UUID requestId) {
+        return new ChapterPathMarkersResponsePacket(requestId, status, markers);
+    }
+
+    /**
+     * Gets the custom payload type for this packet.
+     *
+     * @return this packet's payload type
+     */
+    @Override
+    public CustomPacketPayload.@NotNull Type<ChapterPathMarkersResponsePacket> type() {
+        return TYPE;
+    }
+
+    @Override
+    public FriendlyByteBuf build() {
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeUUID(requestId);
+        buf.writeEnum(status);
+        buf.writeInt(markers.size());
+        for (ChapterMarkerEntry marker : markers) {
+            writeMarker(buf, marker);
+        }
+        return buf;
+    }
+
+    /**
+     * Writes one chapter marker row to a network buffer.
+     *
+     * @param buf    destination packet buffer
+     * @param marker marker row to write
+     */
+    private static void writeMarker(FriendlyByteBuf buf, ChapterMarkerEntry marker) {
+        buf.writeLong(marker.packedPos());
+        buf.writeInt(marker.timeOfDay());
+        buf.writeInt(marker.weather());
+        buf.writeUtf(marker.proximityMessage());
+        buf.writeBoolean(marker.hasMiscData());
+        buf.writeBoolean(marker.chapterStart());
+        buf.writeBoolean(marker.chainBreak());
     }
 }

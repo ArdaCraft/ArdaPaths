@@ -11,4 +11,5 @@ import net.minecraft.world.level.Level;
  * @param position block position nearest the warp destination
  */
 public record WarpLocation(ResourceKey<Level> worldKey, BlockPos position) {
+
 }

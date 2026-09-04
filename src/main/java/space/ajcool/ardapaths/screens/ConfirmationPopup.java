@@ -105,11 +105,16 @@ public class ConfirmationPopup extends ArdaPathsScreen {
         minecraft.setScreen(parentScreen);
     }
 
+    /**
+     * Renders the confirmation message after the modal blur pass has completed.
+     *
+     * @param context drawing context
+     * @param mouseX  current mouse x coordinate
+     * @param mouseY  current mouse y coordinate
+     * @param delta   partial tick delta
+     */
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        this.renderModBackground(context);
-
-        // Draw centered text
+    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
         context.drawCenteredString(
                 this.font,
                 this.message,
@@ -117,7 +122,5 @@ public class ConfirmationPopup extends ArdaPathsScreen {
                 this.height / 2 - 20,
                 0xFFFFFF
         );
-
-        super.render(context, mouseX, mouseY, delta);
     }
 }

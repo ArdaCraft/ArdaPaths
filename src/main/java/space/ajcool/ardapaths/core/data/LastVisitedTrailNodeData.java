@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
  * @param posZ              The Z coordinate of the last visited trail node.
  * @param worldId           The identifier of the world where the trail node is located.
  */
-public record LastVisitedTrailNodeData(String selectedChapterId, int posX, int posY, int posZ, ResourceLocation worldId) {
+public record LastVisitedTrailNodeData(String selectedChapterId, int posX, int posY, int posZ,
+                                       ResourceLocation worldId) {
 
 }

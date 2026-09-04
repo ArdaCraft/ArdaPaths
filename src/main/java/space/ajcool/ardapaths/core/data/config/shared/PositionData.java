@@ -1,4 +1,4 @@
-package space.ajcool.ardapaths.core.data.config.server;
+package space.ajcool.ardapaths.core.data.config.shared;
 
 import com.google.gson.annotations.SerializedName;
 import net.minecraft.core.BlockPos;
@@ -17,6 +17,7 @@ public record PositionData(@SerializedName("x") int x, @SerializedName("y") int 
      * Create a new {@link PositionData} from a block position.
      *
      * @param pos The block position
+     * @return Serializable representation of the block position
      */
     public static PositionData fromBlockPos(BlockPos pos) {
         return new PositionData(pos.getX(), pos.getY(), pos.getZ());

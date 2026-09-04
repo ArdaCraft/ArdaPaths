@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Serialization tests for path marker chapter NBT payloads.
  */
 class ChapterNbtDataTest {
+
     /**
      * Verifies every persisted chapter field survives a full NBT round trip.
      */

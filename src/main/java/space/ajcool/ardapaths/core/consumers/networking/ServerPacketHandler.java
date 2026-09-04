@@ -2,8 +2,8 @@ package space.ajcool.ardapaths.core.consumers.networking;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -18,42 +18,32 @@ import java.util.function.Function;
  * @param <T> the type of packet this handler processes
  */
 @Slf4j(topic = "ardapaths")
-public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandler implements IServerPacketHandler<T> {
-    /**
-     * Function to deserialize the packet from a PacketByteBuf.
-     */
-    private final Function<FriendlyByteBuf, T> reader;
+public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandler<T> implements IServerPacketHandler<T> {
 
     /**
      * Constructs a ServerPacketHandler with a channel identifier and packet reader.
      *
-     * @param channel the channel identifier for this packet handler
-     * @param reader  function to deserialize packets from PacketByteBuf
+     * @param type   the payload type for this packet handler
+     * @param reader function to deserialize packets from PacketByteBuf
      */
-    public ServerPacketHandler(final ResourceLocation channel, final Function<FriendlyByteBuf, T> reader) {
-        super(channel);
-        this.reader = reader;
+    public ServerPacketHandler(final net.minecraft.network.protocol.common.custom.CustomPacketPayload.Type<T> type, final Function<FriendlyByteBuf, T> reader) {
+        super(type, IPacket.codec(reader));
     }
 
     /**
-     * Internal handler that deserializes the packet and delegates to the abstract handle method.
+     * Handles a decoded packet and delegates to the concrete server operation.
      *
-     * @param server  the Minecraft server
-     * @param player  the player who sent the packet
-     * @param handler the network handler
-     * @param buf     the packet data
-     * @param sender  the packet sender
+     * @param packet  the decoded packet
+     * @param context the server networking context
      */
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, FriendlyByteBuf buf, PacketSender sender) {
-        T packet = reader.apply(buf);
-        server.execute(() -> {
-            if (requiresEditPermission() && !PermissionHelper.hasEditPermission(player)) {
-                log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
-                return;
-            }
+    public void receive(T packet, ServerPlayNetworking.Context context) {
+        ServerPlayer player = context.player();
+        if (requiresEditPermission() && !PermissionHelper.hasEditPermission(player)) {
+            log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
+            return;
+        }
 
-            handle(server, player, handler, packet, sender);
-        });
+        handle(context.server(), player, player.connection, packet, context.responseSender());
     }
 
     /**
@@ -73,7 +63,8 @@ public abstract class ServerPacketHandler<T extends IPacket> extends PacketHandl
      * @param player  the player who sent the packet
      * @param handler the network handler
      * @param packet  the deserialized packet
-     * @param sender  the packet sender
+     * @param sender  the response sender
      */
+    @SuppressWarnings("unused")
     protected abstract void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, T packet, PacketSender sender);
 }

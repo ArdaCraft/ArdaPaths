@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.paths;
 
+import net.minecraft.core.BlockPos;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.ClientConfigManager;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
@@ -17,7 +18,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import net.minecraft.core.BlockPos;
 
 /**
  * Client-side façade for modifying path selection state and settings.
@@ -26,6 +26,7 @@ import net.minecraft.core.BlockPos;
  * All changes are automatically persisted to the client config and synchronized with the server.
  */
 public class Paths {
+
     /**
      * The client-side configuration object containing path and player preferences.
      */

@@ -122,67 +122,6 @@ public final class EnvironmentController {
     private static ResourceKey<Level> currentWorldKey;
 
     /**
-     * Visit state for a marker whose weather command has already been triggered.
-     *
-     * @param pathId              path the activation was triggered for
-     * @param chapterId           chapter the activation was triggered for
-     * @param exitDistanceSquared squared distance at which the marker can trigger again
-     */
-    private record WeatherActivation(String pathId, String chapterId, double exitDistanceSquared) {}
-
-    /**
-     * Time data contributed by one trail marker during a client tick.
-     *
-     * @param timeOfDay marker-authored daytime ticks, or {@link TimeOfDay#UNSET}
-     * @param nextPos absolute position of the next marker in the trail, or null when none is configured
-     * @param activationRange marker activation radius for radial time control
-     * @param transitionRange numeric radial transition range or computed-mode sentinel
-     */
-    private record TimeNode(int timeOfDay, BlockPos nextPos, int activationRange, int transitionRange) {}
-
-    /**
-     * Selected trail source for client-visible time control.
-     *
-     * @param type interpolation mode selected by the source
-     * @param markerPos radial marker position or computed segment start position
-     * @param nextPos computed segment end position, or null for radial sources
-     * @param startNode marker data for the radial marker or computed segment start
-     * @param endNode marker data for the computed segment end, or null for radial sources
-     */
-    private record TimeSource(TimeSourceType type, BlockPos markerPos, BlockPos nextPos, TimeNode startNode, TimeNode endNode) {}
-
-    /**
-     * Time interpolation modes supported by marker transition ranges.
-     */
-    private enum TimeSourceType {
-        /**
-         * Marker-centered interpolation over a fixed numeric transition range.
-         */
-        RADIAL,
-
-        /**
-         * Segment interpolation computed from the player's projected position along the trail.
-         */
-        COMPUTED
-    }
-
-    /**
-     * Projected player position on a marker segment.
-     *
-     * @param progress clamped progress from start to end
-     * @param distanceSquared squared distance from the player to the projected point
-     */
-    private record SegmentProjection(double progress, double distanceSquared) {}
-
-    /**
-     * Candidate time source and its selection distance.
-     *
-     * @param source candidate source
-     * @param distanceSquared squared distance used for nearest-source selection
-     */
-    private record TimeCandidate(TimeSource source, double distanceSquared) {}
-
-    /**
      * Processes a followed marker for weather and time effects.
      *
      * @param data      chapter-specific marker data
@@ -197,6 +136,97 @@ public final class EnvironmentController {
         double squaredDistance = environmentDistanceSquared(playerPos, markerPos);
         processWeather(data, markerPos, squaredDistance, pathId);
         collectTimeNode(data, markerPos);
+    }
+
+    /**
+     * Measures distance from the player to the marker block volume.
+     *
+     * @param playerPos precise player position
+     * @param markerPos marker block position
+     * @return squared distance to the marker block box
+     */
+    private static double environmentDistanceSquared(Vec3 playerPos, BlockPos markerPos) {
+        AABB markerBox = new AABB(markerPos);
+        double x = axisOverrun(playerPos.x, markerBox.minX, markerBox.maxX);
+        double y = axisOverrun(playerPos.y, markerBox.minY, markerBox.maxY);
+        double z = axisOverrun(playerPos.z, markerBox.minZ, markerBox.maxZ);
+
+        return (x * x) + (y * y) + (z * z);
+    }
+
+    /**
+     * Applies weather when the player enters an armed marker's activation range.
+     *
+     * @param data            chapter-specific marker data
+     * @param markerPos       marker block position
+     * @param squaredDistance squared distance from the player to the marker
+     * @param pathId          currently selected path ID
+     */
+    private static void processWeather(PathMarkerBlockEntity.ChapterNbtData data,
+                                       BlockPos markerPos,
+                                       double squaredDistance,
+                                       String pathId) {
+        double activationRange = Math.max(data.getActivationRange(), MIN_WEATHER_RANGE);
+        if (!ArdaPathsClient.CONFIG.useDynamicEnvironment()
+                || !Weathers.isAvailable()
+                || data.getWeather() == PathMarkerBlockEntity.ChapterNbtData.UNSET
+                || squaredDistance > Mth.square(activationRange)) {
+            return;
+        }
+
+        WeatherActivation existing = weatherActivations.get(markerPos);
+        if (existing != null
+                && existing.pathId().equals(pathId)
+                && existing.chapterId().equals(data.getChapterId())) {
+            return;
+        }
+
+        WeatherTypes weather = WeatherTypes.fromInt(data.getWeather());
+        if (weather == WeatherTypes.DEFAULT) {
+            return;
+        }
+
+        Weathers.setClientWeather(weather);
+        weatherActivations.put(markerPos.immutable(), new WeatherActivation(
+                pathId,
+                data.getChapterId(),
+                Mth.square(activationRange + EXIT_BUFFER)));
+    }
+
+    /**
+     * Records marker time data for the current client tick.
+     *
+     * @param data      chapter-specific marker data
+     * @param markerPos marker block position
+     */
+    private static void collectTimeNode(PathMarkerBlockEntity.ChapterNbtData data, BlockPos markerPos) {
+        BlockPos nextPos = data.getTarget() == null
+                ? null
+                : markerPos.offset(data.getTarget()).immutable();
+        timeNodes.put(markerPos.immutable(), new TimeNode(
+                data.getTimeOfDay(),
+                nextPos,
+                data.getActivationRange(),
+                data.getTimeTransitionRange()));
+    }
+
+    /**
+     * Computes how far a coordinate is outside an inclusive range on one axis.
+     *
+     * @param value coordinate to test
+     * @param min   lower range bound
+     * @param max   upper range bound
+     * @return zero when inside the range, otherwise the distance past the nearest bound
+     */
+    private static double axisOverrun(double value, double min, double max) {
+        if (value < min) {
+            return min - value;
+        }
+        if (value > max) {
+            return value - max;
+        }
+
+        return 0.0D;
     }
 
     /**
@@ -316,62 +346,6 @@ public final class EnvironmentController {
     }
 
     /**
-     * Applies weather when the player enters an armed marker's activation range.
-     *
-     * @param data            chapter-specific marker data
-     * @param markerPos       marker block position
-     * @param squaredDistance squared distance from the player to the marker
-     * @param pathId          currently selected path ID
-     */
-    private static void processWeather(PathMarkerBlockEntity.ChapterNbtData data,
-                                       BlockPos markerPos,
-                                       double squaredDistance,
-                                       String pathId) {
-        double activationRange = Math.max(data.getActivationRange(), MIN_WEATHER_RANGE);
-        if (!ArdaPathsClient.CONFIG.useDynamicEnvironment()
-                || !Weathers.isAvailable()
-                || data.getWeather() == PathMarkerBlockEntity.ChapterNbtData.UNSET
-                || squaredDistance > Mth.square(activationRange)) {
-            return;
-        }
-
-        WeatherActivation existing = weatherActivations.get(markerPos);
-        if (existing != null
-                && existing.pathId().equals(pathId)
-                && existing.chapterId().equals(data.getChapterId())) {
-            return;
-        }
-
-        WeatherTypes weather = WeatherTypes.fromInt(data.getWeather());
-        if (weather == WeatherTypes.DEFAULT) {
-            return;
-        }
-
-        Weathers.setClientWeather(weather);
-        weatherActivations.put(markerPos.immutable(), new WeatherActivation(
-                pathId,
-                data.getChapterId(),
-                Mth.square(activationRange + EXIT_BUFFER)));
-    }
-
-    /**
-     * Records marker time data for the current client tick.
-     *
-     * @param data chapter-specific marker data
-     * @param markerPos marker block position
-     */
-    private static void collectTimeNode(PathMarkerBlockEntity.ChapterNbtData data, BlockPos markerPos) {
-        BlockPos nextPos = data.getTarget() == null
-                ? null
-                : markerPos.offset(data.getTarget()).immutable();
-        timeNodes.put(markerPos.immutable(), new TimeNode(
-                data.getTimeOfDay(),
-                nextPos,
-                data.getActivationRange(),
-                data.getTimeTransitionRange()));
-    }
-
-    /**
      * Removes weather activations whose marker has been exited.
      *
      * @param playerPos precise player position
@@ -460,7 +434,7 @@ public final class EnvironmentController {
     /**
      * Computes the daylight target for the selected source and player position.
      *
-     * @param source selected control source
+     * @param source    selected control source
      * @param playerPos precise player position
      * @return desired daytime ticks for the source
      */
@@ -474,7 +448,7 @@ public final class EnvironmentController {
     /**
      * Computes a radial marker's target time from the closest player approach reached during this visit.
      *
-     * @param source radial source
+     * @param source    radial source
      * @param playerPos precise player position
      * @return desired daytime ticks for the radial source
      */
@@ -505,7 +479,7 @@ public final class EnvironmentController {
     /**
      * Computes a computed segment's target time from projected player progress.
      *
-     * @param source computed source
+     * @param source    computed source
      * @param playerPos precise player position
      * @return desired daytime ticks for the computed source
      */
@@ -584,46 +558,11 @@ public final class EnvironmentController {
     }
 
     /**
-     * Measures distance from the player to the marker block volume.
-     *
-     * @param playerPos precise player position
-     * @param markerPos marker block position
-     * @return squared distance to the marker block box
-     */
-    private static double environmentDistanceSquared(Vec3 playerPos, BlockPos markerPos) {
-        AABB markerBox = new AABB(markerPos);
-        double x = axisOverrun(playerPos.x, markerBox.minX, markerBox.maxX);
-        double y = axisOverrun(playerPos.y, markerBox.minY, markerBox.maxY);
-        double z = axisOverrun(playerPos.z, markerBox.minZ, markerBox.maxZ);
-
-        return (x * x) + (y * y) + (z * z);
-    }
-
-    /**
-     * Computes how far a coordinate is outside an inclusive range on one axis.
-     *
-     * @param value coordinate to test
-     * @param min lower range bound
-     * @param max upper range bound
-     * @return zero when inside the range, otherwise the distance past the nearest bound
-     */
-    private static double axisOverrun(double value, double min, double max) {
-        if (value < min) {
-            return min - value;
-        }
-        if (value > max) {
-            return value - max;
-        }
-
-        return 0.0D;
-    }
-
-    /**
      * Projects a player position onto a marker-to-marker segment.
      *
      * @param playerPos precise player position
-     * @param startPos segment start marker position
-     * @param endPos segment end marker position
+     * @param startPos  segment start marker position
+     * @param endPos    segment end marker position
      * @return clamped projection progress and squared distance to the segment
      */
     private static SegmentProjection projectOntoSegment(Vec3 playerPos, BlockPos startPos, BlockPos endPos) {
@@ -644,9 +583,9 @@ public final class EnvironmentController {
     /**
      * Computes shortest-path interpolation across Minecraft's wrapping day cycle.
      *
-     * @param startTicks starting daytime ticks
+     * @param startTicks  starting daytime ticks
      * @param targetTicks target daytime ticks
-     * @param progress interpolation progress in the range {@code [0, 1]}
+     * @param progress    interpolation progress in the range {@code [0, 1]}
      * @return interpolated daytime ticks
      */
     private static int interpolatedTime(int startTicks, int targetTicks, double progress) {
@@ -675,7 +614,7 @@ public final class EnvironmentController {
     /**
      * Computes the signed shortest arc between two integer daytime values.
      *
-     * @param startTicks starting daytime ticks
+     * @param startTicks  starting daytime ticks
      * @param targetTicks target daytime ticks
      * @return signed shortest arc across the wrapping day cycle
      */
@@ -686,7 +625,7 @@ public final class EnvironmentController {
     /**
      * Computes the signed shortest arc between two floating-point daytime values.
      *
-     * @param startTicks starting daytime ticks
+     * @param startTicks  starting daytime ticks
      * @param targetTicks target daytime ticks
      * @return signed shortest arc across the wrapping day cycle
      */
@@ -710,5 +649,77 @@ public final class EnvironmentController {
         }
 
         return normalized;
+    }
+
+    /**
+     * Time interpolation modes supported by marker transition ranges.
+     */
+    private enum TimeSourceType {
+        /**
+         * Marker-centered interpolation over a fixed numeric transition range.
+         */
+        RADIAL,
+
+        /**
+         * Segment interpolation computed from the player's projected position along the trail.
+         */
+        COMPUTED
+    }
+
+    /**
+     * Visit state for a marker whose weather command has already been triggered.
+     *
+     * @param pathId              path the activation was triggered for
+     * @param chapterId           chapter the activation was triggered for
+     * @param exitDistanceSquared squared distance at which the marker can trigger again
+     */
+    private record WeatherActivation(String pathId, String chapterId, double exitDistanceSquared) {
+
+    }
+
+    /**
+     * Time data contributed by one trail marker during a client tick.
+     *
+     * @param timeOfDay       marker-authored daytime ticks, or {@link TimeOfDay#UNSET}
+     * @param nextPos         absolute position of the next marker in the trail, or null when none is configured
+     * @param activationRange marker activation radius for radial time control
+     * @param transitionRange numeric radial transition range or computed-mode sentinel
+     */
+    private record TimeNode(int timeOfDay, BlockPos nextPos, int activationRange, int transitionRange) {
+
+    }
+
+    /**
+     * Selected trail source for client-visible time control.
+     *
+     * @param type      interpolation mode selected by the source
+     * @param markerPos radial marker position or computed segment start position
+     * @param nextPos   computed segment end position, or null for radial sources
+     * @param startNode marker data for the radial marker or computed segment start
+     * @param endNode   marker data for the computed segment end, or null for radial sources
+     */
+    private record TimeSource(TimeSourceType type, BlockPos markerPos, BlockPos nextPos, TimeNode startNode,
+                              TimeNode endNode) {
+
+    }
+
+    /**
+     * Projected player position on a marker segment.
+     *
+     * @param progress        clamped progress from start to end
+     * @param distanceSquared squared distance from the player to the projected point
+     */
+    private record SegmentProjection(double progress, double distanceSquared) {
+
+    }
+
+    /**
+     * Candidate time source and its selection distance.
+     *
+     * @param source          candidate source
+     * @param distanceSquared squared distance used for nearest-source selection
+     */
+    private record TimeCandidate(TimeSource source, double distanceSquared) {
+
     }
 }

@@ -13,11 +13,10 @@ import space.ajcool.ardapaths.core.networking.packets.server.ChapterDeletePacket
  * Handles the deletion of a chapter from a path in the server configuration.
  * Processes incoming {@link ChapterDeletePacket} from clients and removes the specified chapter from its path.
  */
-public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacket>
-{
-    public ChapterDeleteHandler()
-    {
-        super(ChapterDeletePacket.CHANNEL, ChapterDeletePacket::read);
+public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacket> {
+
+    public ChapterDeleteHandler() {
+        super(ChapterDeletePacket.TYPE, ChapterDeletePacket::read);
     }
 
     /**
@@ -31,13 +30,11 @@ public class ChapterDeleteHandler extends ServerPacketHandler<ChapterDeletePacke
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterDeletePacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterDeletePacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
         final PathData pathData = ArdaPaths.CONFIG.getPath(pathId);
-        if (pathData == null)
-        {
+        if (pathData == null) {
             return;
         }
 

@@ -17,58 +17,20 @@ import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Applies exported marker data back into server worlds.
  */
 @Slf4j(topic = "ardapaths")
 public class MarkerRestorer {
-    /**
-     * Builds all marker operations described by the backup files.
-     *
-     * @param markerIndex exported marker position index
-     * @param paths       exported path files
-     * @return planned marker payloads
-     */
-    public List<PlannedMarker> plan(MarkerIndexDto markerIndex, List<PathFileDto> paths) {
-        Map<String, Map<Long, CompoundTag>> markerPayloads = buildMarkerPayloads(markerIndex, paths);
-        List<PlannedMarker> plannedMarkers = new ArrayList<>();
-        int droppedEmptyMarkers = 0;
-
-        for (Map.Entry<String, Map<Long, CompoundTag>> dimensionEntry : markerPayloads.entrySet()) {
-            for (Map.Entry<Long, CompoundTag> markerEntry : dimensionEntry.getValue().entrySet()) {
-                if (markerEntry.getValue().isEmpty()) {
-                    droppedEmptyMarkers++;
-                    continue;
-                }
-
-                plannedMarkers.add(new PlannedMarker(dimensionEntry.getKey(), markerEntry.getKey(), markerEntry.getValue()));
-            }
-        }
-
-        if (droppedEmptyMarkers > 0) {
-            log.warn("ArdaPaths restore left {} indexed marker(s) untouched because no exported path node supplied data for them", droppedEmptyMarkers);
-        }
-
-        plannedMarkers.sort(Comparator
-                .comparing(PlannedMarker::dimensionId)
-                .thenComparingLong(marker -> ChunkPos.asLong(BlockPos.of(marker.packedPos())))
-                .thenComparingInt(marker -> BlockPos.of(marker.packedPos()).getY()));
-
-        return plannedMarkers;
-    }
 
     /**
      * Applies one marker plan to a target world.
      *
-     * @param world      target server world
-     * @param position   marker position
-     * @param pathsNbt   marker paths NBT to apply
+     * @param world    target server world
+     * @param position marker position
+     * @param pathsNbt marker paths NBT to apply
      * @return outcome describing whether the marker was restored
      */
     public static ApplyOutcome apply(ServerLevel world, BlockPos position, CompoundTag pathsNbt) {
@@ -103,6 +65,41 @@ public class MarkerRestorer {
         }
 
         return false;
+    }
+
+    /**
+     * Builds all marker operations described by the backup files.
+     *
+     * @param markerIndex exported marker position index
+     * @param paths       exported path files
+     * @return planned marker payloads
+     */
+    public List<PlannedMarker> plan(MarkerIndexDto markerIndex, List<PathFileDto> paths) {
+        Map<String, Map<Long, CompoundTag>> markerPayloads = buildMarkerPayloads(markerIndex, paths);
+        List<PlannedMarker> plannedMarkers = new ArrayList<>();
+        int droppedEmptyMarkers = 0;
+
+        for (Map.Entry<String, Map<Long, CompoundTag>> dimensionEntry : markerPayloads.entrySet()) {
+            for (Map.Entry<Long, CompoundTag> markerEntry : dimensionEntry.getValue().entrySet()) {
+                if (markerEntry.getValue().isEmpty()) {
+                    droppedEmptyMarkers++;
+                    continue;
+                }
+
+                plannedMarkers.add(new PlannedMarker(dimensionEntry.getKey(), markerEntry.getKey(), markerEntry.getValue()));
+            }
+        }
+
+        if (droppedEmptyMarkers > 0) {
+            log.warn("ArdaPaths restore left {} indexed marker(s) untouched because no exported path node supplied data for them", droppedEmptyMarkers);
+        }
+
+        plannedMarkers.sort(Comparator
+                .comparing(PlannedMarker::dimensionId)
+                .thenComparingLong(marker -> ChunkPos.asLong(BlockPos.of(marker.packedPos())))
+                .thenComparingInt(marker -> BlockPos.of(marker.packedPos()).getY()));
+
+        return plannedMarkers;
     }
 
     /**

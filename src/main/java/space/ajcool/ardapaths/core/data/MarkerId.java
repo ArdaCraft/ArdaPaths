@@ -8,6 +8,7 @@ import space.ajcool.ardapaths.screens.widgets.TextValidationError;
  * Utility for converting marker references between clipboard text and structured data.
  */
 public final class MarkerId {
+
     /**
      * Prevents construction of this utility class.
      */

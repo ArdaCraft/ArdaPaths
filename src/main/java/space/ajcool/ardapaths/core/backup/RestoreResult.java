@@ -12,5 +12,7 @@ package space.ajcool.ardapaths.core.backup;
  * @param missingChunks   number of missing chunks that caused marker payloads to be skipped
  * @param markerConflicts number of marker payloads skipped because another block occupied the target
  */
-public record RestoreResult(String source, BackupStats counts, int markersPlaced, boolean hard, int markersDeleted, int markersSkipped, int missingChunks, int markerConflicts) {
+public record RestoreResult(String source, BackupStats counts, int markersPlaced, boolean hard, int markersDeleted,
+                            int markersSkipped, int missingChunks, int markerConflicts) {
+
 }

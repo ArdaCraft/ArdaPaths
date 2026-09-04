@@ -133,12 +133,12 @@ public class AnimatedTitle extends TextRenderable {
 
             opacity = Math.max(Math.round((elapsedMillis / fadeInSpeed) * 255f), 10);
 
-        // Phase 2: Hold at full opacity
+            // Phase 2: Hold at full opacity
         } else if (elapsedMillis < fadeHoldEnd) {
 
             opacity = 255;
 
-        // Phase 3: Fade out
+            // Phase 3: Fade out
         } else {
 
             float fadeOutElapsed = elapsedMillis - fadeHoldEnd;

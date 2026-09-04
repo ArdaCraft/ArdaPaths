@@ -17,6 +17,7 @@ import net.minecraft.util.Mth;
  */
 @Environment(EnvType.CLIENT)
 public class PathParticleProvider implements ParticleProvider<PathParticleEffect> {
+
     /**
      * The sprite provider for particle rendering.
      */
@@ -35,11 +36,11 @@ public class PathParticleProvider implements ParticleProvider<PathParticleEffect
      * Creates a glow particle with trail path colours and animation.
      * Selects one of the effect colours and randomizes the particle's visual drift.
      *
-     * @param effect       the path particle colour payload
-     * @param level        the client world
-     * @param x            the x coordinate
-     * @param y            the y coordinate
-     * @param z            the z coordinate
+     * @param effect        the path particle colour payload
+     * @param level         the client world
+     * @param x             the x coordinate
+     * @param y             the y coordinate
+     * @param z             the z coordinate
      * @param ignoredSpeedX the unused x velocity supplied by the particle spawner
      * @param ignoredSpeedY the unused y velocity supplied by the particle spawner
      * @param ignoredSpeedZ the unused z velocity supplied by the particle spawner

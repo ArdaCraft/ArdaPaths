@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Regression tests for restore marker planning.
  */
 class MarkerRestorerPlanTest {
+
     /**
      * Verifies an indexed marker without exported node data is left unplanned.
      */
@@ -26,6 +27,62 @@ class MarkerRestorerPlanTest {
         List<PlannedMarker> planned = new MarkerRestorer().plan(index, List.of(path("frodo", chapter("shire", List.of()))));
 
         assertTrue(planned.isEmpty());
+    }
+
+    /**
+     * Creates a single-dimension marker index.
+     *
+     * @param dimensionId indexed dimension
+     * @param position    indexed marker position
+     * @return marker index DTO
+     */
+    @SuppressWarnings("SameParameterValue")
+    private static MarkerIndexDto index(String dimensionId, BlockPos position) {
+        return new MarkerIndexDto(Map.of(dimensionId, Map.of(Long.toString(position.asLong()), coords(position))));
+    }
+
+    /**
+     * Creates a block position.
+     *
+     * @param x x coordinate
+     * @param y y coordinate
+     * @param z z coordinate
+     * @return block position
+     */
+    private static BlockPos pos(int x, int y, int z) {
+        return new BlockPos(x, y, z);
+    }
+
+    /**
+     * Creates a path DTO for plan tests.
+     *
+     * @param id       path identifier
+     * @param chapters path chapters
+     * @return path file DTO
+     */
+    private static PathFileDto path(String id, PathChapterDto... chapters) {
+        return new PathFileDto(id, id, null, List.of(chapters), new PathDiagnosticsDto(List.of(), List.of(), List.of(), Map.of()));
+    }
+
+    /**
+     * Creates a chapter DTO for plan tests.
+     *
+     * @param id    chapter identifier
+     * @param nodes chapter nodes
+     * @return path chapter DTO
+     */
+    private static PathChapterDto chapter(String id, List<PathNodeDto> nodes) {
+        return new PathChapterDto(id, id, "0", 0, "", null, null, nodes);
+    }
+
+    /**
+     * Converts a position to marker index coordinates.
+     *
+     * @param position block position
+     * @return [x, y, z] coordinate array
+     */
+    private static int[] coords(BlockPos position) {
+        return new int[]{position.getX(), position.getY(), position.getZ()};
     }
 
     /**
@@ -42,8 +99,38 @@ class MarkerRestorerPlanTest {
         List<PlannedMarker> planned = new MarkerRestorer().plan(index, List.of(path("frodo", chapter("shire", List.of(kept, wrongPosition, wrongDimension)))));
 
         assertEquals(1, planned.size());
-        assertEquals(indexed.asLong(), planned.get(0).packedPos());
-        assertEquals("kept", planned.get(0).pathsNbt().getCompound("frodo").getCompound("shire").getString("proximity_message"));
+        assertEquals(indexed.asLong(), planned.getFirst().packedPos());
+        assertEquals("kept", planned.getFirst().pathsNbt().getCompound("frodo").getCompound("shire").getString("proximity_message"));
+    }
+
+    /**
+     * Creates a node DTO for plan tests.
+     *
+     * @param dimensionId node dimension
+     * @param position    node marker position
+     * @param next        next marker position, or null
+     * @param message     proximity message
+     * @return path node DTO
+     */
+    @SuppressWarnings("SameParameterValue")
+    private static PathNodeDto node(String dimensionId, BlockPos position, BlockPos next, String message) {
+        return new PathNodeDto(
+                dimensionId,
+                position.asLong(),
+                next == null ? null : next.asLong(),
+                false,
+                false,
+                true,
+                PathMarkerBlockEntity.ChapterNbtData.UNSET,
+                PathMarkerBlockEntity.ChapterNbtData.UNSET,
+                null,
+                "",
+                "",
+                "",
+                message,
+                0,
+                new NodeAnimDto(PathMarkerBlockEntity.ChapterNbtData.DEFAULT_PACKED_MESSAGE_DATA, new int[]{5, 100, 5, 2, 8})
+        );
     }
 
     /**
@@ -88,97 +175,11 @@ class MarkerRestorerPlanTest {
                 path("aragorn", chapter("rohan", List.of(node("minecraft:overworld", position, null, "rohan"))), chapter("gondor", List.of(node("minecraft:overworld", position, null, "gondor"))))
         ));
 
-        CompoundTag paths = planned.get(0).pathsNbt();
+        CompoundTag paths = planned.getFirst().pathsNbt();
 
         assertEquals("shire", paths.getCompound("frodo").getCompound("shire").getString("proximity_message"));
         assertEquals("moria", paths.getCompound("frodo").getCompound("moria").getString("proximity_message"));
         assertEquals("rohan", paths.getCompound("aragorn").getCompound("rohan").getString("proximity_message"));
         assertEquals("gondor", paths.getCompound("aragorn").getCompound("gondor").getString("proximity_message"));
-    }
-
-    /**
-     * Creates a single-dimension marker index.
-     *
-     * @param dimensionId indexed dimension
-     * @param position indexed marker position
-     * @return marker index DTO
-     */
-    @SuppressWarnings("SameParameterValue")
-    private static MarkerIndexDto index(String dimensionId, BlockPos position) {
-        return new MarkerIndexDto(Map.of(dimensionId, Map.of(Long.toString(position.asLong()), coords(position))));
-    }
-
-    /**
-     * Creates a path DTO for plan tests.
-     *
-     * @param id path identifier
-     * @param chapters path chapters
-     * @return path file DTO
-     */
-    private static PathFileDto path(String id, PathChapterDto... chapters) {
-        return new PathFileDto(id, id, null, List.of(chapters), new PathDiagnosticsDto(List.of(), List.of(), List.of(), Map.of()));
-    }
-
-    /**
-     * Creates a chapter DTO for plan tests.
-     *
-     * @param id chapter identifier
-     * @param nodes chapter nodes
-     * @return path chapter DTO
-     */
-    private static PathChapterDto chapter(String id, List<PathNodeDto> nodes) {
-        return new PathChapterDto(id, id, "0", 0, "", null, nodes);
-    }
-
-    /**
-     * Creates a node DTO for plan tests.
-     *
-     * @param dimensionId node dimension
-     * @param position node marker position
-     * @param next next marker position, or null
-     * @param message proximity message
-     * @return path node DTO
-     */
-    @SuppressWarnings("SameParameterValue")
-    private static PathNodeDto node(String dimensionId, BlockPos position, BlockPos next, String message) {
-        return new PathNodeDto(
-                dimensionId,
-                position.asLong(),
-                next == null ? null : next.asLong(),
-                false,
-                false,
-                true,
-                PathMarkerBlockEntity.ChapterNbtData.UNSET,
-                PathMarkerBlockEntity.ChapterNbtData.UNSET,
-                null,
-                "",
-                "",
-                "",
-                message,
-                0,
-                new NodeAnimDto(PathMarkerBlockEntity.ChapterNbtData.DEFAULT_PACKED_MESSAGE_DATA, new int[]{5, 100, 5, 2, 8})
-        );
-    }
-
-    /**
-     * Creates a block position.
-     *
-     * @param x x coordinate
-     * @param y y coordinate
-     * @param z z coordinate
-     * @return block position
-     */
-    private static BlockPos pos(int x, int y, int z) {
-        return new BlockPos(x, y, z);
-    }
-
-    /**
-     * Converts a position to marker index coordinates.
-     *
-     * @param position block position
-     * @return [x, y, z] coordinate array
-     */
-    private static int[] coords(BlockPos position) {
-        return new int[]{position.getX(), position.getY(), position.getZ()};
     }
 }

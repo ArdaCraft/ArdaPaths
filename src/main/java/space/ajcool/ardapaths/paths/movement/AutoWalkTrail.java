@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Immutable ordered trail chain used by auto-walk movement and projection.
  *
- * @param nodes          ordered centered trail nodes
+ * @param nodes         ordered centered trail nodes
  * @param endIsTerminus true when the last node corresponds to a loaded marker
  */
 record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
@@ -84,22 +84,13 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
     }
 
     /**
-     * Checks whether this trail has enough nodes to steer movement.
+     * Creates a centered world-space vector for a block position.
      *
-     * @return true when at least one segment exists
+     * @param position block position
+     * @return centered vector
      */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    boolean isUsable() {
-        return nodes.size() >= 2;
-    }
-
-    /**
-     * Returns the final node in this trail.
-     *
-     * @return final centered node
-     */
-    Vec3 lastNode() {
-        return nodes.get(nodes.size() - 1);
+    private static Vec3 center(BlockPos position) {
+        return new Vec3(position.getX() + 0.5D, position.getY() + 0.5D, position.getZ() + 0.5D);
     }
 
     /**
@@ -126,28 +117,46 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
     }
 
     /**
-     * Resolves the world-space point at a cursor location.
+     * Checks whether this trail has enough nodes to steer movement.
      *
-     * @param index    segment start index
-     * @param progress progress along the segment in blocks
-     * @return point at the cursor
+     * @return true when at least one segment exists
      */
-    Vec3 pointAt(int index, double progress) {
-        Vec3 start = nodes.get(index);
-        Vec3 end = nodes.get(index + 1);
-        double length = start.distanceTo(end);
-        double t = length < MIN_SEGMENT_LENGTH ? 1.0D : Mth.clamp(progress / length, 0.0D, 1.0D);
-        return start.lerp(end, t);
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    boolean isUsable() {
+        return nodes.size() >= 2;
     }
 
     /**
-     * Returns the length of a segment in this trail.
+     * Projects a position onto a single segment using the path's horizontal footprint.
      *
-     * @param index segment start index
-     * @return segment length in blocks
+     * @param position     position to project
+     * @param start        segment start
+     * @param end          segment end
+     * @param segmentIndex index of the segment
+     * @return projection data for the segment
      */
-    double segmentLength(int index) {
-        return nodes.get(index).distanceTo(nodes.get(index + 1));
+    private static Projection project(Vec3 position, Vec3 start, Vec3 end, int segmentIndex) {
+        double t = AnimatedTrail.closestSegmentT(position.x, position.z, start.x, start.z, end.x, end.z);
+        Vec3 projected = start.lerp(end, t);
+        double segmentLength = start.distanceTo(end);
+        double distanceX = position.x - projected.x;
+        double distanceZ = position.z - projected.z;
+
+        return new Projection(segmentIndex, t, segmentLength, Math.hypot(distanceX, distanceZ));
+    }
+
+    /**
+     * Resolves the trail point used for steering and camera lookahead this tick.
+     *
+     * @param from     current trail cursor
+     * @param movement per-tick movement distance in blocks
+     * @return lookahead point, or the final trail node when the lookahead reaches the end
+     */
+    Vec3 steeringTarget(Cursor from, double movement) {
+        Cursor lookaheadCursor = advance(from, Math.max(movement, STEER_LOOKAHEAD_DISTANCE));
+        if (lookaheadCursor == null) return lastNode();
+
+        return pointAt(lookaheadCursor.segmentIndex(), lookaheadCursor.segmentProgress());
     }
 
     /**
@@ -182,17 +191,37 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
     }
 
     /**
-     * Resolves the trail point used for steering and camera lookahead this tick.
+     * Returns the final node in this trail.
      *
-     * @param from     current trail cursor
-     * @param movement per-tick movement distance in blocks
-     * @return lookahead point, or the final trail node when the lookahead reaches the end
+     * @return final centered node
      */
-    Vec3 steeringTarget(Cursor from, double movement) {
-        Cursor lookaheadCursor = advance(from, Math.max(movement, STEER_LOOKAHEAD_DISTANCE));
-        if (lookaheadCursor == null) return lastNode();
+    Vec3 lastNode() {
+        return nodes.getLast();
+    }
 
-        return pointAt(lookaheadCursor.segmentIndex(), lookaheadCursor.segmentProgress());
+    /**
+     * Resolves the world-space point at a cursor location.
+     *
+     * @param index    segment start index
+     * @param progress progress along the segment in blocks
+     * @return point at the cursor
+     */
+    Vec3 pointAt(int index, double progress) {
+        Vec3 start = nodes.get(index);
+        Vec3 end = nodes.get(index + 1);
+        double length = start.distanceTo(end);
+        double t = length < MIN_SEGMENT_LENGTH ? 1.0D : Mth.clamp(progress / length, 0.0D, 1.0D);
+        return start.lerp(end, t);
+    }
+
+    /**
+     * Returns the length of a segment in this trail.
+     *
+     * @param index segment start index
+     * @return segment length in blocks
+     */
+    double segmentLength(int index) {
+        return nodes.get(index).distanceTo(nodes.get(index + 1));
     }
 
     /**
@@ -209,35 +238,6 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
         double distanceX = position.x - end.x;
         double distanceZ = position.z - end.z;
         return Math.hypot(distanceX, distanceZ) <= ARRIVAL_DISTANCE;
-    }
-
-    /**
-     * Creates a centered world-space vector for a block position.
-     *
-     * @param position block position
-     * @return centered vector
-     */
-    private static Vec3 center(BlockPos position) {
-        return new Vec3(position.getX() + 0.5D, position.getY() + 0.5D, position.getZ() + 0.5D);
-    }
-
-    /**
-     * Projects a position onto a single segment using the path's horizontal footprint.
-     *
-     * @param position     position to project
-     * @param start        segment start
-     * @param end          segment end
-     * @param segmentIndex index of the segment
-     * @return projection data for the segment
-     */
-    private static Projection project(Vec3 position, Vec3 start, Vec3 end, int segmentIndex) {
-        double t = AnimatedTrail.closestSegmentT(position.x, position.z, start.x, start.z, end.x, end.z);
-        Vec3 projected = start.lerp(end, t);
-        double segmentLength = start.distanceTo(end);
-        double distanceX = position.x - projected.x;
-        double distanceZ = position.z - projected.z;
-
-        return new Projection(segmentIndex, t, segmentLength, Math.hypot(distanceX, distanceZ));
     }
 
     /**
@@ -270,6 +270,7 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
      * @param distance      distance from the probe position to the segment
      */
     record Projection(int segmentIndex, double segmentT, double segmentLength, double distance) {
+
     }
 
     /**
@@ -279,5 +280,6 @@ record AutoWalkTrail(List<Vec3> nodes, boolean endIsTerminus) {
      * @param segmentProgress progress along the segment in blocks
      */
     record Cursor(int segmentIndex, double segmentProgress) {
+
     }
 }

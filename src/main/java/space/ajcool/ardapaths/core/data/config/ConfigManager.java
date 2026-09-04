@@ -25,6 +25,7 @@ import java.util.concurrent.*;
  */
 @Slf4j(topic = "ardapaths")
 public abstract class ConfigManager<T> {
+
     /**
      * Gson instance configured to output pretty-printed JSON.
      */
@@ -56,16 +57,6 @@ public abstract class ConfigManager<T> {
     private final Object writeLock = new Object();
 
     /**
-     * Most recent JSON snapshot waiting to be written to disk.
-     */
-    private String pendingJson;
-
-    /**
-     * Scheduled save task for the current debounce window, or null when none is pending.
-     */
-    private ScheduledFuture<?> pendingSave;
-
-    /**
      * JVM shutdown hook that forces the newest config snapshot to disk.
      */
     @SuppressWarnings("FieldCanBeLocal")
@@ -79,6 +70,16 @@ public abstract class ConfigManager<T> {
     protected T config;
 
     /**
+     * Most recent JSON snapshot waiting to be written to disk.
+     */
+    private String pendingJson;
+
+    /**
+     * Scheduled save task for the current debounce window, or null when none is pending.
+     */
+    private ScheduledFuture<?> pendingSave;
+
+    /**
      * Constructs a ConfigManager and loads the configuration from disk.
      * If the file doesn't exist, creates a default configuration.
      *
@@ -89,47 +90,6 @@ public abstract class ConfigManager<T> {
         this.shutdownHook = new Thread(this::flush, "ardapaths-config-flush-" + file.getFileName());
         Runtime.getRuntime().addShutdownHook(shutdownHook);
         this.load();
-    }
-
-    /**
-     * Load the config from file.
-     */
-    @SuppressWarnings("unchecked")
-    public void load() {
-        if (Files.exists(file)) {
-            try (Reader reader = Files.newBufferedReader(file)) {
-                T defaultConfig = createDefault();
-                T loadedConfig = GSON.fromJson(reader, (Class<T>) defaultConfig.getClass());
-                config = Objects.requireNonNullElse(loadedConfig, defaultConfig);
-            } catch (IOException | JsonSyntaxException e) {
-                log.error("Failed to load config from {}; falling back to defaults", file, e);
-                config = createDefault();
-            }
-        } else {
-            config = createDefault();
-        }
-        save();
-    }
-
-    /**
-     * Creates the default configuration object.
-     *
-     * @return the default config used when no valid file exists
-     */
-    protected abstract T createDefault();
-
-    /**
-     * Saves a snapshot of the current config after a short debounce window.
-     */
-    public void save() {
-        String snapshot = GSON.toJson(config);
-
-        synchronized (saveLock) {
-            pendingJson = snapshot;
-            if (pendingSave == null || pendingSave.isDone()) {
-                pendingSave = SAVE_EXECUTOR.schedule(this::flushPending, SAVE_DEBOUNCE_MILLIS, TimeUnit.MILLISECONDS);
-            }
-        }
     }
 
     /**
@@ -155,20 +115,23 @@ public abstract class ConfigManager<T> {
     }
 
     /**
-     * Flushes the newest queued JSON snapshot from the save executor.
+     * Load the config from file.
      */
-    private void flushPending() {
-        String snapshot;
-
-        synchronized (saveLock) {
-            snapshot = pendingJson;
-            pendingJson = null;
-            pendingSave = null;
+    @SuppressWarnings("unchecked")
+    public void load() {
+        if (Files.exists(file)) {
+            try (Reader reader = Files.newBufferedReader(file)) {
+                T defaultConfig = createDefault();
+                T loadedConfig = GSON.fromJson(reader, (Class<T>) defaultConfig.getClass());
+                config = Objects.requireNonNullElse(loadedConfig, defaultConfig);
+            } catch (IOException | JsonSyntaxException e) {
+                log.error("Failed to load config from {}; falling back to defaults", file, e);
+                config = createDefault();
+            }
+        } else {
+            config = createDefault();
         }
-
-        if (snapshot != null) {
-            write(snapshot);
-        }
+        save();
     }
 
     /**
@@ -199,9 +162,48 @@ public abstract class ConfigManager<T> {
     }
 
     /**
+     * Creates the default configuration object.
+     *
+     * @return the default config used when no valid file exists
+     */
+    protected abstract T createDefault();
+
+    /**
+     * Saves a snapshot of the current config after a short debounce window.
+     */
+    public void save() {
+        String snapshot = GSON.toJson(config);
+
+        synchronized (saveLock) {
+            pendingJson = snapshot;
+            if (pendingSave == null || pendingSave.isDone()) {
+                pendingSave = SAVE_EXECUTOR.schedule(this::flushPending, SAVE_DEBOUNCE_MILLIS, TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
+    /**
+     * Flushes the newest queued JSON snapshot from the save executor.
+     */
+    private void flushPending() {
+        String snapshot;
+
+        synchronized (saveLock) {
+            snapshot = pendingJson;
+            pendingJson = null;
+            pendingSave = null;
+        }
+
+        if (snapshot != null) {
+            write(snapshot);
+        }
+    }
+
+    /**
      * Creates daemon threads for background config writes.
      */
     private static class ConfigThreadFactory implements ThreadFactory {
+
         /**
          * Builds a daemon writer thread.
          *

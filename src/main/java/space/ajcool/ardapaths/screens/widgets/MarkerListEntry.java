@@ -27,22 +27,22 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     /**
      * Icon shown when a marker has time or weather data.
      */
-    private static final ResourceLocation MOON_ICON = ModConstants.modId("textures/gui/moon-icon.png");
+    private static final ResourceLocation MOON_ICON = ModConstants.modId("moon-icon");
 
     /**
      * Icon shown when a marker has weather data.
      */
-    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("textures/gui/cloud-icon.png");
+    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("cloud-icon");
 
     /**
      * Icon shown when a marker has proximity text.
      */
-    private static final ResourceLocation TEXT_ICON = ModConstants.modId("textures/gui/text-icon.png");
+    private static final ResourceLocation TEXT_ICON = ModConstants.modId("text-icon");
 
     /**
      * Icon shown when a marker has action data.
      */
-    private static final ResourceLocation GEAR_ICON = ModConstants.modId("textures/gui/gear-icon.png");
+    private static final ResourceLocation GEAR_ICON = ModConstants.modId("gear-icon");
 
     /**
      * Size in pixels used for marker data icons.
@@ -163,16 +163,6 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     }
 
     /**
-     * Creates a row for an inert notice label.
-     *
-     * @param text notice text to render
-     * @return notice marker list row
-     */
-    public static MarkerListEntry notice(Component text) {
-        return new MarkerListEntry(text);
-    }
-
-    /**
      * Creates an inert notice row.
      *
      * @param text notice text to render
@@ -192,6 +182,16 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         this.onContextMenu = null;
         this.coordinateText = text;
         this.notice = true;
+    }
+
+    /**
+     * Creates a row for an inert notice label.
+     *
+     * @param text notice text to render
+     * @return notice marker list row
+     */
+    public static MarkerListEntry notice(Component text) {
+        return new MarkerListEntry(text);
     }
 
     /**
@@ -234,25 +234,25 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         int iconY = y + (entryHeight - ICON_SIZE) / 2;
         if (hasProximityMessage) {
             iconX -= ICON_SIZE;
-            GuiTextures.blit(context, TEXT_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blitSprite(context, TEXT_ICON, iconX, iconY, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasTimeData()) {
             iconX -= ICON_SIZE;
-            GuiTextures.blit(context, MOON_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blitSprite(context, MOON_ICON, iconX, iconY, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasWeatherData) {
             iconX -= ICON_SIZE;
-            GuiTextures.blit(context, CLOUD_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blitSprite(context, CLOUD_ICON, iconX, iconY, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
         if (hasMiscData) {
             iconX -= ICON_SIZE;
-            GuiTextures.blit(context, GEAR_ICON, iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            GuiTextures.blitSprite(context, GEAR_ICON, iconX, iconY, ICON_SIZE, ICON_SIZE);
             iconX -= 2;
         }
 
@@ -261,6 +261,15 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         String trimmedText = textRenderer.plainSubstrByWidth(coordinateText.getString(), textWidth);
         context.drawString(textRenderer, Component.literal(trimmedText), x + 4, textY, 0xFFFFFF);
 
+    }
+
+    /**
+     * Checks whether this marker row has a configured time.
+     *
+     * @return true when a marker time should be indicated
+     */
+    private boolean hasTimeData() {
+        return timeOfDay != ChapterNbtData.UNSET;
     }
 
     /**
@@ -275,15 +284,6 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         if (!tooltipLines.isEmpty()) {
             context.renderComponentTooltip(textRenderer, tooltipLines, mouseX, mouseY);
         }
-    }
-
-    /**
-     * Checks whether this marker row has a configured time.
-     *
-     * @return true when a marker time should be indicated
-     */
-    private boolean hasTimeData() {
-        return timeOfDay != ChapterNbtData.UNSET;
     }
 
     /**
@@ -336,5 +336,6 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
      * @param mouseY absolute mouse y coordinate
      */
     public record ContextMenuAnchor(double mouseX, double mouseY) {
+
     }
 }

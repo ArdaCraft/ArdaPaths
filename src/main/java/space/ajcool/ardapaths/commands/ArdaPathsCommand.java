@@ -16,6 +16,7 @@ import static net.minecraft.commands.Commands.literal;
  * Registers and handles ArdaPaths server commands.
  */
 public class ArdaPathsCommand {
+
     /**
      * Async backup job runner used by command executions.
      */

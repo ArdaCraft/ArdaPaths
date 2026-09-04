@@ -8,14 +8,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.backup.dto.*;
 import space.ajcool.ardapaths.core.backup.progress.ProgressReporter;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.core.data.WarpTarget;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
@@ -49,7 +48,7 @@ import java.util.zip.ZipOutputStream;
 public class BackupManager {
 
     /** Current portable backup schema version. */
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
 
     /** Number of historical zip backups to keep. */
     private static final int MAX_BACKUP_ZIPS = 5;
@@ -60,7 +59,7 @@ public class BackupManager {
     /** Data directory containing the latest portable backup. */
     private static final Path DATA_DIR = Path.of("./config/arda-paths/data");
 
-    /** Directory containing rotating zip snapshots of previous data directories.  */
+    /** Directory containing rotating zip snapshots of previous data directories. */
     private static final Path BACKUP_DIR = Path.of("./config/arda-paths/data-backups");
 
     /**
@@ -131,6 +130,433 @@ public class BackupManager {
     }
 
     /**
+     * Creates in-memory JSON files and manifest for the supplied marker scan.
+     *
+     * @param markers scanned marker data
+     * @return complete export snapshot
+     */
+    private BackupSnapshot createSnapshot(List<ScannedMarkerData> markers) {
+        TreeMap<String, String> files = new TreeMap<>();
+        MarkerIndexDto markerIndex = createMarkerIndex(markers);
+        files.put("markers.json", GSON.toJson(markerIndex));
+
+        int chapterCount = 0;
+        int nodeCount = 0;
+
+        for (PathData pathData : sortedPaths()) {
+            PathFileDto pathFile = createPathFile(pathData, markers);
+            chapterCount += pathFile.chapters().size();
+            nodeCount += pathFile.chapters().stream().mapToInt(chapter -> chapter.nodes().size()).sum();
+            files.put("paths/" + safeFileName(pathData.getId()) + ".json", GSON.toJson(pathFile));
+        }
+
+        BackupCountsDto counts = new BackupCountsDto(markerIndex.markers().size(), markers.size(), sortedPaths().size(), chapterCount, nodeCount);
+        TreeMap<String, String> hashes = hashFiles(files);
+        ManifestDto manifest = new ManifestDto(SCHEMA_VERSION, LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME) + "Z", counts, hashes);
+        files.put("manifest.json", GSON.toJson(manifest));
+
+        return new BackupSnapshot(files, manifest, statsFromCounts(counts));
+    }
+
+    /**
+     * Reads the current manifest when a data directory exists.
+     *
+     * @param directory backup data directory
+     * @return parsed manifest, or empty when absent/invalid
+     */
+    @SuppressWarnings("SameParameterValue")
+    private Optional<ManifestDto> readManifest(Path directory) {
+        Path manifestPath = directory.resolve("manifest.json");
+        if (!Files.isRegularFile(manifestPath)) return Optional.empty();
+
+        try {
+            return Optional.ofNullable(GSON.fromJson(Files.readString(manifestPath), ManifestDto.class));
+        } catch (IOException | JsonParseException exception) {
+            log.warn("Failed to read existing ArdaPaths backup manifest", exception);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Creates a zip of the existing live data directory.
+     *
+     * @return created zip file name
+     * @throws IOException when the zip cannot be written
+     */
+    private String zipExistingData() throws IOException {
+        Files.createDirectories(BACKUP_DIR);
+        String zipName = "ardapath-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".zip";
+        Path zipPath = BACKUP_DIR.resolve(zipName);
+
+        try (OutputStream outputStream = Files.newOutputStream(zipPath);
+             ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            try (var files = Files.walk(DATA_DIR)) {
+                for (Path file : files.filter(Files::isRegularFile).sorted().toList()) {
+                    String relativePath = DATA_DIR.relativize(file).toString().replace('\\', '/');
+                    zipOutputStream.putNextEntry(new ZipEntry(relativePath));
+                    Files.copy(file, zipOutputStream);
+                    zipOutputStream.closeEntry();
+                }
+            }
+        }
+
+        return zipName;
+    }
+
+    /**
+     * Writes a backup snapshot to the live data directory.
+     *
+     * @param snapshot snapshot to write
+     * @throws IOException when a file cannot be written
+     */
+    private void writeSnapshot(BackupSnapshot snapshot) throws IOException {
+        Files.createDirectories(DATA_DIR);
+        Files.createDirectories(DATA_DIR.resolve("paths"));
+
+        Set<Path> expectedFiles = new HashSet<>();
+        for (Map.Entry<String, String> fileEntry : snapshot.files().entrySet()) {
+            Path file = DATA_DIR.resolve(fileEntry.getKey());
+            expectedFiles.add(file.normalize());
+            atomicWriteString(file, fileEntry.getValue());
+        }
+
+        deleteStaleFiles(DATA_DIR, expectedFiles);
+    }
+
+    /**
+     * Deletes historical backup zips beyond the retention limit.
+     *
+     * @throws IOException when an old zip cannot be deleted
+     */
+    private void rotateBackupZips() throws IOException {
+        if (!Files.isDirectory(BACKUP_DIR)) return;
+
+        try (var files = Files.list(BACKUP_DIR)) {
+            List<Path> zips = files
+                    .filter(path -> path.getFileName().toString().endsWith(".zip"))
+                    .sorted(Comparator.comparing(Path::getFileName).reversed())
+                    .toList();
+
+            for (int i = MAX_BACKUP_ZIPS; i < zips.size(); i++) {
+                Files.deleteIfExists(zips.get(i));
+            }
+        }
+    }
+
+    /**
+     * Creates a marker position index grouped by dimension.
+     *
+     * @param markers scanned marker data
+     * @return marker index DTO
+     */
+    private MarkerIndexDto createMarkerIndex(List<ScannedMarkerData> markers) {
+        Map<String, Map<String, int[]>> byDimension = new TreeMap<>();
+
+        for (ScannedMarkerData marker : markers) {
+            BlockPos position = marker.position();
+            byDimension
+                    .computeIfAbsent(marker.dimensionId(), ignored -> new TreeMap<>())
+                    .put(Long.toString(position.asLong()), new int[]{position.getX(), position.getY(), position.getZ()});
+        }
+
+        return new MarkerIndexDto(byDimension);
+    }
+
+    /**
+     * Gets paths in deterministic export order.
+     *
+     * @return sorted path definitions
+     */
+    private List<PathData> sortedPaths() {
+        return ArdaPaths.CONFIG.getPaths().stream()
+                .sorted(Comparator.comparing(PathData::getId))
+                .toList();
+    }
+
+    /**
+     * Creates one path export file from config and scanned marker data.
+     *
+     * @param pathData source path definition
+     * @param markers  scanned marker data
+     * @return path file DTO
+     */
+    private PathFileDto createPathFile(PathData pathData, List<ScannedMarkerData> markers) {
+        List<PathChapterDto> chapters = sortedChapters(pathData).stream()
+                .map(chapter -> createChapter(pathData, chapter, markers))
+                .toList();
+        PathDiagnosticsDto diagnostics = createDiagnostics(chapters);
+
+        return new PathFileDto(
+                pathData.getId(),
+                pathData.getName(),
+                new PathColorDto(toRgb(pathData.getPrimaryColor()), toRgb(pathData.getSecondaryColor()), toRgb(pathData.getTertiaryColor())),
+                chapters,
+                diagnostics
+        );
+    }
+
+    /**
+     * Creates a conservative file name for a path identifier.
+     *
+     * @param pathId path identifier
+     * @return path file name stem
+     */
+    private String safeFileName(String pathId) {
+        String safe = pathId.replaceAll("[^A-Za-z0-9._-]", "_");
+        return safe.isBlank() ? "path" : safe;
+    }
+
+    /**
+     * Computes hashes for serialized files.
+     *
+     * @param files relative file path to content map
+     * @return relative file path to SHA-256 hash map
+     */
+    private TreeMap<String, String> hashFiles(Map<String, String> files) {
+        TreeMap<String, String> hashes = new TreeMap<>();
+        for (Map.Entry<String, String> fileEntry : files.entrySet()) {
+            hashes.put(fileEntry.getKey(), sha256(fileEntry.getValue()));
+        }
+        return hashes;
+    }
+
+    /**
+     * Converts manifest counts into command-facing stats.
+     *
+     * @param counts manifest counts
+     * @return backup stats
+     */
+    private BackupStats statsFromCounts(BackupCountsDto counts) {
+        return new BackupStats(counts.dimensions(), counts.markers(), counts.paths(), counts.chapters(), counts.nodes());
+    }
+
+    /**
+     * Writes one file with a temporary sibling and atomic replacement when supported.
+     *
+     * @param file    target file
+     * @param content UTF-8 content
+     * @throws IOException when the file cannot be written
+     */
+    private void atomicWriteString(Path file, String content) throws IOException {
+        Path parent = file.getParent();
+        if (parent != null) Files.createDirectories(parent);
+
+        Path tempFile = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(tempFile, content, StandardCharsets.UTF_8);
+
+        try {
+            Files.move(tempFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException exception) {
+            Files.move(tempFile, file, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
+     * Removes files from a backup directory that are not part of the current snapshot.
+     *
+     * @param directory     live data directory
+     * @param expectedFiles normalized files that should remain
+     * @throws IOException when a stale file cannot be removed
+     */
+    private void deleteStaleFiles(Path directory, Set<Path> expectedFiles) throws IOException {
+        if (!Files.isDirectory(directory)) return;
+
+        try (var files = Files.walk(directory)) {
+            for (Path file : files.filter(Files::isRegularFile).sorted(Comparator.reverseOrder()).toList()) {
+                if (!expectedFiles.contains(file.normalize())) {
+                    Files.deleteIfExists(file);
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets chapters in deterministic export order.
+     *
+     * @param pathData path containing chapters
+     * @return sorted chapter definitions
+     */
+    private List<ChapterData> sortedChapters(PathData pathData) {
+        return pathData.getChapters().stream()
+                .sorted(Comparator.comparingInt(ChapterData::getIndex).thenComparing(ChapterData::getId))
+                .toList();
+    }
+
+    /**
+     * Creates one exported chapter and its marker nodes.
+     *
+     * @param pathData source path definition
+     * @param chapter  source chapter definition
+     * @param markers  scanned marker data
+     * @return chapter DTO
+     */
+    private PathChapterDto createChapter(PathData pathData, ChapterData chapter, List<ScannedMarkerData> markers) {
+        List<PathNodeDto> nodes = markers.stream()
+                .map(marker -> createNode(pathData.getId(), chapter.getId(), marker))
+                .flatMap(Optional::stream)
+                .sorted(Comparator.comparingLong(PathNodeDto::pos))
+                .toList();
+        return new PathChapterDto(
+                chapter.getId(),
+                chapter.getName(),
+                chapter.getDate(),
+                chapter.getIndex(),
+                chapter.getWarp(),
+                chapter.getCoordinates(),
+                chapter.getCoordinates() == null ? null : chapter.getDimension(),
+                nodes
+        );
+    }
+
+    /**
+     * Builds informational graph diagnostics for a path file.
+     *
+     * @param chapters exported chapters
+     * @return diagnostics DTO
+     */
+    private PathDiagnosticsDto createDiagnostics(List<PathChapterDto> chapters) {
+        Set<Long> allPositions = new HashSet<>();
+        Set<Long> allIncoming = new HashSet<>();
+        List<Long> danglingNext = new ArrayList<>();
+        List<Long> orphans = new ArrayList<>();
+        List<List<Long>> cycles = new ArrayList<>();
+        Map<String, List<Long>> multiRoot = new TreeMap<>();
+
+        for (PathChapterDto chapter : chapters) {
+            Set<Long> chapterPositions = new HashSet<>();
+            Set<Long> chapterIncoming = new HashSet<>();
+
+            for (PathNodeDto node : chapter.nodes()) {
+                allPositions.add(node.pos());
+                chapterPositions.add(node.pos());
+                if (node.next() != null) {
+                    chapterIncoming.add(node.next());
+                    allIncoming.add(node.next());
+                    if (!chapterPositions.contains(node.next()) && chapter.nodes().stream().noneMatch(candidate -> candidate.pos() == node.next())) {
+                        danglingNext.add(node.next());
+                    }
+                }
+            }
+
+            List<Long> roots = chapter.nodes().stream()
+                    .map(PathNodeDto::pos)
+                    .filter(pos -> !chapterIncoming.contains(pos))
+                    .sorted()
+                    .toList();
+            if (roots.size() > 1) multiRoot.put(chapter.id(), roots);
+            cycles.addAll(findCycles(chapter.nodes()));
+        }
+
+        for (Long position : allPositions.stream().sorted().toList()) {
+            if (!allIncoming.contains(position)) orphans.add(position);
+        }
+
+        danglingNext.sort(Long::compareTo);
+        return new PathDiagnosticsDto(orphans, danglingNext.stream().distinct().toList(), cycles, multiRoot);
+    }
+
+    /**
+     * Converts a config colour to RGB array form.
+     *
+     * @param color config colour
+     * @return [r, g, b] array
+     */
+    private int[] toRgb(Color color) {
+        return new int[]{color.r, color.g, color.b};
+    }
+
+    /**
+     * Computes a SHA-256 hash for text.
+     *
+     * @param content content to hash as UTF-8
+     * @return lowercase hex digest
+     */
+    private String sha256(String content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder();
+            for (byte hashByte : hash) {
+                builder.append(String.format("%02x", hashByte));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
+    }
+
+    /**
+     * Creates an exported node for a marker when it has data for the requested path chapter.
+     *
+     * @param pathId    path identifier
+     * @param chapterId chapter identifier
+     * @param marker    scanned marker
+     * @return exported node, or empty when the marker is unrelated
+     */
+    Optional<PathNodeDto> createNode(String pathId, String chapterId, ScannedMarkerData marker) {
+        Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = marker.pathData().get(pathId);
+        if (chapters == null) return Optional.empty();
+
+        PathMarkerBlockEntity.ChapterNbtData chapterNbtData = chapters.get(chapterId);
+        if (chapterNbtData == null) return Optional.empty();
+
+        BlockPos target = chapterNbtData.getTarget();
+        Long next = target == null ? null : marker.position().offset(target).asLong();
+        long packedMessageData = chapterNbtData.getPackedMessageData();
+
+        return Optional.of(new PathNodeDto(
+                marker.dimensionId(),
+                marker.position().asLong(),
+                next,
+                chapterNbtData.isChapterStart(),
+                chapterNbtData.isDisplayChapterTitleOnTrail(),
+                chapterNbtData.isDisplayAboveBlocks(),
+                chapterNbtData.getWeather(),
+                chapterNbtData.getTimeOfDay(),
+                chapterNbtData.getTimeTransitionRange(),
+                chapterNbtData.getAutoTeleportTarget(),
+                WarpTarget.formatCoordinates(chapterNbtData.getLookAt()),
+                chapterNbtData.getGiveItem(),
+                chapterNbtData.getProximityMessage(),
+                chapterNbtData.getActivationRange(),
+                new NodeAnimDto(packedMessageData, BitPacker.unpackFive(packedMessageData))
+        ));
+    }
+
+    /**
+     * Detects simple next-link cycles in one chapter.
+     *
+     * @param nodes chapter nodes
+     * @return cycle position lists
+     */
+    private List<List<Long>> findCycles(List<PathNodeDto> nodes) {
+        Map<Long, Long> nextByPosition = new HashMap<>();
+        for (PathNodeDto node : nodes) {
+            if (node.next() != null) nextByPosition.put(node.pos(), node.next());
+        }
+
+        Set<Long> reported = new HashSet<>();
+        List<List<Long>> cycles = new ArrayList<>();
+
+        for (Long start : nextByPosition.keySet()) {
+            Set<Long> seen = new HashSet<>();
+            ArrayDeque<Long> chain = new ArrayDeque<>();
+            Long current = start;
+
+            while (current != null && nextByPosition.containsKey(current)) {
+                if (!seen.add(current)) {
+                    if (reported.add(current)) cycles.add(new ArrayList<>(chain));
+                    break;
+                }
+                chain.add(current);
+                current = nextByPosition.get(current);
+            }
+        }
+
+        return cycles;
+    }
+
+    /**
      * Restores the latest data directory or a named historical zip backup with explicit threading control.
      *
      * @param server   server whose config and worlds are updated
@@ -194,429 +620,32 @@ public class BackupManager {
     }
 
     /**
-     * Applies planned markers in bounded server-thread batches.
+     * Extracts a backup zip into a temporary directory.
      *
-     * @param server         target server
-     * @param plannedMarkers marker payloads to apply
-     * @param reporter       progress reporter
-     * @param gate           gate for server-thread-only work
-     * @return marker restore counts
+     * @param zipPath         zip file to extract
+     * @param targetDirectory temporary extraction directory
+     * @throws IOException when the zip cannot be extracted
      */
-    private RestoreApplyResult applyMarkersInBatches(MinecraftServer server, List<PlannedMarker> plannedMarkers, ProgressReporter reporter, BackupJobRunner.ServerGate gate) {
-        reporter.phase("placing");
-        RestoreApplyResult result = RestoreApplyResult.empty();
-
-        for (int batchStart = 0; batchStart < plannedMarkers.size(); ) {
-            int toIndex = MarkerBatching.findChunkBoundedBatchEnd(
-                    plannedMarkers,
-                    batchStart,
-                    PlannedMarker::dimensionId,
-                    marker -> new ChunkPos(BlockPos.of(marker.packedPos())).toLong()
-            );
-            int fromIndex = batchStart;
-            result = result.plus(gate.call(() -> applyMarkerBatch(server, plannedMarkers.subList(fromIndex, toIndex))));
-            reporter.advance(toIndex, plannedMarkers.size());
-            batchStart = toIndex;
-            MarkerBatching.paceBetweenBatches(batchStart, plannedMarkers.size());
-        }
-
-        return result;
-    }
-
-    /**
-     * Applies a marker batch on the server thread.
-     *
-     * @param server target server
-     * @param batch  marker batch
-     * @return marker restore counts for the batch
-     */
-    private RestoreApplyResult applyMarkerBatch(MinecraftServer server, List<PlannedMarker> batch) {
-        RestoreApplyResult result = RestoreApplyResult.empty();
-
-        for (PlannedMarker marker : batch) {
-            ServerLevel world = getWorld(server, marker.dimensionId());
-            if (world == null) {
-                result = result.withFailed();
-                continue;
-            }
-
-            BlockPos position = BlockPos.of(marker.packedPos());
-            ChunkPos chunkPos = new ChunkPos(position);
-            if (!chunkExists(world, chunkPos)) {
-                result = result.missing(new ChunkKey(marker.dimensionId(), chunkPos.toLong()));
-                continue;
-            }
-
-            world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
-
-            switch (MarkerRestorer.apply(world, position, marker.pathsNbt())) {
-                case PLACED -> result = result.withPlaced();
-                case CONFLICT -> result = result.conflict();
-                case FAILED -> result = result.withFailed();
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Scans the live world and deletes markers absent from the backup index.
-     *
-     * @param server      target server
-     * @param markerIndex backup marker index
-     * @param reporter    progress reporter
-     * @param gate        gate for server-thread-only work
-     * @return number of stale markers deleted
-     */
-    private int deleteStaleMarkers(MinecraftServer server, MarkerIndexDto markerIndex, ProgressReporter reporter, BackupJobRunner.ServerGate gate) {
-        reporter.phase("saving");
-        gate.run(() -> server.saveEverything(true, true, true));
-
-        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate);
-        List<ScannedMarkerData> currentMarkers = new ArrayList<>(scanResult.markers());
-        currentMarkers.addAll(scanResult.emptyMarkers());
-        Set<String> backupLocations = markerLocations(markerIndex);
-        List<ScannedMarkerData> staleMarkers = currentMarkers.stream()
-                .filter(marker -> !backupLocations.contains(markerLocation(marker.dimensionId(), marker.position().asLong())))
-                .sorted(Comparator
-                        .comparing(ScannedMarkerData::dimensionId)
-                        .thenComparingLong(marker -> new ChunkPos(marker.position()).toLong())
-                        .thenComparingInt(marker -> marker.position().getY()))
-                .toList();
-
-        reporter.phase("deleting");
-        // NOTE: Very large hard deletes may need an offline block-palette editing pass later.
-        int deleted = 0;
-
-        for (int batchStart = 0; batchStart < staleMarkers.size(); ) {
-            int toIndex = MarkerBatching.findChunkBoundedBatchEnd(
-                    staleMarkers,
-                    batchStart,
-                    ScannedMarkerData::dimensionId,
-                    marker -> new ChunkPos(marker.position()).toLong()
-            );
-            int fromIndex = batchStart;
-            deleted += gate.call(() -> deleteMarkerBatch(server, staleMarkers.subList(fromIndex, toIndex)));
-            reporter.advance(toIndex, staleMarkers.size());
-            batchStart = toIndex;
-            MarkerBatching.paceBetweenBatches(batchStart, staleMarkers.size());
-        }
-
-        return deleted;
-    }
-
-    /**
-     * Checks whether a chunk has persisted NBT without creating terrain.
-     *
-     * @param world    world whose chunk storage is probed
-     * @param chunkPos chunk position to inspect
-     * @return true when the chunk already exists in vanilla storage
-     */
-    private boolean chunkExists(ServerLevel world, ChunkPos chunkPos) {
-        if (storageAccess.isChunkLoaded(world, chunkPos)) {
-            return true;
-        }
-
-        try {
-            return storageAccess.readChunkNbt(world, chunkPos).isPresent();
-        } catch (CompletionException exception) {
-            log.warn("Failed to probe ArdaPaths restore chunk {}", chunkPos, exception);
-            return false;
-        }
-    }
-
-    /**
-     * Deletes a stale marker batch on the server thread.
-     *
-     * @param server target server
-     * @param batch  stale marker batch
-     * @return number of markers deleted
-     */
-    private int deleteMarkerBatch(MinecraftServer server, List<ScannedMarkerData> batch) {
-        int deleted = 0;
-
-        for (ScannedMarkerData marker : batch) {
-            ServerLevel world = getWorld(server, marker.dimensionId());
-            if (world == null) continue;
-
-            if (MarkerRestorer.delete(world, marker.position())) {
-                deleted++;
-            }
-        }
-
-        return deleted;
-    }
-
-    /**
-     * Logs a concise summary of markers skipped because their target chunks or blocks are unsafe.
-     *
-     * @param missingChunks  chunks absent from the target world data
-     * @param skippedMarkers marker payloads skipped because their chunks are missing
-     * @param conflicts      marker payloads skipped because another block occupied the target
-     * @param failed         marker payloads skipped because placement failed
-     */
-    private void logSkippedMarkers(List<ChunkKey> missingChunks, int skippedMarkers, int conflicts, int failed) {
-        if (missingChunks.isEmpty() && skippedMarkers == 0 && conflicts == 0 && failed == 0) return;
-
-        List<String> formattedChunks = missingChunks.stream()
-                .sorted(Comparator
-                        .comparing(ChunkKey::dimensionId)
-                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).x)
-                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).z))
-                .map(key -> {
-                    ChunkPos chunkPos = new ChunkPos(key.chunkPos());
-                    return key.dimensionId() + " [" + chunkPos.x + ", " + chunkPos.z + "]";
-                })
-                .toList();
-        String chunks = String.join(", ", formattedChunks.stream().limit(10).toList());
-        if (formattedChunks.size() > 10) {
-            chunks += ", and " + (formattedChunks.size() - 10) + " other chunks, please review world data before running the restoration process";
-        }
-
-        if (!missingChunks.isEmpty()) {
-            log.warn("ArdaPaths restore skipped {} markers in {} chunk(s) missing from the world: {}", skippedMarkers, missingChunks.size(), chunks);
-        }
-        if (conflicts > 0) {
-            log.warn("ArdaPaths restore skipped {} marker(s) because a non-marker block occupied the target position", conflicts);
-        }
-        if (failed > 0) {
-            log.warn("ArdaPaths restore skipped {} marker(s) because marker placement did not produce a valid marker block entity", failed);
-        }
-    }
-
-    /**
-     * Lists available backup zip names for command suggestions.
-     *
-     * @return sorted zip file names from newest to oldest
-     */
-    public List<String> listBackupZipNames() {
-        if (!Files.isDirectory(BACKUP_DIR)) return List.of();
-
-        try (var files = Files.list(BACKUP_DIR)) {
-            return files
-                    .filter(path -> path.getFileName().toString().endsWith(".zip"))
-                    .sorted(Comparator.comparing(Path::getFileName).reversed())
-                    .map(path -> path.getFileName().toString())
-                    .toList();
-        } catch (IOException exception) {
-            log.warn("Failed to list ArdaPaths backup zips", exception);
-            return List.of();
-        }
-    }
-
-    /**
-     * Creates in-memory JSON files and manifest for the supplied marker scan.
-     *
-     * @param markers scanned marker data
-     * @return complete export snapshot
-     */
-    private BackupSnapshot createSnapshot(List<ScannedMarkerData> markers) {
-        TreeMap<String, String> files = new TreeMap<>();
-        MarkerIndexDto markerIndex = createMarkerIndex(markers);
-        files.put("markers.json", GSON.toJson(markerIndex));
-
-        int chapterCount = 0;
-        int nodeCount = 0;
-
-        for (PathData pathData : sortedPaths()) {
-            PathFileDto pathFile = createPathFile(pathData, markers);
-            chapterCount += pathFile.chapters().size();
-            nodeCount += pathFile.chapters().stream().mapToInt(chapter -> chapter.nodes().size()).sum();
-            files.put("paths/" + safeFileName(pathData.getId()) + ".json", GSON.toJson(pathFile));
-        }
-
-        BackupCountsDto counts = new BackupCountsDto(markerIndex.markers().size(), markers.size(), sortedPaths().size(), chapterCount, nodeCount);
-        TreeMap<String, String> hashes = hashFiles(files);
-        ManifestDto manifest = new ManifestDto(SCHEMA_VERSION, LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME) + "Z", counts, hashes);
-        files.put("manifest.json", GSON.toJson(manifest));
-
-        return new BackupSnapshot(files, manifest, statsFromCounts(counts));
-    }
-
-    /**
-     * Creates a marker position index grouped by dimension.
-     *
-     * @param markers scanned marker data
-     * @return marker index DTO
-     */
-    private MarkerIndexDto createMarkerIndex(List<ScannedMarkerData> markers) {
-        Map<String, Map<String, int[]>> byDimension = new TreeMap<>();
-
-        for (ScannedMarkerData marker : markers) {
-            BlockPos position = marker.position();
-            byDimension
-                    .computeIfAbsent(marker.dimensionId(), ignored -> new TreeMap<>())
-                    .put(Long.toString(position.asLong()), new int[]{position.getX(), position.getY(), position.getZ()});
-        }
-
-        return new MarkerIndexDto(byDimension);
-    }
-
-    /**
-     * Creates one path export file from config and scanned marker data.
-     *
-     * @param pathData source path definition
-     * @param markers  scanned marker data
-     * @return path file DTO
-     */
-    private PathFileDto createPathFile(PathData pathData, List<ScannedMarkerData> markers) {
-        List<PathChapterDto> chapters = sortedChapters(pathData).stream()
-                .map(chapter -> createChapter(pathData, chapter, markers))
-                .toList();
-        PathDiagnosticsDto diagnostics = createDiagnostics(chapters);
-
-        return new PathFileDto(
-                pathData.getId(),
-                pathData.getName(),
-                new PathColorDto(toRgb(pathData.getPrimaryColor()), toRgb(pathData.getSecondaryColor()), toRgb(pathData.getTertiaryColor())),
-                chapters,
-                diagnostics
-        );
-    }
-
-    /**
-     * Creates one exported chapter and its marker nodes.
-     *
-     * @param pathData source path definition
-     * @param chapter  source chapter definition
-     * @param markers  scanned marker data
-     * @return chapter DTO
-     */
-    private PathChapterDto createChapter(PathData pathData, ChapterData chapter, List<ScannedMarkerData> markers) {
-        List<PathNodeDto> nodes = markers.stream()
-                .map(marker -> createNode(pathData.getId(), chapter.getId(), marker))
-                .flatMap(Optional::stream)
-                .sorted(Comparator.comparingLong(PathNodeDto::pos))
-                .toList();
-        PositionData startPosition = ArdaPaths.CONFIG.getChapterStarts().get(pathData.getId() + ":" + chapter.getId());
-
-        return new PathChapterDto(
-                chapter.getId(),
-                chapter.getName(),
-                chapter.getDate(),
-                chapter.getIndex(),
-                chapter.getWarp(),
-                startPosition == null ? null : startPosition.toBlockPos().asLong(),
-                nodes
-        );
-    }
-
-    /**
-     * Creates an exported node for a marker when it has data for the requested path chapter.
-     *
-     * @param pathId    path identifier
-     * @param chapterId chapter identifier
-     * @param marker    scanned marker
-     * @return exported node, or empty when the marker is unrelated
-     */
-    Optional<PathNodeDto> createNode(String pathId, String chapterId, ScannedMarkerData marker) {
-        Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = marker.pathData().get(pathId);
-        if (chapters == null) return Optional.empty();
-
-        PathMarkerBlockEntity.ChapterNbtData chapterNbtData = chapters.get(chapterId);
-        if (chapterNbtData == null) return Optional.empty();
-
-        BlockPos target = chapterNbtData.getTarget();
-        Long next = target == null ? null : marker.position().offset(target).asLong();
-        long packedMessageData = chapterNbtData.getPackedMessageData();
-
-        return Optional.of(new PathNodeDto(
-                marker.dimensionId(),
-                marker.position().asLong(),
-                next,
-                chapterNbtData.isChapterStart(),
-                chapterNbtData.isDisplayChapterTitleOnTrail(),
-                chapterNbtData.isDisplayAboveBlocks(),
-                chapterNbtData.getWeather(),
-                chapterNbtData.getTimeOfDay(),
-                chapterNbtData.getTimeTransitionRange(),
-                chapterNbtData.getAutoTeleportTarget(),
-                WarpTarget.formatCoordinates(chapterNbtData.getLookAt()),
-                chapterNbtData.getGiveItem(),
-                chapterNbtData.getProximityMessage(),
-                chapterNbtData.getActivationRange(),
-                new NodeAnimDto(packedMessageData, BitPacker.unpackFive(packedMessageData))
-        ));
-    }
-
-    /**
-     * Builds informational graph diagnostics for a path file.
-     *
-     * @param chapters exported chapters
-     * @return diagnostics DTO
-     */
-    private PathDiagnosticsDto createDiagnostics(List<PathChapterDto> chapters) {
-        Set<Long> allPositions = new HashSet<>();
-        Set<Long> allIncoming = new HashSet<>();
-        List<Long> danglingNext = new ArrayList<>();
-        List<Long> orphans = new ArrayList<>();
-        List<List<Long>> cycles = new ArrayList<>();
-        Map<String, List<Long>> multiRoot = new TreeMap<>();
-
-        for (PathChapterDto chapter : chapters) {
-            Set<Long> chapterPositions = new HashSet<>();
-            Set<Long> chapterIncoming = new HashSet<>();
-
-            for (PathNodeDto node : chapter.nodes()) {
-                allPositions.add(node.pos());
-                chapterPositions.add(node.pos());
-                if (node.next() != null) {
-                    chapterIncoming.add(node.next());
-                    allIncoming.add(node.next());
-                    if (!chapterPositions.contains(node.next()) && chapter.nodes().stream().noneMatch(candidate -> candidate.pos() == node.next())) {
-                        danglingNext.add(node.next());
-                    }
+    private void unzip(Path zipPath, Path targetDirectory) throws IOException {
+        try (InputStream inputStream = Files.newInputStream(zipPath);
+             ZipInputStream zipInputStream = new ZipInputStream(inputStream)) {
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                Path target = targetDirectory.resolve(entry.getName()).normalize();
+                if (!target.startsWith(targetDirectory)) {
+                    throw new IOException("Backup zip contains an unsafe entry: " + entry.getName());
                 }
-            }
 
-            List<Long> roots = chapter.nodes().stream()
-                    .map(PathNodeDto::pos)
-                    .filter(pos -> !chapterIncoming.contains(pos))
-                    .sorted()
-                    .toList();
-            if (roots.size() > 1) multiRoot.put(chapter.id(), roots);
-            cycles.addAll(findCycles(chapter.nodes()));
-        }
-
-        for (Long position : allPositions.stream().sorted().toList()) {
-            if (!allIncoming.contains(position)) orphans.add(position);
-        }
-
-        danglingNext.sort(Long::compareTo);
-        return new PathDiagnosticsDto(orphans, danglingNext.stream().distinct().toList(), cycles, multiRoot);
-    }
-
-    /**
-     * Detects simple next-link cycles in one chapter.
-     *
-     * @param nodes chapter nodes
-     * @return cycle position lists
-     */
-    private List<List<Long>> findCycles(List<PathNodeDto> nodes) {
-        Map<Long, Long> nextByPosition = new HashMap<>();
-        for (PathNodeDto node : nodes) {
-            if (node.next() != null) nextByPosition.put(node.pos(), node.next());
-        }
-
-        Set<Long> reported = new HashSet<>();
-        List<List<Long>> cycles = new ArrayList<>();
-
-        for (Long start : nextByPosition.keySet()) {
-            Set<Long> seen = new HashSet<>();
-            ArrayDeque<Long> chain = new ArrayDeque<>();
-            Long current = start;
-
-            while (current != null && nextByPosition.containsKey(current)) {
-                if (!seen.add(current)) {
-                    if (reported.add(current)) cycles.add(new ArrayList<>(chain));
-                    break;
+                if (entry.isDirectory()) {
+                    Files.createDirectories(target);
+                } else {
+                    Path parent = target.getParent();
+                    if (parent != null) Files.createDirectories(parent);
+                    Files.copy(zipInputStream, target, StandardCopyOption.REPLACE_EXISTING);
                 }
-                chain.add(current);
-                current = nextByPosition.get(current);
+                zipInputStream.closeEntry();
             }
         }
-
-        return cycles;
     }
 
     /**
@@ -693,10 +722,10 @@ public class BackupManager {
                     .setTertiaryColor(fromRgb(pathFile.colors().tertiary()));
 
             for (PathChapterDto chapterFile : pathFile.chapters()) {
-                pathData.setChapter(new ChapterData(chapterFile.id(), chapterFile.name(), chapterFile.date(), chapterFile.index(), chapterFile.warp()));
-                if (chapterFile.startPos() != null) {
-                    serverConfig.setChapterStart(pathFile.id(), chapterFile.id(), PositionData.fromBlockPos(BlockPos.of(chapterFile.startPos())));
-                }
+                ChapterData chapter = new ChapterData(chapterFile.id(), chapterFile.name(), chapterFile.date(), chapterFile.index(), chapterFile.warp());
+                chapter.setCoordinates(chapterFile.coordinates());
+                chapter.setDimension(chapterFile.dimension());
+                pathData.setChapter(chapter);
             }
 
             serverConfig.addPath(pathData);
@@ -709,88 +738,79 @@ public class BackupManager {
     }
 
     /**
-     * Writes a backup snapshot to the live data directory.
+     * Applies planned markers in bounded server-thread batches.
      *
-     * @param snapshot snapshot to write
-     * @throws IOException when a file cannot be written
+     * @param server         target server
+     * @param plannedMarkers marker payloads to apply
+     * @param reporter       progress reporter
+     * @param gate           gate for server-thread-only work
+     * @return marker restore counts
      */
-    private void writeSnapshot(BackupSnapshot snapshot) throws IOException {
-        Files.createDirectories(DATA_DIR);
-        Files.createDirectories(DATA_DIR.resolve("paths"));
+    private RestoreApplyResult applyMarkersInBatches(MinecraftServer server, List<PlannedMarker> plannedMarkers, ProgressReporter reporter, BackupJobRunner.ServerGate gate) {
+        reporter.phase("placing");
+        RestoreApplyResult result = RestoreApplyResult.empty();
 
-        Set<Path> expectedFiles = new HashSet<>();
-        for (Map.Entry<String, String> fileEntry : snapshot.files().entrySet()) {
-            Path file = DATA_DIR.resolve(fileEntry.getKey());
-            expectedFiles.add(file.normalize());
-            atomicWriteString(file, fileEntry.getValue());
+        for (int batchStart = 0; batchStart < plannedMarkers.size(); ) {
+            int toIndex = MarkerBatching.findChunkBoundedBatchEnd(
+                    plannedMarkers,
+                    batchStart,
+                    PlannedMarker::dimensionId,
+                    marker -> new ChunkPos(BlockPos.of(marker.packedPos())).toLong()
+            );
+            int fromIndex = batchStart;
+            result = result.plus(gate.call(() -> applyMarkerBatch(server, plannedMarkers.subList(fromIndex, toIndex))));
+            reporter.advance(toIndex, plannedMarkers.size());
+            batchStart = toIndex;
+            MarkerBatching.paceBetweenBatches(batchStart, plannedMarkers.size());
         }
 
-        deleteStaleFiles(DATA_DIR, expectedFiles);
+        return result;
     }
 
     /**
-     * Reads the current manifest when a data directory exists.
+     * Scans the live world and deletes markers absent from the backup index.
      *
-     * @param directory backup data directory
-     * @return parsed manifest, or empty when absent/invalid
+     * @param server      target server
+     * @param markerIndex backup marker index
+     * @param reporter    progress reporter
+     * @param gate        gate for server-thread-only work
+     * @return number of stale markers deleted
      */
-    @SuppressWarnings("SameParameterValue")
-    private Optional<ManifestDto> readManifest(Path directory) {
-        Path manifestPath = directory.resolve("manifest.json");
-        if (!Files.isRegularFile(manifestPath)) return Optional.empty();
+    private int deleteStaleMarkers(MinecraftServer server, MarkerIndexDto markerIndex, ProgressReporter reporter, BackupJobRunner.ServerGate gate) {
+        reporter.phase("saving");
+        gate.run(() -> server.saveEverything(true, true, true));
 
-        try {
-            return Optional.ofNullable(GSON.fromJson(Files.readString(manifestPath), ManifestDto.class));
-        } catch (IOException | JsonParseException exception) {
-            log.warn("Failed to read existing ArdaPaths backup manifest", exception);
-            return Optional.empty();
-        }
-    }
+        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate);
+        List<ScannedMarkerData> currentMarkers = new ArrayList<>(scanResult.markers());
+        currentMarkers.addAll(scanResult.emptyMarkers());
+        Set<String> backupLocations = markerLocations(markerIndex);
+        List<ScannedMarkerData> staleMarkers = currentMarkers.stream()
+                .filter(marker -> !backupLocations.contains(markerLocation(marker.dimensionId(), marker.position().asLong())))
+                .sorted(Comparator
+                        .comparing(ScannedMarkerData::dimensionId)
+                        .thenComparingLong(marker -> new ChunkPos(marker.position()).toLong())
+                        .thenComparingInt(marker -> marker.position().getY()))
+                .toList();
 
-    /**
-     * Creates a zip of the existing live data directory.
-     *
-     * @return created zip file name
-     * @throws IOException when the zip cannot be written
-     */
-    private String zipExistingData() throws IOException {
-        Files.createDirectories(BACKUP_DIR);
-        String zipName = "ardapath-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".zip";
-        Path zipPath = BACKUP_DIR.resolve(zipName);
+        reporter.phase("deleting");
+        // NOTE: Very large hard deletes may need an offline block-palette editing pass later.
+        int deleted = 0;
 
-        try (OutputStream outputStream = Files.newOutputStream(zipPath);
-             ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
-            try (var files = Files.walk(DATA_DIR)) {
-                for (Path file : files.filter(Files::isRegularFile).sorted().toList()) {
-                    String relativePath = DATA_DIR.relativize(file).toString().replace('\\', '/');
-                    zipOutputStream.putNextEntry(new ZipEntry(relativePath));
-                    Files.copy(file, zipOutputStream);
-                    zipOutputStream.closeEntry();
-                }
-            }
+        for (int batchStart = 0; batchStart < staleMarkers.size(); ) {
+            int toIndex = MarkerBatching.findChunkBoundedBatchEnd(
+                    staleMarkers,
+                    batchStart,
+                    ScannedMarkerData::dimensionId,
+                    marker -> new ChunkPos(marker.position()).toLong()
+            );
+            int fromIndex = batchStart;
+            deleted += gate.call(() -> deleteMarkerBatch(server, staleMarkers.subList(fromIndex, toIndex)));
+            reporter.advance(toIndex, staleMarkers.size());
+            batchStart = toIndex;
+            MarkerBatching.paceBetweenBatches(batchStart, staleMarkers.size());
         }
 
-        return zipName;
-    }
-
-    /**
-     * Deletes historical backup zips beyond the retention limit.
-     *
-     * @throws IOException when an old zip cannot be deleted
-     */
-    private void rotateBackupZips() throws IOException {
-        if (!Files.isDirectory(BACKUP_DIR)) return;
-
-        try (var files = Files.list(BACKUP_DIR)) {
-            List<Path> zips = files
-                    .filter(path -> path.getFileName().toString().endsWith(".zip"))
-                    .sorted(Comparator.comparing(Path::getFileName).reversed())
-                    .toList();
-
-            for (int i = MAX_BACKUP_ZIPS; i < zips.size(); i++) {
-                Files.deleteIfExists(zips.get(i));
-            }
-        }
+        return deleted;
     }
 
     /**
@@ -818,71 +838,39 @@ public class BackupManager {
     }
 
     /**
-     * Extracts a backup zip into a temporary directory.
+     * Logs a concise summary of markers skipped because their target chunks or blocks are unsafe.
      *
-     * @param zipPath         zip file to extract
-     * @param targetDirectory temporary extraction directory
-     * @throws IOException when the zip cannot be extracted
+     * @param missingChunks  chunks absent from the target world data
+     * @param skippedMarkers marker payloads skipped because their chunks are missing
+     * @param conflicts      marker payloads skipped because another block occupied the target
+     * @param failed         marker payloads skipped because placement failed
      */
-    private void unzip(Path zipPath, Path targetDirectory) throws IOException {
-        try (InputStream inputStream = Files.newInputStream(zipPath);
-             ZipInputStream zipInputStream = new ZipInputStream(inputStream)) {
-            ZipEntry entry;
-            while ((entry = zipInputStream.getNextEntry()) != null) {
-                Path target = targetDirectory.resolve(entry.getName()).normalize();
-                if (!target.startsWith(targetDirectory)) {
-                    throw new IOException("Backup zip contains an unsafe entry: " + entry.getName());
-                }
+    private void logSkippedMarkers(List<ChunkKey> missingChunks, int skippedMarkers, int conflicts, int failed) {
+        if (missingChunks.isEmpty() && skippedMarkers == 0 && conflicts == 0 && failed == 0) return;
 
-                if (entry.isDirectory()) {
-                    Files.createDirectories(target);
-                } else {
-                    Path parent = target.getParent();
-                    if (parent != null) Files.createDirectories(parent);
-                    Files.copy(zipInputStream, target, StandardCopyOption.REPLACE_EXISTING);
-                }
-                zipInputStream.closeEntry();
-            }
+        List<String> formattedChunks = missingChunks.stream()
+                .sorted(Comparator
+                        .comparing(ChunkKey::dimensionId)
+                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).x)
+                        .thenComparingInt(key -> new ChunkPos(key.chunkPos()).z))
+                .map(key -> {
+                    ChunkPos chunkPos = new ChunkPos(key.chunkPos());
+                    return key.dimensionId() + " [" + chunkPos.x + ", " + chunkPos.z + "]";
+                })
+                .toList();
+        String chunks = String.join(", ", formattedChunks.stream().limit(10).toList());
+        if (formattedChunks.size() > 10) {
+            chunks += ", and " + (formattedChunks.size() - 10) + " other chunks, please review world data before running the restoration process";
         }
-    }
 
-    /**
-     * Writes one file with a temporary sibling and atomic replacement when supported.
-     *
-     * @param file    target file
-     * @param content UTF-8 content
-     * @throws IOException when the file cannot be written
-     */
-    private void atomicWriteString(Path file, String content) throws IOException {
-        Path parent = file.getParent();
-        if (parent != null) Files.createDirectories(parent);
-
-        Path tempFile = file.resolveSibling(file.getFileName() + ".tmp");
-        Files.writeString(tempFile, content, StandardCharsets.UTF_8);
-
-        try {
-            Files.move(tempFile, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException exception) {
-            Files.move(tempFile, file, StandardCopyOption.REPLACE_EXISTING);
+        if (!missingChunks.isEmpty()) {
+            log.warn("ArdaPaths restore skipped {} markers in {} chunk(s) missing from the world: {}", skippedMarkers, missingChunks.size(), chunks);
         }
-    }
-
-    /**
-     * Removes files from a backup directory that are not part of the current snapshot.
-     *
-     * @param directory     live data directory
-     * @param expectedFiles normalized files that should remain
-     * @throws IOException when a stale file cannot be removed
-     */
-    private void deleteStaleFiles(Path directory, Set<Path> expectedFiles) throws IOException {
-        if (!Files.isDirectory(directory)) return;
-
-        try (var files = Files.walk(directory)) {
-            for (Path file : files.filter(Files::isRegularFile).sorted(Comparator.reverseOrder()).toList()) {
-                if (!expectedFiles.contains(file.normalize())) {
-                    Files.deleteIfExists(file);
-                }
-            }
+        if (conflicts > 0) {
+            log.warn("ArdaPaths restore skipped {} marker(s) because a non-marker block occupied the target position", conflicts);
+        }
+        if (failed > 0) {
+            log.warn("ArdaPaths restore skipped {} marker(s) because marker placement did not produce a valid marker block entity", failed);
         }
     }
 
@@ -903,73 +891,6 @@ public class BackupManager {
     }
 
     /**
-     * Computes hashes for serialized files.
-     *
-     * @param files relative file path to content map
-     * @return relative file path to SHA-256 hash map
-     */
-    private TreeMap<String, String> hashFiles(Map<String, String> files) {
-        TreeMap<String, String> hashes = new TreeMap<>();
-        for (Map.Entry<String, String> fileEntry : files.entrySet()) {
-            hashes.put(fileEntry.getKey(), sha256(fileEntry.getValue()));
-        }
-        return hashes;
-    }
-
-    /**
-     * Computes a SHA-256 hash for text.
-     *
-     * @param content content to hash as UTF-8
-     * @return lowercase hex digest
-     */
-    private String sha256(String content) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));
-            StringBuilder builder = new StringBuilder();
-            for (byte hashByte : hash) {
-                builder.append(String.format("%02x", hashByte));
-            }
-            return builder.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is not available", exception);
-        }
-    }
-
-    /**
-     * Gets paths in deterministic export order.
-     *
-     * @return sorted path definitions
-     */
-    private List<PathData> sortedPaths() {
-        return ArdaPaths.CONFIG.getPaths().stream()
-                .sorted(Comparator.comparing(PathData::getId))
-                .toList();
-    }
-
-    /**
-     * Gets chapters in deterministic export order.
-     *
-     * @param pathData path containing chapters
-     * @return sorted chapter definitions
-     */
-    private List<ChapterData> sortedChapters(PathData pathData) {
-        return pathData.getChapters().stream()
-                .sorted(Comparator.comparingInt(ChapterData::getIndex).thenComparing(ChapterData::getId))
-                .toList();
-    }
-
-    /**
-     * Converts a config colour to RGB array form.
-     *
-     * @param color config colour
-     * @return [r, g, b] array
-     */
-    private int[] toRgb(Color color) {
-        return new int[]{color.r, color.g, color.b};
-    }
-
-    /**
      * Converts exported RGB array form into a config colour.
      *
      * @param rgb [r, g, b] array
@@ -981,20 +902,39 @@ public class BackupManager {
     }
 
     /**
-     * Finds a loaded server world by dimension identifier.
+     * Applies a marker batch on the server thread.
      *
-     * @param server      server containing worlds
-     * @param dimensionId dimension identifier
-     * @return matching server world, or null when unavailable
+     * @param server target server
+     * @param batch  marker batch
+     * @return marker restore counts for the batch
      */
-    private @Nullable ServerLevel getWorld(MinecraftServer server, String dimensionId) {
-        for (ServerLevel world : server.getAllLevels()) {
-            if (world.dimension().location().toString().equals(dimensionId)) {
-                return world;
+    private RestoreApplyResult applyMarkerBatch(MinecraftServer server, List<PlannedMarker> batch) {
+        RestoreApplyResult result = RestoreApplyResult.empty();
+
+        for (PlannedMarker marker : batch) {
+            ServerLevel world = getWorld(server, marker.dimensionId());
+            if (world == null) {
+                result = result.withFailed();
+                continue;
+            }
+
+            BlockPos position = BlockPos.of(marker.packedPos());
+            ChunkPos chunkPos = new ChunkPos(position);
+            if (!chunkExists(world, chunkPos)) {
+                result = result.missing(new ChunkKey(marker.dimensionId(), chunkPos.toLong()));
+                continue;
+            }
+
+            world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+
+            switch (MarkerRestorer.apply(world, position, marker.pathsNbt())) {
+                case PLACED -> result = result.withPlaced();
+                case CONFLICT -> result = result.conflict();
+                case FAILED -> result = result.withFailed();
             }
         }
 
-        return null;
+        return result;
     }
 
     /**
@@ -1027,24 +967,82 @@ public class BackupManager {
     }
 
     /**
-     * Converts manifest counts into command-facing stats.
+     * Deletes a stale marker batch on the server thread.
      *
-     * @param counts manifest counts
-     * @return backup stats
+     * @param server target server
+     * @param batch  stale marker batch
+     * @return number of markers deleted
      */
-    private BackupStats statsFromCounts(BackupCountsDto counts) {
-        return new BackupStats(counts.dimensions(), counts.markers(), counts.paths(), counts.chapters(), counts.nodes());
+    private int deleteMarkerBatch(MinecraftServer server, List<ScannedMarkerData> batch) {
+        int deleted = 0;
+
+        for (ScannedMarkerData marker : batch) {
+            ServerLevel world = getWorld(server, marker.dimensionId());
+            if (world == null) continue;
+
+            if (MarkerRestorer.delete(world, marker.position())) {
+                deleted++;
+            }
+        }
+
+        return deleted;
     }
 
     /**
-     * Creates a conservative file name for a path identifier.
+     * Finds a loaded server world by dimension identifier.
      *
-     * @param pathId path identifier
-     * @return path file name stem
+     * @param server      server containing worlds
+     * @param dimensionId dimension identifier
+     * @return matching server world, or null when unavailable
      */
-    private String safeFileName(String pathId) {
-        String safe = pathId.replaceAll("[^A-Za-z0-9._-]", "_");
-        return safe.isBlank() ? "path" : safe;
+    private @Nullable ServerLevel getWorld(MinecraftServer server, String dimensionId) {
+        for (ServerLevel world : server.getAllLevels()) {
+            if (world.dimension().location().toString().equals(dimensionId)) {
+                return world;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks whether a chunk has persisted NBT without creating terrain.
+     *
+     * @param world    world whose chunk storage is probed
+     * @param chunkPos chunk position to inspect
+     * @return true when the chunk already exists in vanilla storage
+     */
+    private boolean chunkExists(ServerLevel world, ChunkPos chunkPos) {
+        if (storageAccess.isChunkLoaded(world, chunkPos)) {
+            return true;
+        }
+
+        try {
+            return storageAccess.readChunkNbt(world, chunkPos).isPresent();
+        } catch (CompletionException exception) {
+            log.warn("Failed to probe ArdaPaths restore chunk {}", chunkPos, exception);
+            return false;
+        }
+    }
+
+    /**
+     * Lists available backup zip names for command suggestions.
+     *
+     * @return sorted zip file names from newest to oldest
+     */
+    public List<String> listBackupZipNames() {
+        if (!Files.isDirectory(BACKUP_DIR)) return List.of();
+
+        try (var files = Files.list(BACKUP_DIR)) {
+            return files
+                    .filter(path -> path.getFileName().toString().endsWith(".zip"))
+                    .sorted(Comparator.comparing(Path::getFileName).reversed())
+                    .map(path -> path.getFileName().toString())
+                    .toList();
+        } catch (IOException exception) {
+            log.warn("Failed to list ArdaPaths backup zips", exception);
+            return List.of();
+        }
     }
 
     /**
@@ -1055,6 +1053,7 @@ public class BackupManager {
      * @param stats    export stats
      */
     private record BackupSnapshot(Map<String, String> files, ManifestDto manifest, BackupStats stats) {
+
     }
 
     /**
@@ -1065,18 +1064,21 @@ public class BackupManager {
      * @param paths       parsed path files
      */
     private record RestorableBackup(ManifestDto manifest, MarkerIndexDto markerIndex, List<PathFileDto> paths) {
+
     }
 
     /**
      * Accumulated marker placement counts from restore batches.
      *
-     * @param placed        marker payloads applied to path marker block entities
-     * @param missingChunks target chunks absent from the world
+     * @param placed         marker payloads applied to path marker block entities
+     * @param missingChunks  target chunks absent from the world
      * @param missingMarkers marker payloads skipped because their chunks were absent
-     * @param conflicts     marker payloads skipped because another block occupied the target
-     * @param failed        marker payloads skipped because placement did not produce a marker entity
+     * @param conflicts      marker payloads skipped because another block occupied the target
+     * @param failed         marker payloads skipped because placement did not produce a marker entity
      */
-    private record RestoreApplyResult(int placed, List<ChunkKey> missingChunks, int missingMarkers, int conflicts, int failed) {
+    private record RestoreApplyResult(int placed, List<ChunkKey> missingChunks, int missingMarkers, int conflicts,
+                                      int failed) {
+
         /**
          * Creates an empty restore-apply result.
          *

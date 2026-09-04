@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Regression tests for path marker block entity NBT loading.
  */
 class PathMarkerBlockEntityTest {
+
     /**
      * Clears global configs after tests that intentionally leave them unset.
      */
@@ -49,29 +50,6 @@ class PathMarkerBlockEntityTest {
     }
 
     /**
-     * Verifies unknown config IDs are retained when trusted marker data is written back.
-     *
-     * @throws ReflectiveOperationException if the marker fixture cannot initialize private state
-     */
-    @Test
-    void applyNbtRoundTripsUnknownConfigPathThroughToNbt() throws ReflectiveOperationException {
-        MarkerTestSupport.clearConfigs();
-        CompoundTag paths = new CompoundTag();
-        CompoundTag unknownPath = new CompoundTag();
-        CompoundTag unknownChapter = new CompoundTag();
-        unknownChapter.putString("proximity_message", "Lost road");
-        unknownChapter.putInt("activation_range", 13);
-        unknownPath.put("lost", unknownChapter);
-        paths.put("unknown_path", unknownPath);
-
-        PathMarkerBlockEntity marker = MarkerTestSupport.markerWithPathData();
-
-        marker.applyNbt(paths);
-
-        assertEquals(paths, marker.toNbt(new CompoundTag()).getCompound("paths"));
-    }
-
-    /**
      * Creates a multi-path marker NBT fixture with non-empty chapter entries.
      *
      * @return paths compound suitable for {@link PathMarkerBlockEntity#applyNbt(CompoundTag)}
@@ -94,5 +72,28 @@ class PathMarkerBlockEntityTest {
         aragorn.put("rohan", rohan);
         paths.put("aragorn", aragorn);
         return paths;
+    }
+
+    /**
+     * Verifies unknown config IDs are retained when trusted marker data is written back.
+     *
+     * @throws ReflectiveOperationException if the marker fixture cannot initialize private state
+     */
+    @Test
+    void applyNbtRoundTripsUnknownConfigPathThroughToNbt() throws ReflectiveOperationException {
+        MarkerTestSupport.clearConfigs();
+        CompoundTag paths = new CompoundTag();
+        CompoundTag unknownPath = new CompoundTag();
+        CompoundTag unknownChapter = new CompoundTag();
+        unknownChapter.putString("proximity_message", "Lost road");
+        unknownChapter.putInt("activation_range", 13);
+        unknownPath.put("lost", unknownChapter);
+        paths.put("unknown_path", unknownPath);
+
+        PathMarkerBlockEntity marker = MarkerTestSupport.markerWithPathData();
+
+        marker.applyNbt(paths);
+
+        assertEquals(paths, marker.toNbt(new CompoundTag()).getCompound("paths"));
     }
 }

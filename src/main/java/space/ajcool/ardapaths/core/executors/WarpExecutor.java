@@ -75,9 +75,9 @@ public class WarpExecutor implements WarpService {
      * Warps a player to a named HuskHomes warp location.
      * Asynchronously resolves the warp location and teleports the player if successful.
      *
-     * @param server   the Minecraft server instance
-     * @param player   the player to warp
-     * @param warpName the name of the HuskHomes warp location
+     * @param server    the Minecraft server instance
+     * @param player    the player to warp
+     * @param warpName  the name of the HuskHomes warp location
      * @param onFailure fallback action for missing or invalid warp targets
      */
     @Override
@@ -113,11 +113,11 @@ public class WarpExecutor implements WarpService {
 
                 log.info("Warp ongoing for {} to {}", player.getStringUUID(), targetWarp);
                 server.execute(() -> player.teleportTo(serverWorld,
-                            targetWarp.getX(),
-                            targetWarp.getY(),
-                            targetWarp.getZ(),
-                            targetWarp.getYaw(),
-                            targetWarp.getPitch()));
+                        targetWarp.getX(),
+                        targetWarp.getY(),
+                        targetWarp.getZ(),
+                        targetWarp.getYaw(),
+                        targetWarp.getPitch()));
 
             });
         });

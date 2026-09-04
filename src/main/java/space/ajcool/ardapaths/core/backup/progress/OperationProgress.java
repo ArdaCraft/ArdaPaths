@@ -4,6 +4,7 @@ package space.ajcool.ardapaths.core.backup.progress;
  * Thread-safe mutable progress state for one active backup job.
  */
 public class OperationProgress implements ProgressReporter {
+
     /**
      * Kind of job being tracked.
      */

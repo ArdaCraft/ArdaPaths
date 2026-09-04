@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Gson shape tests for exported backup DTOs.
  */
 class BackupDtoGsonShapeTest {
+
     /**
      * Gson instance matching default backup DTO serialization.
      */
@@ -49,7 +51,7 @@ class BackupDtoGsonShapeTest {
                 "frodo",
                 "Frodo's Path",
                 new PathColorDto(new int[]{255, 215, 0}, new int[]{230, 194, 0}, new int[]{255, 227, 77}),
-                List.of(new PathChapterDto("shire", "The Shire", "12 Forelithe", 1, "bag-end", 42L, List.of())),
+                List.of(new PathChapterDto("shire", "The Shire", "12 Forelithe", 1, "bag-end", new PositionData(1, 2, 3), "minecraft:overworld", List.of())),
                 new PathDiagnosticsDto(List.of(1L), List.of(2L), List.of(List.of(3L, 4L)), Map.of("shire", List.of(5L)))
         );
 
@@ -57,7 +59,10 @@ class BackupDtoGsonShapeTest {
 
         assertEquals("frodo", json.get("id").getAsString());
         assertTrue(json.has("colors"));
-        assertEquals(42L, json.getAsJsonArray("chapters").get(0).getAsJsonObject().get("start_pos").getAsLong());
+        JsonObject chapter = json.getAsJsonArray("chapters").get(0).getAsJsonObject();
+        assertEquals(1, chapter.getAsJsonObject("coordinates").get("x").getAsInt());
+        assertEquals("minecraft:overworld", chapter.get("dimension").getAsString());
+        assertFalse(chapter.has("start_pos"));
         assertTrue(json.getAsJsonObject("diagnostics").has("dangling_next"));
         assertTrue(json.getAsJsonObject("diagnostics").has("multi_root"));
         assertFalse(json.getAsJsonObject("diagnostics").has("danglingNext"));

@@ -96,89 +96,11 @@ public class TrailRenderer {
     private static TrailSoundInstance trailSoundInstance = null;
 
     /**
-     * Visit state for a marker whose proximity text or chapter title has already been triggered.
-     *
-     * @param pathId              The path the activation was triggered for
-     * @param chapterId           The chapter the activation was triggered for
-     * @param exitDistanceSquared The squared distance at which the marker can trigger again
-     */
-    private record ProximityActivation(String pathId, String chapterId, double exitDistanceSquared) {}
-
-    /**
-     * Completed trail geometry retained as part of the audible revealer polyline.
-     *
-     * @param sx the segment start x coordinate
-     * @param sy the segment start y coordinate
-     * @param sz the segment start z coordinate
-     * @param ex the segment end x coordinate
-     * @param ey the segment end y coordinate
-     * @param ez the segment end z coordinate
-     */
-    private record AudibleSegment(double sx, double sy, double sz, double ex, double ey, double ez) {
-        /**
-         * Returns the normalized projection point on this segment nearest to the supplied position.
-         *
-         * @param px the probe x coordinate
-         * @param py the probe y coordinate
-         * @param pz the probe z coordinate
-         * @return the clamped segment parameter in the range {@code [0, 1]}
-         */
-        private double closestSegmentT(double px, double py, double pz) {
-            double segmentX = ex - sx;
-            double segmentY = ey - sy;
-            double segmentZ = ez - sz;
-            double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ);
-
-            if (segmentLengthSquared == 0.0D) {
-                return 0.0D;
-            }
-
-            double relativeX = px - sx;
-            double relativeY = py - sy;
-            double relativeZ = pz - sz;
-            double projection = ((relativeX * segmentX) + (relativeY * segmentY) + (relativeZ * segmentZ)) / segmentLengthSquared;
-
-            return Mth.clamp(projection, 0.0D, 1.0D);
-        }
-
-        /**
-         * Computes the x coordinate at a normalized segment position.
-         *
-         * @param t the normalized segment position
-         * @return the x coordinate at {@code t}
-         */
-        private double xAt(double t) {
-            return sx + ((ex - sx) * t);
-        }
-
-        /**
-         * Computes the y coordinate at a normalized segment position.
-         *
-         * @param t the normalized segment position
-         * @return the y coordinate at {@code t}
-         */
-        private double yAt(double t) {
-            return sy + ((ey - sy) * t);
-        }
-
-        /**
-         * Computes the z coordinate at a normalized segment position.
-         *
-         * @param t the normalized segment position
-         * @return the z coordinate at {@code t}
-         */
-        private double zAt(double t) {
-            return sz + ((ez - sz) * t);
-        }
-    }
-
-    /**
      * Render all registered trails.
      *
      * @param level The client world
      */
-    public static void render(ClientLevel level)
-    {
+    public static void render(ClientLevel level) {
 
         LocalPlayer player = Client.player();
         if (player == null) return;
@@ -203,7 +125,7 @@ public class TrailRenderer {
             ProximityRenderer.clear();
             FocusController.setCandidate(null);
 
-        // Else, render trails based on the held item
+            // Else, render trails based on the held item
         } else {
 
             String currentPathId = selectedPath.getId();
@@ -223,12 +145,120 @@ public class TrailRenderer {
     }
 
     /**
+     * Re-arm proximity text for any triggered markers the player has moved away from.
+     *
+     * @param playerPos The player's current block position
+     */
+    private static void pruneProximityActivations(BlockPos playerPos) {
+
+        proximityActivations.entrySet().removeIf(entry -> playerPos.distSqr(entry.getKey()) > entry.getValue().exitDistanceSquared());
+        markerActionActivations.entrySet().removeIf(entry -> playerPos.distSqr(entry.getKey()) > entry.getValue().exitDistanceSquared());
+    }
+
+    /**
+     * Clears all registered trails and releases the active trail sound for a graceful fade-out.
+     */
+    public static void clearTrails() {
+
+        Waypoints.clearWaypoints();
+        trails.clear();
+        trailsByStart.clear();
+        audibleSegments.clear();
+        AnimatedTrail.resetPlayerSpeed();
+
+        if (trailSoundInstance != null && !trailSoundInstance.isStopped()) {
+            trailSoundInstance.release();
+        }
+    }
+
+    /**
+     * Render trails in Path Marker mode. IE, when the player is holding a Path Marker, displaying trails from all
+     * surrounding markers given the current selected Path and Chapter ID.
+     *
+     * @param currentPathId     The current path ID
+     * @param currentChapterId  The current chapter ID
+     * @param currentPathColors The colors of the current path
+     */
+    private static void renderPathMarkerMode(String currentPathId, String currentChapterId, Color[] currentPathColors) {
+        Paths.getTickingMarkers().forEach(marker ->
+        {
+            PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(currentPathId, currentChapterId, false);
+            if (data == null) return;
+
+            if (!trailsByStart.containsKey(marker.getBlockPos())) {
+                marker.createTrail(currentPathId, currentChapterId, currentPathColors);
+            }
+        });
+    }
+
+    /**
+     * Render trails in Path Revealer mode. IE, when the player is holding a Path Revealer, displaying trails from the current Path and Chapter.
+     * Determines the closest valid path marker and creates a trail from it if within range.
+     * Switches chapters if the player is within range of a chapter start marker.
+     *
+     * @param ignoredLevel      The client world
+     * @param player            The client player entity
+     * @param currentPathId     The current path ID
+     * @param currentChapterId  The current chapter ID
+     * @param currentPathColors The colors of the current path
+     */
+    private static void renderPathRevealerMode(ClientLevel ignoredLevel, LocalPlayer player, String currentPathId,
+                                               String currentChapterId, Color[] currentPathColors) {
+        BlockPos playerPos = player.blockPosition();
+        Vec3 precisePlayerPos = player.position();
+        pruneProximityActivations(playerPos);
+
+        PathMarkerBlockEntity closestValidMarker = null;
+        double closestSquaredDistance = Double.MAX_VALUE;
+        BlockPos closestFocusTarget = null;
+        double closestFocusSquaredDistance = Double.MAX_VALUE;
+
+        for (PathMarkerBlockEntity marker : Paths.getTickingMarkers()) {
+
+            double squaredDistance = playerPos.distSqr(marker.getBlockPos());
+            PathMarkerBlockEntity.ChapterNbtData currentChapterData = marker.getChapterData(currentPathId, currentChapterId, false);
+
+            if (currentChapterData != null) {
+
+                displayAnimatedText(squaredDistance, currentChapterData, player, marker.getBlockPos(), currentPathColors);
+                processMarkerActions(squaredDistance, currentChapterData, marker.getBlockPos(), currentPathId);
+                EnvironmentController.processMarker(currentChapterData, marker.getBlockPos(), precisePlayerPos, currentPathId);
+
+                if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance) {
+                    closestValidMarker = marker;
+                    closestSquaredDistance = squaredDistance;
+                }
+
+                if (currentChapterData.getLookAt() != null
+                        && squaredDistance <= FocusController.FOCUS_PROMPT_RANGE_SQUARED
+                        && squaredDistance < closestFocusSquaredDistance) {
+                    closestFocusTarget = currentChapterData.getLookAt();
+                    closestFocusSquaredDistance = squaredDistance;
+                }
+            }
+
+            processChapterSwitching(marker, currentPathId, squaredDistance);
+        }
+
+        FocusController.setCandidate(closestFocusTarget);
+        EnvironmentController.tick(precisePlayerPos);
+
+        if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100) {
+
+            updateLastVisitedTrailNode(currentChapterId, closestValidMarker);
+            closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);
+        }
+
+        setWaypointToNextTrailNode(closestValidMarker);
+    }
+
+    /**
      * Render the trails and remove those that are out of range or at the end.
      *
-     * @param level           The client world
-     * @param player          The client player entity
-     * @param selectedPath    The currently selected path data
-     * @param currentChapterId The current chapter ID
+     * @param level             The client world
+     * @param player            The client player entity
+     * @param selectedPath      The currently selected path data
+     * @param currentChapterId  The current chapter ID
      * @param isHoldingRevealer whether the player is holding the Pathfinder
      */
     private static void renderTrails(ClientLevel level, LocalPlayer player, PathData selectedPath, String currentChapterId, boolean isHoldingRevealer) {
@@ -398,172 +428,13 @@ public class TrailRenderer {
     }
 
     /**
-     * Render trails in Path Marker mode. IE, when the player is holding a Path Marker, displaying trails from all
-     * surrounding markers given the current selected Path and Chapter ID.
-     *
-     * @param currentPathId     The current path ID
-     * @param currentChapterId  The current chapter ID
-     * @param currentPathColors The colors of the current path
-     */
-    private static void renderPathMarkerMode(String currentPathId, String currentChapterId, Color[] currentPathColors)
-    {
-        Paths.getTickingMarkers().forEach(marker ->
-        {
-            PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(currentPathId, currentChapterId, false);
-            if (data == null) return;
-
-            if (!trailsByStart.containsKey(marker.getBlockPos()))
-            {
-                marker.createTrail(currentPathId, currentChapterId, currentPathColors);
-            }
-        });
-    }
-
-    /**
-     * Render trails in Path Revealer mode. IE, when the player is holding a Path Revealer, displaying trails from the current Path and Chapter.
-     * Determines the closest valid path marker and creates a trail from it if within range.
-     * Switches chapters if the player is within range of a chapter start marker.
-     *
-     * @param ignoredLevel             The client world
-     * @param player            The client player entity
-     * @param currentPathId     The current path ID
-     * @param currentChapterId  The current chapter ID
-     * @param currentPathColors The colors of the current path
-     */
-    private static void renderPathRevealerMode(ClientLevel ignoredLevel, LocalPlayer player, String currentPathId,
-                                               String currentChapterId, Color[] currentPathColors)
-    {
-        BlockPos playerPos = player.blockPosition();
-        Vec3 precisePlayerPos = player.position();
-        pruneProximityActivations(playerPos);
-
-        PathMarkerBlockEntity closestValidMarker = null;
-        double closestSquaredDistance = Double.MAX_VALUE;
-        BlockPos closestFocusTarget = null;
-        double closestFocusSquaredDistance = Double.MAX_VALUE;
-
-        for (PathMarkerBlockEntity marker : Paths.getTickingMarkers()) {
-
-            double squaredDistance = playerPos.distSqr(marker.getBlockPos());
-            PathMarkerBlockEntity.ChapterNbtData currentChapterData = marker.getChapterData(currentPathId, currentChapterId, false);
-
-            if (currentChapterData != null) {
-
-                displayAnimatedText(squaredDistance, currentChapterData, player, marker.getBlockPos(), currentPathColors);
-                processMarkerActions(squaredDistance, currentChapterData, marker.getBlockPos(), currentPathId);
-                EnvironmentController.processMarker(currentChapterData, marker.getBlockPos(), precisePlayerPos, currentPathId);
-
-                if (currentChapterData.getTarget() != null && squaredDistance < closestSquaredDistance) {
-                    closestValidMarker = marker;
-                    closestSquaredDistance = squaredDistance;
-                }
-
-                if (currentChapterData.getLookAt() != null
-                        && squaredDistance <= FocusController.FOCUS_PROMPT_RANGE_SQUARED
-                        && squaredDistance < closestFocusSquaredDistance) {
-                    closestFocusTarget = currentChapterData.getLookAt();
-                    closestFocusSquaredDistance = squaredDistance;
-                }
-            }
-
-            processChapterSwitching(marker, currentPathId, squaredDistance);
-        }
-
-        FocusController.setCandidate(closestFocusTarget);
-        EnvironmentController.tick(precisePlayerPos);
-
-        if (trails.isEmpty() && closestValidMarker != null && closestSquaredDistance <= 100) {
-
-            updateLastVisitedTrailNode(currentChapterId, closestValidMarker);
-            closestValidMarker.createTrail(currentPathId, currentChapterId, currentPathColors);
-        }
-
-        setWaypointToNextTrailNode(closestValidMarker);
-    }
-
-    /**
-     * Adds an ardamap waypoint on the next node
-     * @param closestValidMarker the closest valid marker
-     */
-    private static void setWaypointToNextTrailNode(PathMarkerBlockEntity closestValidMarker) {
-
-        if (closestValidMarker != null) {
-            AnimatedTrail trail = trailsByStart.get(closestValidMarker.getBlockPos());
-            if (trail != null) {
-                Waypoints.setNextTrailNode(trail.getEnd());
-            }
-        }
-    }
-
-    /**
-     * Process chapter switching based on the player's proximity to chapter start markers.
-     * When the player is within the activation range of a chapter start marker, switch to that chapter
-     * if it is the next chapter in sequence. If the current chapter is "default", switch to the first available chapter.
-     * @param marker          The path marker block entity
-     * @param currentPathId   The current path ID
-     * @param squaredDistance The squared distance between the player and the path marker
-     */
-    private static void processChapterSwitching(PathMarkerBlockEntity marker, String currentPathId, double squaredDistance) {
-
-        // Here selected path is guaranteed to be non-null
-        var selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
-        assert selectedPath != null;
-
-        ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
-        if (currentChapter == null) return;
-
-        List<PathMarkerBlockEntity.ChapterNbtData> chapters = marker.getChapters(currentPathId, false);
-        if (chapters == null || chapters.isEmpty()) return;
-
-        ChapterData selectedChapter = null;
-        for (var otherChapterData : chapters) {
-            String otherChapterId = otherChapterData.getChapterId();
-            if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
-            if (squaredDistance > Mth.square(otherChapterData.getActivationRange())) continue;
-
-            ChapterData chapter = selectedPath.getChapter(otherChapterId);
-            if (chapter == null) continue;
-
-            if ("default".equalsIgnoreCase(currentChapter.getName())) {
-
-                var targetChapterIsDefault = "default".equalsIgnoreCase(chapter.getName());
-
-                if (targetChapterIsDefault) continue;
-
-                var currentSelectedChapterIsNull = selectedChapter == null;
-                var selectedChapterIsAfter       = !currentSelectedChapterIsNull && (chapter.getIndex() < selectedChapter.getIndex());
-
-                if (currentSelectedChapterIsNull || selectedChapterIsAfter) {
-                    selectedChapter = chapter;
-                }
-
-                continue;
-            }
-
-            if (chapter.getIndex() <= currentChapter.getIndex()) continue;
-            if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
-
-            selectedChapter = chapter;
-            break;
-        }
-
-        if (selectedChapter == null) return;
-
-        String selectedChapterId = selectedChapter.getId();
-        if (!selectedChapterId.equals(ArdaPathsClient.CONFIG.getCurrentChapterId())) {
-            ArdaPathsClient.CONFIG.setCurrentChapter(selectedChapterId);
-            ArdaPathsClient.CONFIG_MANAGER.save();
-        }
-    }
-
-    /**
      * Display animated text (Chapter Title or Proximity message) based on the player's proximity to a path marker.
      *
-     * @param squaredDistance     The squared distance between the player and the path marker
-     * @param currentChapterData  The chapter data of the path marker
-     * @param player              The player entity
-     * @param markerPos           The position of the marker
-     * @param currentPathColors   The colors of the current path
+     * @param squaredDistance    The squared distance between the player and the path marker
+     * @param currentChapterData The chapter data of the path marker
+     * @param player             The player entity
+     * @param markerPos          The position of the marker
+     * @param currentPathColors  The colors of the current path
      */
     private static void displayAnimatedText(double squaredDistance,
                                             PathMarkerBlockEntity.ChapterNbtData currentChapterData,
@@ -571,9 +442,9 @@ public class TrailRenderer {
                                             BlockPos markerPos,
                                             Color[] currentPathColors) {
 
-        var renderMessages      = ArdaPathsClient.CONFIG.showProximityMessages();
+        var renderMessages = ArdaPathsClient.CONFIG.showProximityMessages();
         var renderChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
-        var selectedPath        = ArdaPathsClient.CONFIG.getSelectedPath();
+        var selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
         assert selectedPath != null;
 
         // If we are within activation range
@@ -652,41 +523,75 @@ public class TrailRenderer {
     }
 
     /**
-     * Re-arm proximity text for any triggered markers the player has moved away from.
+     * Process chapter switching based on the player's proximity to chapter start markers.
+     * When the player is within the activation range of a chapter start marker, switch to that chapter
+     * if it is the next chapter in sequence. If the current chapter is "default", switch to the first available chapter.
      *
-     * @param playerPos The player's current block position
+     * @param marker          The path marker block entity
+     * @param currentPathId   The current path ID
+     * @param squaredDistance The squared distance between the player and the path marker
      */
-    private static void pruneProximityActivations(BlockPos playerPos) {
+    private static void processChapterSwitching(PathMarkerBlockEntity marker, String currentPathId, double squaredDistance) {
 
-        proximityActivations.entrySet().removeIf(entry -> playerPos.distSqr(entry.getKey()) > entry.getValue().exitDistanceSquared());
-        markerActionActivations.entrySet().removeIf(entry -> playerPos.distSqr(entry.getKey()) > entry.getValue().exitDistanceSquared());
-    }
+        // Here selected path is guaranteed to be non-null
+        var selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
+        assert selectedPath != null;
 
-    /**
-     * Create a PlayerTeleportPacket for the given player and position.
-     *
-     * @param player    The player to teleport
-     * @param playerPos The position to teleport to
-     * @return A PlayerTeleportPacket for the given player and position
-     */
-    @SuppressWarnings("resource")
-    private static @NotNull PlayerTeleportPacket getPlayerTeleportPacket(LocalPlayer player, BlockPos playerPos) {
+        ChapterData currentChapter = ArdaPathsClient.CONFIG.getCurrentChapter();
+        if (currentChapter == null) return;
 
-        var worldId = player.level()
-                .dimension()
-                .location();
+        List<PathMarkerBlockEntity.ChapterNbtData> chapters = marker.getChapters(currentPathId, false);
+        if (chapters == null || chapters.isEmpty()) return;
 
-        return new PlayerTeleportPacket(playerPos.getX(), playerPos.getY(), playerPos.getZ(), worldId);
+        ChapterData selectedChapter = null;
+        for (var otherChapterData : chapters) {
+            String otherChapterId = otherChapterData.getChapterId();
+            if (otherChapterId.isEmpty() || !otherChapterData.isChapterStart()) continue;
+            if (squaredDistance > Mth.square(otherChapterData.getActivationRange())) continue;
+
+            ChapterData chapter = selectedPath.getChapter(otherChapterId);
+            if (chapter == null) continue;
+
+            if ("default".equalsIgnoreCase(currentChapter.getName())) {
+
+                var targetChapterIsDefault = "default".equalsIgnoreCase(chapter.getName());
+
+                if (targetChapterIsDefault) continue;
+
+                var currentSelectedChapterIsNull = selectedChapter == null;
+                var selectedChapterIsAfter = !currentSelectedChapterIsNull && (chapter.getIndex() < selectedChapter.getIndex());
+
+                if (currentSelectedChapterIsNull || selectedChapterIsAfter) {
+                    selectedChapter = chapter;
+                }
+
+                continue;
+            }
+
+            if (chapter.getIndex() <= currentChapter.getIndex()) continue;
+            if ((chapter.getIndex() - currentChapter.getIndex()) > 1) continue;
+
+            selectedChapter = chapter;
+            break;
+        }
+
+        if (selectedChapter == null) return;
+
+        String selectedChapterId = selectedChapter.getId();
+        if (!selectedChapterId.equals(ArdaPathsClient.CONFIG.getCurrentChapterId())) {
+            ArdaPathsClient.CONFIG.setCurrentChapter(selectedChapterId);
+            ArdaPathsClient.CONFIG_MANAGER.save();
+        }
     }
 
     /**
      * Update the last visited trail node data. This is used for respawning the player at the last visited trail node if
      * the return to path button is pressed.
      *
-     * @param currentChapterId     The current chapter ID
-     * @param closestValidMarker   The closest valid path marker
+     * @param currentChapterId   The current chapter ID
+     * @param closestValidMarker The closest valid path marker
      */
-    private static void updateLastVisitedTrailNode(String currentChapterId, PathMarkerBlockEntity closestValidMarker){
+    private static void updateLastVisitedTrailNode(String currentChapterId, PathMarkerBlockEntity closestValidMarker) {
 
         ResourceLocation worldId = null;
 
@@ -703,63 +608,18 @@ public class TrailRenderer {
     }
 
     /**
-     * Register a new trail to render.
+     * Adds an ardamap waypoint on the next node
      *
-     * @param trail The trail to render
+     * @param closestValidMarker the closest valid marker
      */
-    public static void registerTrail(AnimatedTrail trail) {
-        if (trailsByStart.containsKey(trail.getStart())) return;
+    private static void setWaypointToNextTrailNode(PathMarkerBlockEntity closestValidMarker) {
 
-        audibleSegments.remove(trail.getStart());
-        trails.add(trail);
-        trailsByStart.put(trail.getStart(), trail);
-    }
-
-    /**
-     * Clears all registered trails and releases the active trail sound for a graceful fade-out.
-     */
-    public static void clearTrails() {
-
-        Waypoints.clearWaypoints();
-        trails.clear();
-        trailsByStart.clear();
-        audibleSegments.clear();
-        AnimatedTrail.resetPlayerSpeed();
-
-        if (trailSoundInstance != null && !trailSoundInstance.isStopped()) {
-            trailSoundInstance.release();
+        if (closestValidMarker != null) {
+            AnimatedTrail trail = trailsByStart.get(closestValidMarker.getBlockPos());
+            if (trail != null) {
+                Waypoints.setNextTrailNode(trail.getEnd());
+            }
         }
-    }
-
-    /**
-     * Ensures the trail sound exists and is anchored at the supplied position.
-     *
-     * @param x the world x coordinate to emit from
-     * @param y the world y coordinate to emit from
-     * @param z the world z coordinate to emit from
-     */
-    private static void ensureTrailSound(double x, double y, double z) {
-        if (trailSoundInstance == null
-                || trailSoundInstance.isStopped()
-                || !Minecraft.getInstance().getSoundManager().isActive(trailSoundInstance)) {
-            trailSoundInstance = new TrailSoundInstance(x, y, z);
-            Minecraft.getInstance().getSoundManager().play(trailSoundInstance);
-            return;
-        }
-
-        trailSoundInstance.updatePosition(x, y, z);
-    }
-
-    /**
-     * Computes the sound envelope target from the player's distance to the nearest trail geometry.
-     *
-     * @param distance the shortest distance from the player to the trail
-     * @return the target sound envelope in the range {@code [0, 1]}
-     */
-    private static float proximityEnvelope(double distance) {
-        double ramp = (distance - ON_TRAIL_OFFSET) / (OFF_TRAIL_FULL_VOLUME_DISTANCE - ON_TRAIL_OFFSET);
-
-        return (float) Mth.clamp(ramp, 0.0D, 1.0D);
     }
 
     /**
@@ -806,5 +666,146 @@ public class TrailRenderer {
         double dz = z1 - z2;
 
         return (dx * dx) + (dy * dy) + (dz * dz);
+    }
+
+    /**
+     * Computes the sound envelope target from the player's distance to the nearest trail geometry.
+     *
+     * @param distance the shortest distance from the player to the trail
+     * @return the target sound envelope in the range {@code [0, 1]}
+     */
+    private static float proximityEnvelope(double distance) {
+        double ramp = (distance - ON_TRAIL_OFFSET) / (OFF_TRAIL_FULL_VOLUME_DISTANCE - ON_TRAIL_OFFSET);
+
+        return (float) Mth.clamp(ramp, 0.0D, 1.0D);
+    }
+
+    /**
+     * Ensures the trail sound exists and is anchored at the supplied position.
+     *
+     * @param x the world x coordinate to emit from
+     * @param y the world y coordinate to emit from
+     * @param z the world z coordinate to emit from
+     */
+    private static void ensureTrailSound(double x, double y, double z) {
+        if (trailSoundInstance == null
+                || trailSoundInstance.isStopped()
+                || !Minecraft.getInstance().getSoundManager().isActive(trailSoundInstance)) {
+            trailSoundInstance = new TrailSoundInstance(x, y, z);
+            Minecraft.getInstance().getSoundManager().play(trailSoundInstance);
+            return;
+        }
+
+        trailSoundInstance.updatePosition(x, y, z);
+    }
+
+    /**
+     * Create a PlayerTeleportPacket for the given player and position.
+     *
+     * @param player    The player to teleport
+     * @param playerPos The position to teleport to
+     * @return A PlayerTeleportPacket for the given player and position
+     */
+    @SuppressWarnings("resource")
+    private static @NotNull PlayerTeleportPacket getPlayerTeleportPacket(LocalPlayer player, BlockPos playerPos) {
+
+        var worldId = player.level()
+                .dimension()
+                .location();
+
+        return new PlayerTeleportPacket(playerPos.getX(), playerPos.getY(), playerPos.getZ(), worldId);
+    }
+
+    /**
+     * Register a new trail to render.
+     *
+     * @param trail The trail to render
+     */
+    public static void registerTrail(AnimatedTrail trail) {
+        if (trailsByStart.containsKey(trail.getStart())) return;
+
+        audibleSegments.remove(trail.getStart());
+        trails.add(trail);
+        trailsByStart.put(trail.getStart(), trail);
+    }
+
+    /**
+     * Visit state for a marker whose proximity text or chapter title has already been triggered.
+     *
+     * @param pathId              The path the activation was triggered for
+     * @param chapterId           The chapter the activation was triggered for
+     * @param exitDistanceSquared The squared distance at which the marker can trigger again
+     */
+    private record ProximityActivation(String pathId, String chapterId, double exitDistanceSquared) {
+
+    }
+
+    /**
+     * Completed trail geometry retained as part of the audible revealer polyline.
+     *
+     * @param sx the segment start x coordinate
+     * @param sy the segment start y coordinate
+     * @param sz the segment start z coordinate
+     * @param ex the segment end x coordinate
+     * @param ey the segment end y coordinate
+     * @param ez the segment end z coordinate
+     */
+    private record AudibleSegment(double sx, double sy, double sz, double ex, double ey, double ez) {
+
+        /**
+         * Returns the normalized projection point on this segment nearest to the supplied position.
+         *
+         * @param px the probe x coordinate
+         * @param py the probe y coordinate
+         * @param pz the probe z coordinate
+         * @return the clamped segment parameter in the range {@code [0, 1]}
+         */
+        private double closestSegmentT(double px, double py, double pz) {
+            double segmentX = ex - sx;
+            double segmentY = ey - sy;
+            double segmentZ = ez - sz;
+            double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ);
+
+            if (segmentLengthSquared == 0.0D) {
+                return 0.0D;
+            }
+
+            double relativeX = px - sx;
+            double relativeY = py - sy;
+            double relativeZ = pz - sz;
+            double projection = ((relativeX * segmentX) + (relativeY * segmentY) + (relativeZ * segmentZ)) / segmentLengthSquared;
+
+            return Mth.clamp(projection, 0.0D, 1.0D);
+        }
+
+        /**
+         * Computes the x coordinate at a normalized segment position.
+         *
+         * @param t the normalized segment position
+         * @return the x coordinate at {@code t}
+         */
+        private double xAt(double t) {
+            return sx + ((ex - sx) * t);
+        }
+
+        /**
+         * Computes the y coordinate at a normalized segment position.
+         *
+         * @param t the normalized segment position
+         * @return the y coordinate at {@code t}
+         */
+        private double yAt(double t) {
+            return sy + ((ey - sy) * t);
+        }
+
+        /**
+         * Computes the z coordinate at a normalized segment position.
+         *
+         * @param t the normalized segment position
+         * @return the z coordinate at {@code t}
+         */
+        private double zAt(double t) {
+            return sz + ((ez - sz) * t);
+        }
     }
 }

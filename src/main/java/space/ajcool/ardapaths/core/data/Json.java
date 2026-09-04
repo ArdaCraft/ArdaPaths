@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
  */
 @UtilityClass
 public class Json {
+
     /**
      * The Gson instance used for all JSON operations.
      */
@@ -19,7 +20,7 @@ public class Json {
     /**
      * Convert a JSON string to an object.
      *
-     * @param <T> the type of object to deserialize to
+     * @param <T>  the type of object to deserialize to
      * @param json the JSON string to convert
      * @param type the type of the object
      * @return the deserialized object

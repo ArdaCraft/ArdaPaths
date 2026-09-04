@@ -10,6 +10,7 @@ import java.util.*;
  * Local marker-chain ordering and signature algorithms for one path chapter.
  */
 public final class ChapterMarkerChain {
+
     /**
      * Prevents construction of the static marker-chain helper.
      */
@@ -96,6 +97,22 @@ public final class ChapterMarkerChain {
     }
 
     /**
+     * Checks whether a marker holds data for the selected path and chapter.
+     *
+     * @param origin    marker being edited
+     * @param marker    marker to inspect
+     * @param pathId    path ID whose chapter should be read
+     * @param chapterId chapter ID whose marker data should be read
+     * @return true if the marker belongs to the chapter currently being edited
+     */
+    private static boolean isLinkedToSelectedChapter(PathMarkerBlockEntity origin, PathMarkerBlockEntity marker, String pathId, String chapterId) {
+        if (marker.getBlockPos().equals(origin.getBlockPos())) return true;
+
+        PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(pathId, chapterId, false);
+        return data != null && !data.isEmpty();
+    }
+
+    /**
      * Gets selected-chapter marker data without mutating the marker.
      *
      * @param marker    marker whose selected-chapter data should be read
@@ -106,6 +123,24 @@ public final class ChapterMarkerChain {
     public static PathMarkerBlockEntity.ChapterNbtData selectedChapterData(PathMarkerBlockEntity marker, String pathId, String chapterId) {
         PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(pathId, chapterId, false);
         return data == null ? PathMarkerBlockEntity.ChapterNbtData.empty(chapterId) : data;
+    }
+
+    /**
+     * Packs a target offset into a stable signature value.
+     *
+     * @param target relative target offset, or null when unset
+     * @return stable signature contribution for the target
+     */
+    private static long packedTargetSignature(BlockPos target) {
+        if (target == null) {
+            return 0L;
+        }
+
+        long signature = 17L;
+        signature = signature * 31 + target.getX();
+        signature = signature * 31 + target.getY();
+        signature = signature * 31 + target.getZ();
+        return signature;
     }
 
     /**
@@ -182,7 +217,7 @@ public final class ChapterMarkerChain {
             List<BlockPos> candidate = new ArrayList<>();
             candidate.add(predecessor);
             candidate.addAll(longestChainBackward(predecessor, prevByPos, memo, visiting));
-            if (candidate.size() > best.size() || candidate.size() == best.size() && candidate.get(0).asLong() < best.get(0).asLong()) {
+            if (candidate.size() > best.size() || candidate.size() == best.size() && candidate.getFirst().asLong() < best.getFirst().asLong()) {
                 best = candidate;
             }
         }
@@ -190,39 +225,5 @@ public final class ChapterMarkerChain {
         visiting.remove(position);
         memo.put(position, best);
         return best;
-    }
-
-    /**
-     * Packs a target offset into a stable signature value.
-     *
-     * @param target relative target offset, or null when unset
-     * @return stable signature contribution for the target
-     */
-    private static long packedTargetSignature(BlockPos target) {
-        if (target == null) {
-            return 0L;
-        }
-
-        long signature = 17L;
-        signature = signature * 31 + target.getX();
-        signature = signature * 31 + target.getY();
-        signature = signature * 31 + target.getZ();
-        return signature;
-    }
-
-    /**
-     * Checks whether a marker holds data for the selected path and chapter.
-     *
-     * @param origin    marker being edited
-     * @param marker    marker to inspect
-     * @param pathId    path ID whose chapter should be read
-     * @param chapterId chapter ID whose marker data should be read
-     * @return true if the marker belongs to the chapter currently being edited
-     */
-    private static boolean isLinkedToSelectedChapter(PathMarkerBlockEntity origin, PathMarkerBlockEntity marker, String pathId, String chapterId) {
-        if (marker.getBlockPos().equals(origin.getBlockPos())) return true;
-
-        PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(pathId, chapterId, false);
-        return data != null && !data.isEmpty();
     }
 }

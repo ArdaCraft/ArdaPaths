@@ -70,23 +70,6 @@ public class ContextMenuWidget extends AbstractWidget {
     }
 
     /**
-     * Renders the menu above ordinary screen widgets.
-     *
-     * @param context draw context
-     * @param mouseX  current mouse x coordinate
-     * @param mouseY  current mouse y coordinate
-     * @param delta   partial tick delta
-     */
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        PoseStack matrices = context.pose();
-        matrices.pushPose();
-        matrices.translate(0, 0, 200);
-        super.render(context, mouseX, mouseY, delta);
-        matrices.popPose();
-    }
-
-    /**
      * Renders all menu rows.
      *
      * @param context draw context
@@ -97,6 +80,9 @@ public class ContextMenuWidget extends AbstractWidget {
     @SuppressWarnings("resource")
     @Override
     protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        PoseStack matrices = context.pose();
+        matrices.pushPose();
+        matrices.translate(0, 0, 200);
         for (int index = 0; index < items.size(); index++) {
             Item item = items.get(index);
             int itemY = getY() + index * ITEM_HEIGHT;
@@ -110,12 +96,13 @@ public class ContextMenuWidget extends AbstractWidget {
                 setTooltip(Tooltip.create(item.tooltip()));
             }
         }
+        matrices.popPose();
     }
 
     /**
      * Determines which caps a row should draw inside the menu.
      *
-     * @param index row index
+     * @param index     row index
      * @param lastIndex final row index
      * @return cap selection for the row
      */
@@ -171,5 +158,6 @@ public class ContextMenuWidget extends AbstractWidget {
      * @param action  work to run when the row is clicked
      */
     public record Item(Component label, Component tooltip, boolean enabled, Runnable action) {
+
     }
 }

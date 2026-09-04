@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class WarpTarget {
+
     /**
      * Pattern for three signed integer block coordinates separated by whitespace.
      */
@@ -23,19 +24,6 @@ public final class WarpTarget {
      */
     public static boolean isCoordinates(String value) {
         return parseComponents(value) != null;
-    }
-
-    /**
-     * Parses a coordinate target into a block position.
-     *
-     * @param value the configured target text
-     * @return the parsed block position, or null when the target is not coordinates
-     */
-    public static @Nullable BlockPos parseCoordinates(String value) {
-        int[] coords = parseComponents(value);
-        if (coords == null) return null;
-
-        return new BlockPos(coords[0], coords[1], coords[2]);
     }
 
     /**
@@ -60,6 +48,19 @@ public final class WarpTarget {
         }
 
         return components;
+    }
+
+    /**
+     * Parses a coordinate target into a block position.
+     *
+     * @param value the configured target text
+     * @return the parsed block position, or null when the target is not coordinates
+     */
+    public static @Nullable BlockPos parseCoordinates(String value) {
+        int[] coords = parseComponents(value);
+        if (coords == null) return null;
+
+        return new BlockPos(coords[0], coords[1], coords[2]);
     }
 
     /**

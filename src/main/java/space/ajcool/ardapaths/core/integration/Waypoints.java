@@ -31,6 +31,7 @@ public final class Waypoints {
     /**
      * @return true when a waypoint provider has registered itself
      */
+    @SuppressWarnings("unused")
     public static boolean isAvailable() {
         return provider != null;
     }

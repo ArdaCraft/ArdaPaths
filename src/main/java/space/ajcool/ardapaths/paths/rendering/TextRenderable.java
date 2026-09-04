@@ -41,6 +41,7 @@ public abstract class TextRenderable {
      *
      * @param drawContext the drawing context used for rendering
      */
+    @SuppressWarnings("unused")
     public abstract void render(GuiGraphics drawContext);
 
     /**
@@ -48,6 +49,7 @@ public abstract class TextRenderable {
      *
      * @return true if the renderable is finished, false otherwise
      */
+    @SuppressWarnings("unused")
     public abstract boolean isFinished();
 
     /**

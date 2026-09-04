@@ -21,11 +21,10 @@ import java.util.Optional;
  * Syncs incoming path and chapter data from a client with the existing marker data on the server,
  * ensuring the marker correctly references the paths and chapters it belongs to.
  */
-public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarkerLinksUpdatePacket>
-{
-    public PathMarkerLinksUpdateHandler()
-    {
-        super(PathMarkerLinksUpdatePacket.CHANNEL, PathMarkerLinksUpdatePacket::read);
+public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarkerLinksUpdatePacket> {
+
+    public PathMarkerLinksUpdateHandler() {
+        super(PathMarkerLinksUpdatePacket.TYPE, PathMarkerLinksUpdatePacket::read);
     }
 
     /**
@@ -39,8 +38,7 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     }
 
     @Override
-    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerLinksUpdatePacket packet, PacketSender sender)
-    {
+    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathMarkerLinksUpdatePacket packet, PacketSender sender) {
         BackupJobRunner.submitMarkerWork(server, gate -> {
             ServerLevel world = gate.call(player::serverLevel);
             String dimensionId = world.dimension().location().toString();
@@ -60,30 +58,9 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
     }
 
     /**
-     * Extracts the paths-chapters structure from an NBT compound.
-     * @param nbt the NBT compound containing a "paths" key with nested chapter data
-     * @return a map of path IDs to maps of chapter IDs and their NBT data
-     */
-    private Map<String, Map<String, CompoundTag>> getPaths(CompoundTag nbt) {
-        Map<String, Map<String, CompoundTag>> result = new HashMap<>();
-
-        CompoundTag paths = nbt.getCompound("paths");
-
-        for (String pathKey : paths.getAllKeys()) {
-            CompoundTag chapters = paths.getCompound(pathKey);
-
-            Map<String, CompoundTag> chapterMap = new HashMap<>();
-            for (String chapterKey : chapters.getAllKeys()) {
-                chapterMap.put(chapterKey, chapters.getCompound(chapterKey));
-            }
-            result.put(pathKey, chapterMap);
-        }
-        return result;
-    }
-
-    /**
      * Merges incoming path-chapter data with existing marker data, handling additions, updates, and removals.
      * Ensures the marker's path links are in sync with the client's updates.
+     *
      * @param existing the current NBT data from the marker
      * @param incoming the new NBT data from the client
      * @return the merged NBT compound with synced paths and chapters
@@ -132,5 +109,28 @@ public class PathMarkerLinksUpdateHandler extends ServerPacketHandler<PathMarker
         }
 
         return pathsNbt;
+    }
+
+    /**
+     * Extracts the paths-chapters structure from an NBT compound.
+     *
+     * @param nbt the NBT compound containing a "paths" key with nested chapter data
+     * @return a map of path IDs to maps of chapter IDs and their NBT data
+     */
+    private Map<String, Map<String, CompoundTag>> getPaths(CompoundTag nbt) {
+        Map<String, Map<String, CompoundTag>> result = new HashMap<>();
+
+        CompoundTag paths = nbt.getCompound("paths");
+
+        for (String pathKey : paths.getAllKeys()) {
+            CompoundTag chapters = paths.getCompound(pathKey);
+
+            Map<String, CompoundTag> chapterMap = new HashMap<>();
+            for (String chapterKey : chapters.getAllKeys()) {
+                chapterMap.put(chapterKey, chapters.getCompound(chapterKey));
+            }
+            result.put(pathKey, chapterMap);
+        }
+        return result;
     }
 }

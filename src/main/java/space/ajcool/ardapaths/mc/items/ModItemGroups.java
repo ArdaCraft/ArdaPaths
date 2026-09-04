@@ -18,6 +18,7 @@ import space.ajcool.ardapaths.mc.blocks.ModBlocks;
  */
 @SuppressWarnings("unused")
 public class ModItemGroups {
+
     /**
      * Registry key for the ArdaPaths creative inventory group.
      */
@@ -40,7 +41,7 @@ public class ModItemGroups {
     /**
      * Register an item group.
      *
-     * @param key the item group's registry key
+     * @param key   the item group's registry key
      * @param group the item group to register
      * @param items the items to add to the item group
      * @return the registered item group

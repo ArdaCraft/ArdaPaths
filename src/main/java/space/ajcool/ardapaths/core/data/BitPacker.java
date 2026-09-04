@@ -8,6 +8,7 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public class BitPacker {
+
     /**
      * Bit width used for packing most values.
      */
@@ -19,6 +20,11 @@ public class BitPacker {
     private static final long MASK = (1L << BIT_WIDTH) - 1; // 0b11111111111111
 
     /**
+     * Maximum value that can be stored in each 14-bit field.
+     */
+    public static final int MAX_14_BIT_VALUE = (int) MASK;
+
+    /**
      * Bitmask for 8-bit values.
      */
     private static final long MASK_8 = (1L << 8) - 1;
@@ -27,11 +33,6 @@ public class BitPacker {
      * Maximum value that can be stored in the first 8-bit field.
      */
     public static final int MAX_8_BIT_VALUE = (int) MASK_8;
-
-    /**
-     * Maximum value that can be stored in each 14-bit field.
-     */
-    public static final int MAX_14_BIT_VALUE = (int) MASK;
 
     /**
      * Packs five integers into a single long value.

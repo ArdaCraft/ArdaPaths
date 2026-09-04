@@ -7,4 +7,5 @@ package space.ajcool.ardapaths.core.backup;
  * @param chunkPos    packed chunk X/Z position
  */
 public record ChunkKey(String dimensionId, long chunkPos) {
+
 }

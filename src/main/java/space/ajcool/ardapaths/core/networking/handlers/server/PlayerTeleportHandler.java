@@ -21,16 +21,14 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
  * optionally in a different world dimension if specified.
  */
 @Slf4j(topic = "ardapaths")
-public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPacket>
-{
-    public PlayerTeleportHandler()
-    {
-        super(PlayerTeleportPacket.CHANNEL, PlayerTeleportPacket::read);
+public class PlayerTeleportHandler extends ServerPacketHandler<PlayerTeleportPacket> {
+
+    public PlayerTeleportHandler() {
+        super(PlayerTeleportPacket.TYPE, PlayerTeleportPacket::read);
     }
 
     @Override
-    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PlayerTeleportPacket packet, PacketSender sender)
-    {
+    protected void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PlayerTeleportPacket packet, PacketSender sender) {
         if (!Double.isFinite(packet.x()) || !Double.isFinite(packet.y()) || !Double.isFinite(packet.z())) {
             log.warn("Rejected teleport request from {} with non-finite coordinates", player.getStringUUID());
             return;

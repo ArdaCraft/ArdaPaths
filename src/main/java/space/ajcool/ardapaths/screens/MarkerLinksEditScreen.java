@@ -1,5 +1,9 @@
 package space.ajcool.ardapaths.screens;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -11,11 +15,6 @@ import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.*;
 import java.util.function.Supplier;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 
 /**
  * Screen for editing and managing which paths and chapters a marker is linked to.
@@ -25,17 +24,17 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
 
     /** The marker block entity being edited. */
     private final PathMarkerBlockEntity MARKER;
+
     /** The original set of path/chapter associations before any changes. */
     private final Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData;
 
     /**
      * Initializes a screen for editing marker path and chapter links.
      *
-     * @param marker the marker block entity to edit
+     * @param marker                     the marker block entity to edit
      * @param originalPathAndChapterData the original path/chapter associations to track for changes
      */
-    protected MarkerLinksEditScreen(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData)
-    {
+    protected MarkerLinksEditScreen(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalPathAndChapterData) {
         super(Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit"));
         this.MARKER = marker;
         this.originalPathAndChapterData = originalPathAndChapterData;
@@ -51,19 +50,19 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
         int y = 0;
 
         this.addRenderableWidget(TextWidget.create()
-                        .setX(centerX - 70)
-                        .setY(y)
-                        .setWidth(140)
-                        .setHeight(20)
-                        .setMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit_marker_links"))
-                        .build()
+                .setX(centerX - 70)
+                .setY(y)
+                .setWidth(140)
+                .setHeight(20)
+                .setMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.edit_marker_links"))
+                .build()
         );
 
         boolean renderedLinkedData = false;
 
-        if (MARKER.getPathData() != null){
+        if (MARKER.getPathData() != null) {
 
-            for (var pathEntryKey : MARKER.getPathData().keySet()){
+            for (var pathEntryKey : MARKER.getPathData().keySet()) {
 
                 var pathData = ArdaPathsClient.CONFIG.getPath(pathEntryKey);
                 var markerChapters = MARKER.getPathData().get(pathEntryKey);
@@ -113,12 +112,12 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
                     Component pathName = pathDisplayName(pathData, pathEntryKey);
 
                     this.addRenderableWidget(TextWidget.create()
-                                    .setX(pathTitlePositionX)
-                                    .setY(pathTitlePositionY)
-                                    .setWidth(140)
-                                    .setHeight(20)
-                                    .setMessage(pathName)
-                                    .build());
+                            .setX(pathTitlePositionX)
+                            .setY(pathTitlePositionY)
+                            .setWidth(140)
+                            .setHeight(20)
+                            .setMessage(pathName)
+                            .build());
                 }
             }
         }
@@ -126,12 +125,12 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
         if (!renderedLinkedData) {
 
             this.addRenderableWidget(TextWidget.create()
-                            .setX(centerX - 70)
-                            .setY(y+30)
-                            .setWidth(140)
-                            .setHeight(20)
-                            .setMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.no_linked_data"))
-                            .build()
+                    .setX(centerX - 70)
+                    .setY(y + 30)
+                    .setWidth(140)
+                    .setHeight(20)
+                    .setMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.marker.links.no_linked_data"))
+                    .build()
             );
         }
 
@@ -139,16 +138,45 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
     }
 
     /**
+     * Gets the marker's linked chapter IDs with configured chapters first and unknown IDs last.
+     *
+     * @param pathEntryKey marker path ID whose chapter links should be listed
+     * @param pathData     configured path data, or null when the path ID is unknown locally
+     * @return sorted linked chapter IDs
+     */
+    private List<String> linkedChapterIds(String pathEntryKey, PathData pathData) {
+        List<String> chapterIds = new ArrayList<>(MARKER.getPathData().get(pathEntryKey).keySet());
+        chapterIds.sort((left, right) -> compareChapterIds(pathData, left, right));
+        return chapterIds;
+    }
+
+    /**
+     * Creates the display label for a chapter link.
+     *
+     * @param pathData  configured path data, or null when the path ID is unknown locally
+     * @param chapterId raw chapter ID from marker NBT
+     * @return styled chapter label
+     */
+    private MutableComponent chapterDisplayName(PathData pathData, String chapterId) {
+        ChapterData chapter = pathData != null ? pathData.getChapter(chapterId) : null;
+        if (chapter == null) {
+            return Component.literal(chapterId).withStyle(style -> style.withItalic(true).withColor(0x888888));
+        }
+
+        return Component.literal(chapter.getName());
+    }
+
+    /**
      * Removes the association between the marker and a specific path/chapter combination.
      *
      * @param pathEntryKey the ID of the path to unlink
-     * @param chapterId the ID of the chapter to unlink
+     * @param chapterId    the ID of the chapter to unlink
      */
     private void unlinkMarkerToPathAndChapter(String pathEntryKey, String chapterId) {
 
         MARKER.getPathData().get(pathEntryKey).remove(chapterId);
 
-        if(MARKER.getPathData().get(pathEntryKey).isEmpty()) MARKER.getPathData().remove(pathEntryKey);
+        if (MARKER.getPathData().get(pathEntryKey).isEmpty()) MARKER.getPathData().remove(pathEntryKey);
 
         PathMarkerLinksUpdatePacket packet = new PathMarkerLinksUpdatePacket(MARKER.getBlockPos(), MARKER.toNbt());
         PacketRegistry.PATH_MARKER_LINKS_UPDATE.send(packet);
@@ -160,43 +188,10 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
     }
 
     /**
-     * Gets the marker's linked chapter IDs with configured chapters first and unknown IDs last.
-     *
-     * @param pathEntryKey marker path ID whose chapter links should be listed
-     * @param pathData configured path data, or null when the path ID is unknown locally
-     * @return sorted linked chapter IDs
-     */
-    private List<String> linkedChapterIds(String pathEntryKey, PathData pathData) {
-        List<String> chapterIds = new ArrayList<>(MARKER.getPathData().get(pathEntryKey).keySet());
-        chapterIds.sort((left, right) -> compareChapterIds(pathData, left, right));
-        return chapterIds;
-    }
-
-    /**
-     * Compares chapter IDs by configured chapter order, placing unknown IDs after known chapters.
-     *
-     * @param pathData configured path data, or null when the path ID is unknown locally
-     * @param left first chapter ID
-     * @param right second chapter ID
-     * @return comparison result for display ordering
-     */
-    private int compareChapterIds(PathData pathData, String left, String right) {
-        ChapterData leftChapter = pathData != null ? pathData.getChapter(left) : null;
-        ChapterData rightChapter = pathData != null ? pathData.getChapter(right) : null;
-
-        if (leftChapter != null && rightChapter != null) {
-            return Integer.compare(leftChapter.getIndex(), rightChapter.getIndex());
-        }
-        if (leftChapter != null) return -1;
-        if (rightChapter != null) return 1;
-        return left.compareTo(right);
-    }
-
-    /**
      * Creates the display label for a path link.
      *
      * @param pathData configured path data, or null when the path ID is unknown locally
-     * @param pathId raw path ID from marker NBT
+     * @param pathId   raw path ID from marker NBT
      * @return styled path label
      */
     private Component pathDisplayName(PathData pathData, String pathId) {
@@ -212,41 +207,30 @@ public class MarkerLinksEditScreen extends ArdaPathsScreen {
     }
 
     /**
-     * Creates the display label for a chapter link.
+     * Compares chapter IDs by configured chapter order, placing unknown IDs after known chapters.
      *
      * @param pathData configured path data, or null when the path ID is unknown locally
-     * @param chapterId raw chapter ID from marker NBT
-     * @return styled chapter label
+     * @param left     first chapter ID
+     * @param right    second chapter ID
+     * @return comparison result for display ordering
      */
-    private MutableComponent chapterDisplayName(PathData pathData, String chapterId) {
-        ChapterData chapter = pathData != null ? pathData.getChapter(chapterId) : null;
-        if (chapter == null) {
-            return Component.literal(chapterId).withStyle(style -> style.withItalic(true).withColor(0x888888));
+    private int compareChapterIds(PathData pathData, String left, String right) {
+        ChapterData leftChapter = pathData != null ? pathData.getChapter(left) : null;
+        ChapterData rightChapter = pathData != null ? pathData.getChapter(right) : null;
+
+        if (leftChapter != null && rightChapter != null) {
+            return Integer.compare(leftChapter.getIndex(), rightChapter.getIndex());
         }
-
-        return Component.literal(chapter.getName());
-    }
-
-    /**
-     * Renders the screen background and all UI elements.
-     *
-     * @param context the draw context for rendering
-     * @param mouseX the current mouse x coordinate
-     * @param mouseY the current mouse y coordinate
-     * @param delta the partial tick delta for animation
-     */
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        this.renderModBackground(context);
-        super.render(context, mouseX, mouseY, delta);
+        if (leftChapter != null) return -1;
+        if (rightChapter != null) return 1;
+        return left.compareTo(right);
     }
 
     /**
      * Closes this screen and returns to the marker edit screen.
      */
     @Override
-    public void onClose()
-    {
+    public void onClose() {
         if (this.minecraft != null)
             this.minecraft.setScreen(new MarkerEditScreen(MARKER, originalPathAndChapterData));
     }

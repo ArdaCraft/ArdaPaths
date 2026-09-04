@@ -1,21 +1,18 @@
 package space.ajcool.ardapaths.core.consumers.networking;
 
-import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.network.FriendlyByteBuf;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 /**
  * Interface for client-side packet handlers that process packets received from the server.
  */
 public interface IClientPacketHandler {
+
     /**
      * Handle an incoming packet on the client.
      *
-     * @param client the Minecraft client instance
-     * @param handler the client play network handler
-     * @param buf the packet byte buffer
-     * @param sender the packet sender
+     * @param packet  the decoded payload
+     * @param context the client networking context
      */
-    void handle(Minecraft client, ClientPacketListener handler, FriendlyByteBuf buf, PacketSender sender);
+    @SuppressWarnings("unused")
+    void receive(IPacket packet, ClientPlayNetworking.Context context);
 }

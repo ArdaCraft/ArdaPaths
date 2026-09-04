@@ -11,5 +11,7 @@ import java.util.List;
  * @param backupZipName     zip file name created for the previous snapshot, or null
  * @param skippedDimensions dimensions whose world data could not be scanned
  */
-public record BackupResult(boolean changed, boolean rotated, BackupStats counts, String backupZipName, List<String> skippedDimensions) {
+public record BackupResult(boolean changed, boolean rotated, BackupStats counts, String backupZipName,
+                           List<String> skippedDimensions) {
+
 }

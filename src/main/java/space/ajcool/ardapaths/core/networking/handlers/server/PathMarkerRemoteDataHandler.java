@@ -25,11 +25,12 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j(topic = "ardapaths")
 public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMarkerRemoteDataPacket, PathMarkerRemoteDataResponsePacket> {
+
     /**
      * Constructs the handler and its request and response channels.
      */
     public PathMarkerRemoteDataHandler() {
-        super(PathMarkerRemoteDataPacket.CHANNEL, PathMarkerRemoteDataPacket::read, PathMarkerRemoteDataResponsePacket.CHANNEL, PathMarkerRemoteDataResponsePacket::read);
+        super(PathMarkerRemoteDataPacket.TYPE, PathMarkerRemoteDataPacket::read, PathMarkerRemoteDataResponsePacket.TYPE, PathMarkerRemoteDataResponsePacket::read);
     }
 
     /**
@@ -53,13 +54,15 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
     }
 
     /**
-     * Creates a not-found response when asynchronous marker work fails before producing a normal response.
+     * Creates a remote path marker data response packet.
      *
-     * @return not-found remote path marker data response packet
+     * @param status    response status
+     * @param packedPos requested marker position
+     * @param data      response marker NBT
+     * @return response packet
      */
-    @Override
-    protected PathMarkerRemoteDataResponsePacket errorResponse() {
-        return response(PathMarkerRemoteDataStatus.NOT_FOUND, 0L, new CompoundTag());
+    private PathMarkerRemoteDataResponsePacket response(PathMarkerRemoteDataStatus status, long packedPos, CompoundTag data) {
+        return new PathMarkerRemoteDataResponsePacket(status, packedPos, data);
     }
 
     /**
@@ -84,14 +87,12 @@ public class PathMarkerRemoteDataHandler extends RespondablePacketHandler<PathMa
     }
 
     /**
-     * Creates a remote path marker data response packet.
+     * Creates a not-found response when asynchronous marker work fails before producing a normal response.
      *
-     * @param status    response status
-     * @param packedPos requested marker position
-     * @param data      response marker NBT
-     * @return response packet
+     * @return not-found remote path marker data response packet
      */
-    private PathMarkerRemoteDataResponsePacket response(PathMarkerRemoteDataStatus status, long packedPos, CompoundTag data) {
-        return new PathMarkerRemoteDataResponsePacket(status, packedPos, data);
+    @Override
+    protected PathMarkerRemoteDataResponsePacket errorResponse() {
+        return response(PathMarkerRemoteDataStatus.NOT_FOUND, 0L, new CompoundTag());
     }
 }

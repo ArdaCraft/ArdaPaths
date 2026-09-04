@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j(topic = "ardapaths")
 public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTimeSpreadPacket, MarkerTimeSpreadResponsePacket> {
+
     /**
      * Maximum number of trail links followed by one spread request.
      */
@@ -63,7 +64,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * Constructs the handler and its request and response channels.
      */
     public MarkerTimeSpreadHandler() {
-        super(MarkerTimeSpreadPacket.CHANNEL, MarkerTimeSpreadPacket::read, MarkerTimeSpreadResponsePacket.CHANNEL, MarkerTimeSpreadResponsePacket::read);
+        super(MarkerTimeSpreadPacket.TYPE, MarkerTimeSpreadPacket::read, MarkerTimeSpreadResponsePacket.TYPE, MarkerTimeSpreadResponsePacket::read);
     }
 
     /**
@@ -101,13 +102,23 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
-     * Creates an error response when asynchronous marker work fails before producing a normal response.
+     * Creates a response packet with no updated markers or diagnostic position.
      *
-     * @return invalid-data response packet
+     * @param status response status
+     * @return response packet
      */
-    @Override
-    protected MarkerTimeSpreadResponsePacket errorResponse() {
-        return response(TimeSpreadStatus.INVALID_DATA);
+    private MarkerTimeSpreadResponsePacket response(TimeSpreadStatus status) {
+        return new MarkerTimeSpreadResponsePacket(status, 0, null);
+    }
+
+    /**
+     * Checks whether a daytime tick value can be used as an endpoint time.
+     *
+     * @param time endpoint time from the request
+     * @return true when the time is unset or outside the valid day range
+     */
+    private boolean isInvalidTime(int time) {
+        return time < MIN_DAYTIME_TICK || time > MAX_DAYTIME_TICK;
     }
 
     /**
@@ -146,13 +157,25 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
-     * Checks whether a daytime tick value can be used as an endpoint time.
+     * Resolves a marker and snapshots only the data needed outside the current server-thread call.
      *
-     * @param time endpoint time from the request
-     * @return true when the time is unset or outside the valid day range
+     * @param resolver       marker resolver
+     * @param position       marker position
+     * @param pathId         path identifier
+     * @param chapterId      chapter identifier
+     * @param requireChapter whether the selected chapter data must already exist
+     * @return immutable marker position, or empty when the marker or chapter data is missing
      */
-    private boolean isInvalidTime(int time) {
-        return time < MIN_DAYTIME_TICK || time > MAX_DAYTIME_TICK;
+    private Optional<BlockPos> snapshot(MarkerResolver resolver, BlockPos position, String pathId, String chapterId, boolean requireChapter) {
+        return resolver.resolve(position)
+                .map(marker -> {
+                    PathMarkerBlockEntity.ChapterNbtData data = marker.chapterData(pathId, chapterId);
+                    if (data == null && requireChapter) {
+                        return null;
+                    }
+
+                    return marker.position();
+                });
     }
 
     /**
@@ -210,40 +233,23 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
-     * Resolves a marker and snapshots only the data needed outside the current server-thread call.
+     * Computes updates that remove marker time data from a resolved marker chain.
      *
-     * @param resolver  marker resolver
-     * @param position  marker position
-     * @param pathId    path identifier
-     * @param chapterId chapter identifier
-     * @param requireChapter whether the selected chapter data must already exist
-     * @return immutable marker position, or empty when the marker or chapter data is missing
+     * @param markers complete marker chain from source to target
+     * @return clear plan for every marker in the chain
      */
-    private Optional<BlockPos> snapshot(MarkerResolver resolver, BlockPos position, String pathId, String chapterId, boolean requireChapter) {
-        return resolver.resolve(position)
-                .map(marker -> {
-                    PathMarkerBlockEntity.ChapterNbtData data = marker.chapterData(pathId, chapterId);
-                    if (data == null && requireChapter) {
-                        return null;
-                    }
+    private SpreadPlan computeClear(List<BlockPos> markers) {
+        List<MarkerUpdate> updates = new ArrayList<>();
 
-                    return marker.position();
-                });
-    }
+        for (BlockPos marker : markers) {
+            updates.add(new MarkerUpdate(
+                    marker,
+                    TimeOfDay.UNSET,
+                    TimeOfDay.DEFAULT_TRANSITION_RANGE
+            ));
+        }
 
-    /**
-     * Reads current chapter data from a freshly resolved marker.
-     *
-     * @param resolver  marker resolver
-     * @param position  marker position
-     * @param pathId    path identifier
-     * @param chapterId chapter identifier
-     * @return chapter data, or null when the marker no longer resolves
-     */
-    private PathMarkerBlockEntity.ChapterNbtData chapterData(MarkerResolver resolver, BlockPos position, String pathId, String chapterId) {
-        return resolver.resolve(position)
-                .map(marker -> marker.chapterData(pathId, chapterId))
-                .orElse(null);
+        return new SpreadPlan(updates, false);
     }
 
     /**
@@ -269,65 +275,6 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
         }
 
         return new SpreadPlan(updates, stepExceeded);
-    }
-
-    /**
-     * Computes cumulative distances along a marker chain.
-     *
-     * @param markers complete marker chain from source to target
-     * @return cumulative block distances at each marker index
-     */
-    private double[] cumulativeDistances(List<BlockPos> markers) {
-        double[] distances = new double[markers.size()];
-
-        for (int index = 1; index < markers.size(); index++) {
-            distances[index] = distances[index - 1] + Math.sqrt(markers.get(index - 1).distSqr(markers.get(index)));
-        }
-
-        return distances;
-    }
-
-    /**
-     * Computes the largest authored time step in the spread plan.
-     *
-     * @param delta forward time delta from source to target
-     * @param distances cumulative block distances at each marker index
-     * @param totalDistance total chain distance
-     * @param gaps number of marker gaps
-     * @return largest time increment between consecutive markers
-     */
-    private double maxTimeStep(int delta, double[] distances, double totalDistance, int gaps) {
-        if (totalDistance <= 0.0D) {
-            return delta / (double) gaps;
-        }
-
-        double maxStep = 0.0D;
-        for (int index = 1; index < distances.length; index++) {
-            double gapDistance = distances[index] - distances[index - 1];
-            maxStep = Math.max(maxStep, delta * gapDistance / totalDistance);
-        }
-
-        return maxStep;
-    }
-
-    /**
-     * Computes updates that remove marker time data from a resolved marker chain.
-     *
-     * @param markers complete marker chain from source to target
-     * @return clear plan for every marker in the chain
-     */
-    private SpreadPlan computeClear(List<BlockPos> markers) {
-        List<MarkerUpdate> updates = new ArrayList<>();
-
-        for (BlockPos marker : markers) {
-            updates.add(new MarkerUpdate(
-                    marker,
-                    TimeOfDay.UNSET,
-                    TimeOfDay.DEFAULT_TRANSITION_RANGE
-            ));
-        }
-
-        return new SpreadPlan(updates, false);
     }
 
     /**
@@ -361,6 +308,60 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
+     * Reads current chapter data from a freshly resolved marker.
+     *
+     * @param resolver  marker resolver
+     * @param position  marker position
+     * @param pathId    path identifier
+     * @param chapterId chapter identifier
+     * @return chapter data, or null when the marker no longer resolves
+     */
+    private PathMarkerBlockEntity.ChapterNbtData chapterData(MarkerResolver resolver, BlockPos position, String pathId, String chapterId) {
+        return resolver.resolve(position)
+                .map(marker -> marker.chapterData(pathId, chapterId))
+                .orElse(null);
+    }
+
+    /**
+     * Computes cumulative distances along a marker chain.
+     *
+     * @param markers complete marker chain from source to target
+     * @return cumulative block distances at each marker index
+     */
+    private double[] cumulativeDistances(List<BlockPos> markers) {
+        double[] distances = new double[markers.size()];
+
+        for (int index = 1; index < markers.size(); index++) {
+            distances[index] = distances[index - 1] + Math.sqrt(markers.get(index - 1).distSqr(markers.get(index)));
+        }
+
+        return distances;
+    }
+
+    /**
+     * Computes the largest authored time step in the spread plan.
+     *
+     * @param delta         forward time delta from source to target
+     * @param distances     cumulative block distances at each marker index
+     * @param totalDistance total chain distance
+     * @param gaps          number of marker gaps
+     * @return largest time increment between consecutive markers
+     */
+    private double maxTimeStep(int delta, double[] distances, double totalDistance, int gaps) {
+        if (totalDistance <= 0.0D) {
+            return delta / (double) gaps;
+        }
+
+        double maxStep = 0.0D;
+        for (int index = 1; index < distances.length; index++) {
+            double gapDistance = distances[index] - distances[index - 1];
+            maxStep = Math.max(maxStep, delta * gapDistance / totalDistance);
+        }
+
+        return maxStep;
+    }
+
+    /**
      * Applies one spread update batch on the server thread.
      *
      * @param resolver  request marker resolver
@@ -386,13 +387,13 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
-     * Creates a response packet with no updated markers or diagnostic position.
+     * Creates an error response when asynchronous marker work fails before producing a normal response.
      *
-     * @param status response status
-     * @return response packet
+     * @return invalid-data response packet
      */
-    private MarkerTimeSpreadResponsePacket response(TimeSpreadStatus status) {
-        return new MarkerTimeSpreadResponsePacket(status, 0, null);
+    @Override
+    protected MarkerTimeSpreadResponsePacket errorResponse() {
+        return response(TimeSpreadStatus.INVALID_DATA);
     }
 
     /**
@@ -403,6 +404,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param lastValidPos last valid marker for diagnostics
      */
     private record WalkResult(TimeSpreadStatus status, List<BlockPos> markers, BlockPos lastValidPos) {
+
         /**
          * Creates a successful walk result.
          *
@@ -432,6 +434,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param stepExceeded whether the max step guideline was exceeded
      */
     private record SpreadPlan(List<MarkerUpdate> markers, boolean stepExceeded) {
+
     }
 
     /**
@@ -442,6 +445,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param timeTransitionRange computed transition range
      */
     private record MarkerUpdate(BlockPos position, int timeOfDay, int timeTransitionRange) {
+
     }
 
     /**
@@ -451,6 +455,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param updatedCount number of markers successfully updated
      */
     private record ApplyResult(TimeSpreadStatus status, int updatedCount) {
+
     }
 
 }

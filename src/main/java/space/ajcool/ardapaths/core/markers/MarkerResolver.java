@@ -6,16 +6,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletionException;
 
 /**
@@ -70,6 +66,23 @@ public class MarkerResolver {
     }
 
     /**
+     * Checks whether a chunk has persisted data without creating new terrain.
+     *
+     * @param chunkPos chunk position to probe
+     * @return true when vanilla storage reports saved chunk NBT
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean chunkExistsOnDisk(ChunkPos chunkPos) {
+        try {
+            return chunkExistsCache.computeIfAbsent(chunkPos.toLong(), ignored ->
+                    world.getChunkSource().chunkMap.read(chunkPos).join().isPresent());
+        } catch (CompletionException exception) {
+            log.warn("Failed to probe ArdaPaths marker chunk {}", chunkPos, exception);
+            return false;
+        }
+    }
+
+    /**
      * Resolves all path markers in a loaded or existing persisted chunk.
      *
      * @param chunkPos chunk position to inspect
@@ -95,23 +108,6 @@ public class MarkerResolver {
     }
 
     /**
-     * Checks whether a chunk has persisted data without creating new terrain.
-     *
-     * @param chunkPos chunk position to probe
-     * @return true when vanilla storage reports saved chunk NBT
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private boolean chunkExistsOnDisk(ChunkPos chunkPos) {
-        try {
-            return chunkExistsCache.computeIfAbsent(chunkPos.toLong(), ignored ->
-                    world.getChunkSource().chunkMap.read(chunkPos).join().isPresent());
-        } catch (CompletionException exception) {
-            log.warn("Failed to probe ArdaPaths marker chunk {}", chunkPos, exception);
-            return false;
-        }
-    }
-
-    /**
      * Marker data resolved from live world state.
      *
      * @param dimensionId dimension identifier containing the marker
@@ -119,6 +115,7 @@ public class MarkerResolver {
      * @param liveMarker  loaded marker block entity
      */
     public record ResolvedMarker(String dimensionId, BlockPos position, PathMarkerBlockEntity liveMarker) {
+
         /**
          * Creates a resolved marker from a loaded block entity.
          *
@@ -128,19 +125,6 @@ public class MarkerResolver {
          */
         public static ResolvedMarker loaded(String dimensionId, PathMarkerBlockEntity marker) {
             return new ResolvedMarker(dimensionId, marker.getBlockPos().immutable(), marker);
-        }
-
-        /**
-         * Reads chapter data for a path chapter without creating new entries.
-         *
-         * @param pathId    path identifier
-         * @param chapterId chapter identifier
-         * @return existing chapter data, or null when absent
-         */
-        public PathMarkerBlockEntity.ChapterNbtData chapterData(String pathId, String chapterId) {
-            Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = liveMarker.getPathData();
-            Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = pathData.get(pathId);
-            return chapters == null ? null : chapters.get(chapterId);
         }
 
         /**
@@ -184,6 +168,19 @@ public class MarkerResolver {
                 data.setWeather(PathMarkerBlockEntity.ChapterNbtData.UNSET);
             }
             liveMarker.markUpdated();
+        }
+
+        /**
+         * Reads chapter data for a path chapter without creating new entries.
+         *
+         * @param pathId    path identifier
+         * @param chapterId chapter identifier
+         * @return existing chapter data, or null when absent
+         */
+        public PathMarkerBlockEntity.ChapterNbtData chapterData(String pathId, String chapterId) {
+            Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = liveMarker.getPathData();
+            Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = pathData.get(pathId);
+            return chapters == null ? null : chapters.get(chapterId);
         }
     }
 }

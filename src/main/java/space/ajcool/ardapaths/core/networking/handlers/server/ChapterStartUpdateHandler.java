@@ -7,18 +7,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartUpdatePacket;
 
 /**
  * Handles the update of a chapter start position in the server configuration.
  * Processes incoming {@link ChapterStartUpdatePacket} from clients and persists the new chapter start location.
  */
-public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartUpdatePacket>
-{
-    public ChapterStartUpdateHandler()
-    {
-        super(ChapterStartUpdatePacket.CHANNEL, ChapterStartUpdatePacket::read);
+public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartUpdatePacket> {
+
+    public ChapterStartUpdateHandler() {
+        super(ChapterStartUpdatePacket.TYPE, ChapterStartUpdatePacket::read);
     }
 
     /**
@@ -31,13 +30,14 @@ public class ChapterStartUpdateHandler extends ServerPacketHandler<ChapterStartU
         return true;
     }
 
+    @SuppressWarnings("resource")
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartUpdatePacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartUpdatePacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
         final BlockPos start = packet.position();
-        ArdaPaths.CONFIG.setChapterStart(pathId, chapterId, PositionData.fromBlockPos(start));
+        final String dimension = player.serverLevel().dimension().location().toString();
+        ArdaPaths.CONFIG.setChapterStart(pathId, chapterId, PositionData.fromBlockPos(start), dimension);
         ArdaPaths.CONFIG_MANAGER.save();
     }
 }

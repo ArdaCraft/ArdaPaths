@@ -1,5 +1,5 @@
 plugins {
-    id "fabric-loom" version "${loom_version}"
+    id "net.fabricmc.fabric-loom-remap" version "${loom_version}"
     id "maven-publish"
     id "checkstyle"
 }
@@ -17,6 +17,7 @@ repositories {
     maven { url = "https://oss.sonatype.org/content/repositories/snapshots" }
     maven { url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1" }
     maven { url = "https://cursemaven.com/" }
+    maven { url = "https://repo.william278.net/releases" }
 }
 
 dependencies {
@@ -37,17 +38,18 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.12.1'
 
     // Permissions API is bundled so permission checks work without forcing LuckPerms.
-    // Non-transitive: its POM imports the fabric-api BOM for 1.20.4, which would drag a
-    // 1.20.4 Fabric API onto the run classpath and fail dependency resolution on 1.20.1.
-    // The nested jar only needs fabric-api-base, which the 1.20.1 Fabric API already provides.
+    // Non-transitive: its POM pins an older Fabric API BOM, which would drag stale
+    // Fabric modules onto the run classpath instead of the 1.21.1 API declared here.
+    // The nested jar only needs fabric-api-base, which the main Fabric API already provides.
     include(modImplementation("me.lucko:fabric-permissions-api:0.3.1") {
         transitive = false
     })
 
     // Optional integrations - compile against them, never require them at runtime.
-    modCompileOnly("maven.modrinth:ardaregions:${project.ardaregions_version}")
-    modCompileOnly("maven.modrinth:ardamaps:${project.ardamaps_version}")
-    modCompileOnly("curse.maven:huskhomes-849217:5468607")
+    compileOnly(files("stubs/ArdaRegionsStub-${project.ardaregions_version}+1.21.1.jar"))
+    compileOnly(files("stubs/ArdaMapsStub-${project.ardamaps_version}+1.21.1.jar"))
+    compileOnly("net.william278.huskhomes:huskhomes-common:4.10")
+    compileOnly("net.william278.huskhomes:huskhomes-fabric:4.10+1.21.1")
 
     modRuntimeOnly("me.djtheredstoner:DevAuth-fabric:${devauth_version}")
 
@@ -93,9 +95,11 @@ processResources {
     }
 }
 
-def targetJavaVersion = 17
+def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
+    it.options.compilerArgs.add("-processor")
+    it.options.compilerArgs.add('lombok.launch.AnnotationProcessorHider$AnnotationProcessor')
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
         it.options.release.set(targetJavaVersion)
     }
@@ -129,13 +133,13 @@ tasks.register("javadocLint") {
 
 jar {
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}"}
+        rename { "${it}_${project.archives_base_name}"}
     }
 }
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
+        create("mavenJava", MavenPublication) {
             from components.java
         }
     }

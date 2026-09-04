@@ -18,6 +18,7 @@ import java.util.function.IntConsumer;
  * A compact tab selector for switching between fixed content panels in configuration screens.
  */
 public class TabBarWidget extends AbstractWidget {
+
     /**
      * Inner padding applied between the tab content panel edges and its content.
      */
@@ -53,14 +54,14 @@ public class TabBarWidget extends AbstractWidget {
     /**
      * Constructs a tab bar with the configured tabs and selection callback.
      *
-     * @param x             the x coordinate
-     * @param y             the y coordinate
-     * @param width         the total tab bar width
-     * @param height        the tab bar height
-     * @param tabs          labels for the available tabs
-     * @param selectedIndex the initially selected tab index
-     * @param onSelect      callback invoked when a different tab is selected
-     * @param contentHeight height of the tab content background, or zero to draw none
+     * @param x                      the x coordinate
+     * @param y                      the y coordinate
+     * @param width                  the total tab bar width
+     * @param height                 the tab bar height
+     * @param tabs                   labels for the available tabs
+     * @param selectedIndex          the initially selected tab index
+     * @param onSelect               callback invoked when a different tab is selected
+     * @param contentHeight          height of the tab content background, or zero to draw none
      * @param contentBackgroundColor ARGB color for the tab content background, or zero for the default
      */
     @Builder(builderClassName = "TabBarBuilder", builderMethodName = "create", setterPrefix = "set")
@@ -102,13 +103,13 @@ public class TabBarWidget extends AbstractWidget {
             boolean hovered = mouseX >= cellX && mouseX <= cellX + cellWidth &&
                     mouseY >= getY() && mouseY <= getY() + getHeight();
             boolean selected = index == selectedIndex;
-            int v = 46 + (hovered || selected ? 40 : 20);
             Component tab = tabs.get(index);
             int textX = cellX + (cellWidth - textRenderer.width(tab)) / 2;
             int textY = getY() + (getHeight() - textRenderer.lineHeight) / 2;
             int color = selected ? 0xFFFFFFFF : 0xFFA0A0A0;
 
-            GuiTextures.blitNineSliced(context, WIDGETS_LOCATION, cellX, getY(), cellWidth, getHeight(), 20, 4, 200, 20, 0, v);
+            GuiTextures.PanelState state = hovered || selected ? GuiTextures.PanelState.HOVERED : GuiTextures.PanelState.IDLE;
+            GuiTextures.drawPanelSegment(context, cellX, getY(), cellWidth, getHeight(), state, GuiTextures.SliceCap.FULL);
             context.drawString(textRenderer, tab, textX, textY, color);
         }
     }

@@ -8,6 +8,7 @@ import lombok.Setter;
  * This data is serialized to JSON as part of the client configuration.
  */
 public class SelectedPathData {
+
     /**
      * The ID of the currently selected path.
      */

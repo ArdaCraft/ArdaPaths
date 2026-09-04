@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
  */
 @UtilityClass
 public class Fabric {
+
     /**
      * Check if the current thread is running on the client.
      *

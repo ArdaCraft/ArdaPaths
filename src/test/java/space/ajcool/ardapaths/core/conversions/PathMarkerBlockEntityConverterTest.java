@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mockStatic;
  * Regression tests for on-disk Path Marker NBT migrations.
  */
 class PathMarkerBlockEntityConverterTest {
+
     /**
      * Gson instance for building config DTOs without touching disk-backed managers.
      */
@@ -62,7 +63,7 @@ class PathMarkerBlockEntityConverterTest {
             assertFalse(converted.contains("targetOffset-1"));
             assertInstanceOf(CompoundTag.class, converted.get("paths"));
             assertFalse(converted.getCompound("paths").contains("frodo"));
-            assertEquals(new BlockPos(4, 5, 6), NbtUtils.readBlockPos(markerData.getCompound("target")));
+            assertEquals(new BlockPos(4, 5, 6), NbtUtils.readBlockPos(markerData, "target").orElseThrow());
             assertEquals("Mind the road", markerData.getString("proximity_message"));
             assertEquals(9, markerData.getInt("activation_range"));
         } finally {
@@ -126,7 +127,7 @@ class PathMarkerBlockEntityConverterTest {
     /**
      * Verifies level-less remote marker NBT loading preserves data when unknown keys exist.
      */
-    @SuppressWarnings("DataFlowIssue")
+    @SuppressWarnings({"DataFlowIssue", "ExtractMethodRecommender"})
     @Test
     void applyNbtKeepsKnownPathDataWhenAnotherPathKeyIsUnknown() throws ReflectiveOperationException {
         ArdaPathsClient.CONFIG = GSON.fromJson("""

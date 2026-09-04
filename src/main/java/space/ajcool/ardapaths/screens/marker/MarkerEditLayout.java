@@ -10,44 +10,48 @@ import space.ajcool.ardapaths.screens.widgets.TabBarWidget;
  * @param screenHeight height of the screen being laid out
  */
 public record MarkerEditLayout(int screenWidth, int screenHeight) {
+
     /** Total fixed layout height used to vertically place the marker editor. */
-    public static final int TOTAL_HEIGHT = 356;
+    public static final int TOTAL_HEIGHT = 364;
 
     /** Minimum top margin for short windows. */
     public static final int MIN_TOP_MARGIN = 5;
 
     /** Shared width for the main marker editor controls. */
-    public static final int MAIN_CONTROL_WIDTH = 280;
+    public static final int MAIN_CONTROL_WIDTH = 320;
 
     /** Standard control height for buttons, dropdowns, sliders, and the tab bar. */
     public static final int CONTROL_HEIGHT = 20;
 
     /** X offset from center for left-aligned main controls. */
-    public static final int MAIN_LEFT_OFFSET = 140;
+    public static final int MAIN_LEFT_OFFSET = 160;
 
     /** Y offset for the path selector. */
     public static final int PATH_Y_OFFSET = 42;
 
     /** Y offset for the chapter selector and edit button. */
-    public static final int CHAPTER_Y_OFFSET = 70;
+    public static final int CHAPTER_Y_OFFSET = 78;
 
     /** Y offset for chapter-start controls. */
-    public static final int CHAPTER_START_Y_OFFSET = 100;
+    public static final int CHAPTER_START_Y_OFFSET = 108;
 
     /** Y offset for the tab bar. */
-    public static final int TAB_BAR_Y_OFFSET = 122;
+    public static final int TAB_BAR_Y_OFFSET = 130;
 
     /** Y offset for the active tab content area. */
-    public static final int CONTENT_TOP_OFFSET = 155;
+    public static final int CONTENT_TOP_OFFSET = 163;
 
     /** Reserved height for the active tab content area. */
     public static final int CONTENT_HEIGHT = 164;
 
     /** Y offset for the fixed footer row. */
-    public static final int FOOTER_Y_OFFSET = 329;
+    public static final int FOOTER_Y_OFFSET = 337;
 
     /** Horizontal spacing between the marker list divider and the centered editor. */
     public static final int MARKER_LIST_GUTTER = 40;
+
+    /** Horizontal space consumed by the marker-list column and its gutter. */
+    private static final int MARKER_LIST_BLOCK = MarkerListPanelWidget.MARKER_LIST_WIDTH + MARKER_LIST_GUTTER;
 
     /**
      * Creates layout coordinates for a screen size.
@@ -61,12 +65,12 @@ public record MarkerEditLayout(int screenWidth, int screenHeight) {
     }
 
     /**
-     * Returns the horizontal center of the screen.
+     * Returns the top edge of the active tab content area.
      *
-     * @return center x coordinate
+     * @return content top y coordinate
      */
-    public int centerX() {
-        return screenWidth / 2;
+    public int contentTop() {
+        return top() + CONTENT_TOP_OFFSET;
     }
 
     /**
@@ -79,12 +83,12 @@ public record MarkerEditLayout(int screenWidth, int screenHeight) {
     }
 
     /**
-     * Returns the top edge of the active tab content area.
+     * Returns the padded right edge available for widgets inside the tab content panel.
      *
-     * @return content top y coordinate
+     * @return tab content right x coordinate
      */
-    public int contentTop() {
-        return top() + CONTENT_TOP_OFFSET;
+    public int contentRight() {
+        return contentLeft() + contentWidth();
     }
 
     /**
@@ -106,24 +110,6 @@ public record MarkerEditLayout(int screenWidth, int screenHeight) {
     }
 
     /**
-     * Returns the padded right edge available for widgets inside the tab content panel.
-     *
-     * @return tab content right x coordinate
-     */
-    public int contentRight() {
-        return contentLeft() + contentWidth();
-    }
-
-    /**
-     * Returns the y coordinate of the fixed footer row.
-     *
-     * @return footer y coordinate
-     */
-    public int footerY() {
-        return top() + FOOTER_Y_OFFSET;
-    }
-
-    /**
      * Returns the x coordinate used by left-aligned main controls.
      *
      * @return left column x coordinate
@@ -133,12 +119,41 @@ public record MarkerEditLayout(int screenWidth, int screenHeight) {
     }
 
     /**
-     * Returns the x coordinate for the left edge of the marker-list column.
+     * Returns the horizontal center of the marker-list-and-editor block. When the marker-list
+     * column does not fit, this is simply the screen center; otherwise it is offset so that the
+     * marker-list column and the editor panel are centered together as a pair.
      *
-     * @return marker-list left x coordinate
+     * @return center x coordinate
      */
-    public int markerListLeft() {
-        return leftColumnX() - MARKER_LIST_GUTTER - MarkerListPanelWidget.MARKER_LIST_WIDTH;
+    public int centerX() {
+        return screenWidth / 2 + (hasMarkerListRoom() ? MARKER_LIST_BLOCK / 2 : 0);
+    }
+
+    /**
+     * Checks whether the current screen width can show the marker-list column.
+     *
+     * @return true when the marker-list column fits on screen
+     */
+    public boolean hasMarkerListRoom() {
+        return screenWidth / 2 - MAIN_LEFT_OFFSET - MARKER_LIST_BLOCK / 2 >= MIN_TOP_MARGIN;
+    }
+
+    /**
+     * Returns the x coordinate for the right edge of the main editor panel.
+     *
+     * @return panel right x coordinate
+     */
+    public int panelRight() {
+        return leftColumnX() + MAIN_CONTROL_WIDTH;
+    }
+
+    /**
+     * Returns the y coordinate of the fixed footer row.
+     *
+     * @return footer y coordinate
+     */
+    public int footerY() {
+        return top() + FOOTER_Y_OFFSET;
     }
 
     /**
@@ -160,11 +175,11 @@ public record MarkerEditLayout(int screenWidth, int screenHeight) {
     }
 
     /**
-     * Checks whether the current screen width can show the marker-list column.
+     * Returns the x coordinate for the left edge of the marker-list column.
      *
-     * @return true when the marker-list column fits on screen
+     * @return marker-list left x coordinate
      */
-    public boolean hasMarkerListRoom() {
-        return markerListLeft() >= 0;
+    public int markerListLeft() {
+        return leftColumnX() - MARKER_LIST_GUTTER - MarkerListPanelWidget.MARKER_LIST_WIDTH;
     }
 }

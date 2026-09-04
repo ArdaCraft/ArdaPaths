@@ -1,16 +1,17 @@
 package space.ajcool.ardapaths.core.data;
 
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 
 /**
  * Utility for converting marker time-of-day settings between text and Minecraft daytime ticks.
  */
 public final class TimeOfDay {
+
     /**
      * Marker value used when no custom time of day is configured.
      */
@@ -167,7 +168,7 @@ public final class TimeOfDay {
      * Interpolates each RGB channel independently.
      *
      * @param startRgb starting RGB color
-     * @param endRgb ending RGB color
+     * @param endRgb   ending RGB color
      * @param progress interpolation progress from zero to one
      * @return interpolated RGB color
      */
@@ -176,16 +177,6 @@ public final class TimeOfDay {
         int green = Mth.lerpInt(progress, (startRgb >> 8) & 0xFF, (endRgb >> 8) & 0xFF);
         int blue = Mth.lerpInt(progress, startRgb & 0xFF, endRgb & 0xFF);
         return (red << 16) | (green << 8) | blue;
-    }
-
-    /**
-     * Checks whether a transition range selects computed segment interpolation.
-     *
-     * @param range marker transition range
-     * @return true when the range uses the computed sentinel
-     */
-    public static boolean isComputed(int range) {
-        return range == COMPUTED_TRANSITION_RANGE;
     }
 
     /**
@@ -230,11 +221,22 @@ public final class TimeOfDay {
     }
 
     /**
+     * Checks whether a transition range selects computed segment interpolation.
+     *
+     * @param range marker transition range
+     * @return true when the range uses the computed sentinel
+     */
+    public static boolean isComputed(int range) {
+        return range == COMPUTED_TRANSITION_RANGE;
+    }
+
+    /**
      * Color stop for marker-list time visualization.
      *
      * @param tick daytime tick where the color is exact
-     * @param rgb RGB color shown at the tick
+     * @param rgb  RGB color shown at the tick
      */
     private record TimeColorKeyframe(int tick, int rgb) {
+
     }
 }

@@ -16,6 +16,7 @@ public record ProgressSnapshot(
         int total,
         long startedAt
 ) {
+
     /**
      * Formats this snapshot for operator-facing command feedback.
      *

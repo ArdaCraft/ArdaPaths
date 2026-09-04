@@ -22,6 +22,7 @@ public enum WeatherTypes {
 
     /**
      * Initializes a Weather Type with its associated display name
+     *
      * @param displayName the name to display on screen
      */
     WeatherTypes(String displayName) {
@@ -31,6 +32,7 @@ public enum WeatherTypes {
 
     /**
      * Returns a weather type from its associated int value or DEFAULT if it doesn't exist.
+     *
      * @param value the ordinal value to convert
      * @return the associated weather type
      */

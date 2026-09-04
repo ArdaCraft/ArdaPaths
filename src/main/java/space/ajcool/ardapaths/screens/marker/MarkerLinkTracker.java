@@ -1,25 +1,20 @@
 package space.ajcool.ardapaths.screens.marker;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.core.BlockPos;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
-import java.util.AbstractMap;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Tracks the path and chapter associations that existed when marker editing began.
  */
 public class MarkerLinkTracker {
+
     /** Captured marker positions for original-entry sets that are passed between same-marker screens. */
     private static final Map<Set<AbstractMap.SimpleEntry<String, String>>, BlockPos> CAPTURED_POSITIONS = Collections.synchronizedMap(new IdentityHashMap<>());
 
@@ -39,6 +34,40 @@ public class MarkerLinkTracker {
         this.marker = marker;
         this.originalEntries = belongsToMarker(marker, originalEntries) ? originalEntries : trackInitialPathAndChapterData();
         CAPTURED_POSITIONS.put(this.originalEntries, marker.getBlockPos().immutable());
+    }
+
+    /**
+     * Checks whether a supplied original-entry set was captured for the same marker position.
+     *
+     * @param marker          marker currently being edited
+     * @param originalEntries candidate original-entry set from a previous screen
+     * @return true when the candidate set belongs to the same marker
+     */
+    private static boolean belongsToMarker(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalEntries) {
+        if (originalEntries == null) return false;
+
+        BlockPos capturedPosition = CAPTURED_POSITIONS.get(originalEntries);
+        return marker.getBlockPos().equals(capturedPosition);
+    }
+
+    /**
+     * Captures the current non-empty path/chapter associations for change tracking.
+     *
+     * @return the initial set of path/chapter entries linked to this marker
+     */
+    private Set<AbstractMap.SimpleEntry<String, String>> trackInitialPathAndChapterData() {
+        Set<AbstractMap.SimpleEntry<String, String>> pathAndChapterData = new HashSet<>();
+
+        var pathData = marker.getPathData();
+
+        for (String pathEntryKey : pathData.keySet()) {
+            for (String chapterEntryKey : pathData.get(pathEntryKey).keySet()) {
+                boolean isDefault = marker.getPathData().get(pathEntryKey).get(chapterEntryKey) == null || marker.getPathData().get(pathEntryKey).get(chapterEntryKey).isEmpty();
+                if (!isDefault) pathAndChapterData.add(new AbstractMap.SimpleEntry<>(pathEntryKey, chapterEntryKey));
+            }
+        }
+
+        return pathAndChapterData;
     }
 
     /**
@@ -184,45 +213,12 @@ public class MarkerLinkTracker {
     }
 
     /**
-     * Captures the current non-empty path/chapter associations for change tracking.
-     *
-     * @return the initial set of path/chapter entries linked to this marker
-     */
-    private Set<AbstractMap.SimpleEntry<String, String>> trackInitialPathAndChapterData() {
-        Set<AbstractMap.SimpleEntry<String, String>> pathAndChapterData = new HashSet<>();
-
-        var pathData = marker.getPathData();
-
-        for (String pathEntryKey : pathData.keySet()) {
-            for (String chapterEntryKey : pathData.get(pathEntryKey).keySet()) {
-                boolean isDefault = marker.getPathData().get(pathEntryKey).get(chapterEntryKey) == null || marker.getPathData().get(pathEntryKey).get(chapterEntryKey).isEmpty();
-                if (!isDefault) pathAndChapterData.add(new AbstractMap.SimpleEntry<>(pathEntryKey, chapterEntryKey));
-            }
-        }
-
-        return pathAndChapterData;
-    }
-
-    /**
-     * Checks whether a supplied original-entry set was captured for the same marker position.
-     *
-     * @param marker          marker currently being edited
-     * @param originalEntries candidate original-entry set from a previous screen
-     * @return true when the candidate set belongs to the same marker
-     */
-    private static boolean belongsToMarker(PathMarkerBlockEntity marker, Set<AbstractMap.SimpleEntry<String, String>> originalEntries) {
-        if (originalEntries == null) return false;
-
-        BlockPos capturedPosition = CAPTURED_POSITIONS.get(originalEntries);
-        return marker.getBlockPos().equals(capturedPosition);
-    }
-
-    /**
      * Current number of linked paths and linked chapters.
      *
      * @param paths    number of linked paths
      * @param chapters number of linked chapters
      */
     public record LinkCounts(int paths, int chapters) {
+
     }
 }

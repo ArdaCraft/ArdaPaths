@@ -1,11 +1,9 @@
 package space.ajcool.ardapaths.core.networking.handlers.server;
 
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
@@ -18,15 +16,10 @@ import space.ajcool.ardapaths.core.networking.packets.client.ArdaPathsPermission
 public class ArdaPathsPermissionCheckHandler extends RespondablePacketHandler<EmptyPacket, ArdaPathsPermissionCheckResponsePacket> {
 
     /**
-     * Channel identifier for permission check requests from client.
-     */
-    private static final ResourceLocation REQUEST_CHANNEL = ModConstants.modId("ardapaths_permission_check_request");
-
-    /**
      * Creates the permission check request handler.
      */
     public ArdaPathsPermissionCheckHandler() {
-        super(REQUEST_CHANNEL, EmptyPacket::read, ArdaPathsPermissionCheckResponsePacket.CHANNEL, ArdaPathsPermissionCheckResponsePacket::read);
+        super(EmptyPacket.PERMISSION_CHECK_TYPE, EmptyPacket.reader(EmptyPacket.PERMISSION_CHECK_TYPE), ArdaPathsPermissionCheckResponsePacket.TYPE, ArdaPathsPermissionCheckResponsePacket::read);
     }
 
     @Override

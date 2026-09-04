@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
  * Tests for packed marker animation settings.
  */
 class BitPackerTest {
+
     /**
      * Verifies ordinary packed animation values unpack in the original order.
      */

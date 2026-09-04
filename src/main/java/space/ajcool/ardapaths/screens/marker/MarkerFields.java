@@ -14,6 +14,7 @@ import space.ajcool.ardapaths.screens.widgets.TextValidator;
  * Validators and parsing helpers for marker-edit form fields.
  */
 public final class MarkerFields {
+
     /**
      * Prevents construction of the static marker-field helper.
      */

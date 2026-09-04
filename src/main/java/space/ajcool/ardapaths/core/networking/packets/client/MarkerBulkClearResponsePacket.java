@@ -2,7 +2,9 @@ package space.ajcool.ardapaths.core.networking.packets.client;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IRespondablePacket;
 import space.ajcool.ardapaths.core.data.TimeSpreadStatus;
@@ -16,11 +18,18 @@ import java.util.UUID;
  * @param status       status code describing the result
  * @param updatedCount number of markers updated by the server
  */
-public record MarkerBulkClearResponsePacket(UUID requestId, TimeSpreadStatus status, int updatedCount) implements IRespondablePacket<MarkerBulkClearResponsePacket> {
+public record MarkerBulkClearResponsePacket(UUID requestId, TimeSpreadStatus status,
+                                            int updatedCount) implements IRespondablePacket<MarkerBulkClearResponsePacket> {
+
     /**
      * Network channel used for marker bulk-clear responses.
      */
     public static final ResourceLocation CHANNEL = ModConstants.modId("marker_bulk_clear_response");
+
+    /**
+     * Custom payload type used for typed Fabric networking.
+     */
+    public static final CustomPacketPayload.Type<MarkerBulkClearResponsePacket> TYPE = new CustomPacketPayload.Type<>(CHANNEL);
 
     /**
      * Creates a bulk-clear response before request correlation is assigned.
@@ -30,6 +39,16 @@ public record MarkerBulkClearResponsePacket(UUID requestId, TimeSpreadStatus sta
      */
     public MarkerBulkClearResponsePacket(TimeSpreadStatus status, int updatedCount) {
         this(IRespondablePacket.UNASSIGNED_REQUEST_ID, status, updatedCount);
+    }
+
+    /**
+     * Reads a marker bulk-clear response packet from a network buffer.
+     *
+     * @param buf packet data buffer
+     * @return decoded packet
+     */
+    public static MarkerBulkClearResponsePacket read(FriendlyByteBuf buf) {
+        return new MarkerBulkClearResponsePacket(buf.readUUID(), buf.readEnum(TimeSpreadStatus.class), buf.readInt());
     }
 
     /**
@@ -44,10 +63,15 @@ public record MarkerBulkClearResponsePacket(UUID requestId, TimeSpreadStatus sta
     }
 
     /**
-     * Serializes this response for server-to-client transmission.
+     * Gets the custom payload type for this packet.
      *
-     * @return packet data buffer
+     * @return this packet's payload type
      */
+    @Override
+    public CustomPacketPayload.@NotNull Type<MarkerBulkClearResponsePacket> type() {
+        return TYPE;
+    }
+
     @Override
     public FriendlyByteBuf build() {
         FriendlyByteBuf buf = PacketByteBufs.create();
@@ -55,15 +79,5 @@ public record MarkerBulkClearResponsePacket(UUID requestId, TimeSpreadStatus sta
         buf.writeEnum(status);
         buf.writeInt(updatedCount);
         return buf;
-    }
-
-    /**
-     * Reads a marker bulk-clear response packet from a network buffer.
-     *
-     * @param buf packet data buffer
-     * @return decoded packet
-     */
-    public static MarkerBulkClearResponsePacket read(FriendlyByteBuf buf) {
-        return new MarkerBulkClearResponsePacket(buf.readUUID(), buf.readEnum(TimeSpreadStatus.class), buf.readInt());
     }
 }

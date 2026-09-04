@@ -10,4 +10,5 @@ import net.minecraft.nbt.CompoundTag;
  * @param pathsNbt    marker paths NBT to apply
  */
 public record PlannedMarker(String dimensionId, long packedPos, CompoundTag pathsNbt) {
+
 }

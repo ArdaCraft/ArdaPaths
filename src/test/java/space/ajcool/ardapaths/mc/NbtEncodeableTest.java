@@ -1,8 +1,8 @@
 package space.ajcool.ardapaths.mc;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Contract tests for the shared NBT serialization helper methods.
  */
 class NbtEncodeableTest {
+
     /**
      * Verifies typed readers ignore missing or wrong-type values and return their documented defaults.
      */

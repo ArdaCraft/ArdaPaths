@@ -37,33 +37,6 @@ public final class Warps {
     }
 
     /**
-     * Warps the player through the optional service, falling back when unavailable or invalid.
-     *
-     * @param server    the server that owns the destination world
-     * @param player    the player to move
-     * @param warpName  the configured warp name
-     * @param onFailure fallback action for missing or invalid warp targets
-     */
-    public static void warpTo(MinecraftServer server, ServerPlayer player, String warpName, Runnable onFailure) {
-        WarpService warpService = resolve();
-        if (warpService != null) warpService.warpTo(server, player, warpName, onFailure);
-        else onFailure.run();
-    }
-
-    /**
-     * Resolves a named warp through the optional service.
-     *
-     * @param server   the server that owns the destination world
-     * @param warpName the configured warp name
-     * @return future optional destination for the named warp
-     */
-    public static CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName) {
-        WarpService warpService = resolve();
-        if (warpService != null) return warpService.resolveWarp(server, warpName);
-        return CompletableFuture.completedFuture(Optional.empty());
-    }
-
-    /**
      * Resolves the optional warp service once.
      *
      * @return a warp service, or null when no usable service is available
@@ -95,5 +68,32 @@ public final class Warps {
             log.warn("HuskHomes warp integration is unavailable; falling back to coordinates.", throwable);
             return null;
         }
+    }
+
+    /**
+     * Warps the player through the optional service, falling back when unavailable or invalid.
+     *
+     * @param server    the server that owns the destination world
+     * @param player    the player to move
+     * @param warpName  the configured warp name
+     * @param onFailure fallback action for missing or invalid warp targets
+     */
+    public static void warpTo(MinecraftServer server, ServerPlayer player, String warpName, Runnable onFailure) {
+        WarpService warpService = resolve();
+        if (warpService != null) warpService.warpTo(server, player, warpName, onFailure);
+        else onFailure.run();
+    }
+
+    /**
+     * Resolves a named warp through the optional service.
+     *
+     * @param server   the server that owns the destination world
+     * @param warpName the configured warp name
+     * @return future optional destination for the named warp
+     */
+    public static CompletableFuture<Optional<WarpLocation>> resolveWarp(MinecraftServer server, String warpName) {
+        WarpService warpService = resolve();
+        if (warpService != null) return warpService.resolveWarp(server, warpName);
+        return CompletableFuture.completedFuture(Optional.empty());
     }
 }

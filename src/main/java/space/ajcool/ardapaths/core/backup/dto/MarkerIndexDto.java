@@ -12,4 +12,5 @@ import java.util.Map;
 public record MarkerIndexDto(
         @SerializedName("markers") Map<String, Map<String, int[]>> markers
 ) {
+
 }

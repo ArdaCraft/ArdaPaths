@@ -3,7 +3,6 @@ package space.ajcool.ardapaths.screens;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -31,55 +30,65 @@ import java.util.List;
  * Allows configuration of chapter metadata (name, date, index), warp locations, and associated path colors.
  */
 @Slf4j(topic = "ardapaths")
-public class ChapterEditScreen extends ArdaPathsScreen
-{
+public class ChapterEditScreen extends ArdaPathsScreen {
+
     /** Parent screen to return to */
     private final Screen parent;
+
     /** Whether this screen is creating a new chapter */
     private boolean creatingNew;
+
     /** Dropdown widget for selecting chapters */
     private DropdownWidget<ChapterData> chapterDropdown;
+
     /** Input widget for chapter ID */
     private InputBoxWidget idInput;
+
     /** Input widget for chapter name */
     private InputBoxWidget nameInput;
+
     /** Input widget for chapter date */
     private InputBoxWidget dateInput;
+
     /** Input widget for chapter index */
     private InputBoxWidget indexInput;
+
     /** Input widget for chapter warp location */
     private InputBoxWidget warpInput;
+
     /** Input widget for primary path color */
     private InputBoxWidget pathColorPrimary;
+
     /** Input widget for secondary path color */
     private InputBoxWidget pathColorSecondary;
+
     /** Input widget for tertiary path color */
     private InputBoxWidget pathColorTertiary;
+
     /** Button widget for applying color changes */
     private Button applyColorChangesButton;
+
     /** Dropdown widget for selecting paths */
     private DropdownWidget<PathData> pathDropdown;
 
-    protected ChapterEditScreen(Screen parent)
-    {
+    protected ChapterEditScreen(Screen parent) {
         super(Component.translatable("ardapaths.client.chapter.configuration.screens.chapter_edit_title"));
         this.parent = parent;
         this.creatingNew = false;
     }
 
     @Override
-    public void init()
-    {
+    public void init() {
         int centerX = this.width / 2;
         int y = 0;
 
         this.addRenderableWidget(TextWidget.create()
-                        .setX(centerX - 70)
-                        .setY(y)
-                        .setWidth(140)
-                        .setHeight(20)
-                        .setMessage(Component.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"))
-                        .build()
+                .setX(centerX - 70)
+                .setY(y)
+                .setWidth(140)
+                .setHeight(20)
+                .setMessage(Component.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"))
+                .build()
         );
 
         PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
@@ -90,7 +99,8 @@ public class ChapterEditScreen extends ArdaPathsScreen
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(path ->
                 {
-                    if (path == null) return Component.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected");
+                    if (path == null)
+                        return Component.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected");
                     return Component.literal(path.getName()).withStyle(Style.EMPTY.withColor(path.getPrimaryColor().asHex()));
                 })
                 .setSelected(selectedPath)
@@ -118,11 +128,11 @@ public class ChapterEditScreen extends ArdaPathsScreen
 
         applyColorChangesButton = Button.builder(
                         Component.translatable("ardapaths.generic.apply"),
-                                button -> saveColorsToPath())
-                        .pos(centerX + 90, y)
-                        .size(50, 20)
-                        .tooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors_apppy_tooltip")))
-                        .build();
+                        button -> saveColorsToPath())
+                .pos(centerX + 90, y)
+                .size(50, 20)
+                .tooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors_apppy_tooltip")))
+                .build();
         applyColorChangesButton.active = hasPathColorChanges();
         addRenderableWidget(applyColorChangesButton);
 
@@ -136,7 +146,8 @@ public class ChapterEditScreen extends ArdaPathsScreen
                 .setOptions(chapters)
                 .setOptionDisplay(chapter ->
                 {
-                    if (chapter == null) return Component.translatable("ardapaths.generic.validation.chapter.screens.no_chapter_selected");
+                    if (chapter == null)
+                        return Component.translatable("ardapaths.generic.validation.chapter.screens.no_chapter_selected");
                     return Component.literal(chapter.getName());
                 })
                 .build()
@@ -144,50 +155,41 @@ public class ChapterEditScreen extends ArdaPathsScreen
         int addButtonY = y;
 
         idInput = this.addRenderableWidget(InputBoxWidget.create()
-                        .setX(centerX - 75)
-                        .setY(y += 40)
-                        .setWidth(150)
-                        .setHeight(20)
-                        .setEnabled(true)
-                        .setPlaceholder(Component.literal("Id..."))
-                        .setValidator(text ->
-                        {
-                            if (text.length() < 3)
-                            {
-                                throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.string.three_char_long").getString());
+                .setX(centerX - 75)
+                .setY(y += 40)
+                .setWidth(150)
+                .setHeight(20)
+                .setEnabled(true)
+                .setPlaceholder(Component.literal("Id..."))
+                .setValidator(text ->
+                {
+                    if (text.length() < 3) {
+                        throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.string.three_char_long").getString());
+                    } else if (text.length() > 32) {
+                        throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.string.too_long_32").getString());
+                    } else if (creatingNew) {
+                        PathData path = pathDropdown.getSelected();
+                        if (path == null) {
+                            throw new TextValidationError(Component.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected").getString());
+                        } else if (path.getChapters() != null && !path.getChapters().isEmpty()) {
+                            ChapterData chapter = path.getChapters().stream().filter(ch -> ch.getId().equalsIgnoreCase(text)).findFirst().orElse(null);
+                            if (chapter != null) {
+                                throw new TextValidationError(Component.translatable("ardapaths.generic.validation.chapter.screens.id_in_use").getString());
                             }
-                            else if (text.length() > 32)
-                            {
-                                throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.string.too_long_32").getString());
-                            }
-                            else if (creatingNew)
-                            {
-                                PathData path = pathDropdown.getSelected();
-                                if (path == null)
-                                {
-                                    throw new TextValidationError(Component.translatable("ardapaths.generic.validation.chapter.screens.no_path_selected").getString());
-                                }
-                                else if (path.getChapters() != null && !path.getChapters().isEmpty())
-                                {
-                                    ChapterData chapter = path.getChapters().stream().filter(ch -> ch.getId().equalsIgnoreCase(text)).findFirst().orElse(null);
-                                    if (chapter != null)
-                                    {
-                                        throw new TextValidationError(Component.translatable("ardapaths.generic.validation.chapter.screens.id_in_use").getString());
-                                    }
-                                }
-                            }
-                        })
-                        .build()
+                        }
+                    }
+                })
+                .build()
         );
 
         nameInput = this.addRenderableWidget(InputBoxWidget.create()
-                        .setX(centerX - 75)
-                        .setY(y += 30)
-                        .setWidth(150)
-                        .setHeight(20)
-                        .setEnabled(true)
-                        .setPlaceholder(Component.translatable("ardapaths.client.chapter.configuration.screens.name"))
-                        .build()
+                .setX(centerX - 75)
+                .setY(y += 30)
+                .setWidth(150)
+                .setHeight(20)
+                .setEnabled(true)
+                .setPlaceholder(Component.translatable("ardapaths.client.chapter.configuration.screens.name"))
+                .build()
         );
 
         dateInput = this.addRenderableWidget(InputBoxWidget.create()
@@ -209,12 +211,9 @@ public class ChapterEditScreen extends ArdaPathsScreen
                 .setPlaceholder(Component.translatable("ardapaths.client.chapter.configuration.screens.index"))
                 .setValidator(text ->
                 {
-                    try
-                    {
+                    try {
                         Integer.parseInt(text);
-                    }
-                    catch (NumberFormatException e)
-                    {
+                    } catch (NumberFormatException e) {
                         throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.integer").getString());
                     }
                 })
@@ -318,6 +317,37 @@ public class ChapterEditScreen extends ArdaPathsScreen
         ScreenLayout.centerVertically(this);
     }
 
+    private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder) {
+        InputBoxWidget colorInputBox = InputBoxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(60)
+                .setHeight(17)
+                .setEnabled(true)
+                .setValidator(text ->
+                {
+                    if (!text.matches("^#([a-fA-F0-9]{6})$"))
+                        throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors.validation.error").getString());
+
+                    applyColorChangesButton.active = hasPathColorChanges();
+                })
+                .setPlaceholder(Component.translatable(placeholder))
+                .build();
+
+        colorInputBox.setValue(textColor.asHexString());
+        colorInputBox.setBackgroundColor(textColor.asHex());
+
+        colorInputBox.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors_tooltip")));
+
+        colorInputBox.setValueListener(input -> {
+            colorInputBox.validateText();
+            Color color = Color.fromHexString(input);
+            colorInputBox.setBackgroundColor(color.asHex());
+        });
+
+        return colorInputBox;
+    }
+
     private void saveColorsToPath() {
         // Update path colors if changed
         if (hasPathColorChanges()) {
@@ -342,36 +372,34 @@ public class ChapterEditScreen extends ArdaPathsScreen
         }
     }
 
-    private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder)
-    {
-        InputBoxWidget colorInputBox = InputBoxWidget.create()
-                .setX(x)
-                .setY(y)
-                .setWidth(60)
-                .setHeight(17)
-                .setEnabled(true)
-                .setValidator(text ->
-                {
-                    if (!text.matches("^#([a-fA-F0-9]{6})$"))
-                        throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors.validation.error").getString());
+    private boolean hasPathColorChanges() {
 
-                    applyColorChangesButton.active = hasPathColorChanges();
-                })
-                .setPlaceholder(Component.translatable(placeholder))
-                .build();
+        if (pathDropdown.getSelected() != null) {
+            Color initialPathPrimaryColor = pathDropdown.getSelected().getPrimaryColor();
+            Color initialPathSecondaryColor = pathDropdown.getSelected().getSecondaryColor();
+            Color initialPathTertiaryColor = pathDropdown.getSelected().getTertiaryColor();
 
-        colorInputBox.setValue(textColor.asHexString());
-        colorInputBox.setBackgroundColor(textColor.asHex());
+            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getValue());
+            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getValue());
+            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getValue());
 
-        colorInputBox.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.path_colors_tooltip")));
+            return inputPrimaryColor.asHex() != initialPathPrimaryColor.asHex() ||
+                    inputSecondaryColor.asHex() != initialPathSecondaryColor.asHex() ||
+                    inputTertiaryColor.asHex() != initialPathTertiaryColor.asHex();
+        }
 
-        colorInputBox.setValueListener(input ->{
-            colorInputBox.validateText();
-            Color color = Color.fromHexString(input);
-            colorInputBox.setBackgroundColor(color.asHex());
-        });
+        return false;
+    }
 
-        return colorInputBox;
+    private void resetFields() {
+        creatingNew = true;
+        chapterDropdown.setSelected(null);
+        idInput.enable();
+        idInput.reset();
+        nameInput.reset();
+        dateInput.reset();
+        indexInput.reset();
+        warpInput.reset();
     }
 
     private void deleteChapter() {
@@ -409,52 +437,13 @@ public class ChapterEditScreen extends ArdaPathsScreen
         ));
     }
 
-    private boolean hasPathColorChanges(){
-
-        if (pathDropdown.getSelected() != null) {
-            Color initialPathPrimaryColor = pathDropdown.getSelected().getPrimaryColor();
-            Color initialPathSecondaryColor = pathDropdown.getSelected().getSecondaryColor();
-            Color initialPathTertiaryColor = pathDropdown.getSelected().getTertiaryColor();
-
-            Color inputPrimaryColor = Color.fromHexString(pathColorPrimary.getValue());
-            Color inputSecondaryColor = Color.fromHexString(pathColorSecondary.getValue());
-            Color inputTertiaryColor = Color.fromHexString(pathColorTertiary.getValue());
-
-            return inputPrimaryColor.asHex() != initialPathPrimaryColor.asHex() ||
-                    inputSecondaryColor.asHex() != initialPathSecondaryColor.asHex() ||
-                    inputTertiaryColor.asHex() != initialPathTertiaryColor.asHex();
-        }
-
-        return false;
-    }
-
-    private void resetFields() {
-        creatingNew = true;
-        chapterDropdown.setSelected(null);
-        idInput.enable();
-        idInput.reset();
-        nameInput.reset();
-        dateInput.reset();
-        indexInput.reset();
-        warpInput.reset();
-    }
-
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta)
-    {
-        this.renderModBackground(context);
-        super.render(context, mouseX, mouseY, delta);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button)
-    {
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
-    public void onClose()
-    {
+    public void onClose() {
         if (this.minecraft != null)
             this.minecraft.setScreen(this.parent);
     }

@@ -11,6 +11,7 @@ import space.ajcool.ardapaths.screens.widgets.TextWidget;
  * Miscellaneous marker editor tab containing marker action settings.
  */
 public class MiscTabSection implements MarkerEditorTab {
+
     /** Width of miscellaneous action text inputs. */
     private static final int INPUT_WIDTH = 155;
 
@@ -52,32 +53,6 @@ public class MiscTabSection implements MarkerEditorTab {
     }
 
     /**
-     * Copies mounted miscellaneous-tab widget values into a form state.
-     *
-     * @param state mutable form state to update
-     */
-    @Override
-    public void commitTo(MarkerFormState state) {
-        state.setAutoTeleportTarget(MarkerFields.parseTextOrFallback(autoTeleportTargetInput, state.getAutoTeleportTarget()));
-        state.setLookAt(MarkerFields.parseTextOrFallback(lookAtInput, state.getLookAt()));
-        state.setGiveItem(MarkerFields.parseTextOrFallback(giveItemInput, state.getGiveItem()));
-    }
-
-    /**
-     * Validates all mounted miscellaneous-tab input fields.
-     *
-     * @return true when all mounted inputs are valid
-     */
-    @Override
-    public boolean validate() {
-        boolean valid = true;
-        valid &= autoTeleportTargetInput == null || autoTeleportTargetInput.validateText();
-        valid &= lookAtInput == null || lookAtInput.validateText();
-        valid &= giveItemInput == null || giveItemInput.validateText();
-        return valid;
-    }
-
-    /**
      * Creates a labelled text field for a miscellaneous marker action setting.
      *
      * @param translationKeyPrefix marker setting translation-key suffix
@@ -104,5 +79,31 @@ public class MiscTabSection implements MarkerEditorTab {
         input.setValueListener(ignored -> input.validateText());
         input.setValue(value);
         return input;
+    }
+
+    /**
+     * Copies mounted miscellaneous-tab widget values into a form state.
+     *
+     * @param state mutable form state to update
+     */
+    @Override
+    public void commitTo(MarkerFormState state) {
+        state.setAutoTeleportTarget(MarkerFields.parseTextOrFallback(autoTeleportTargetInput, state.getAutoTeleportTarget()));
+        state.setLookAt(MarkerFields.parseTextOrFallback(lookAtInput, state.getLookAt()));
+        state.setGiveItem(MarkerFields.parseTextOrFallback(giveItemInput, state.getGiveItem()));
+    }
+
+    /**
+     * Validates all mounted miscellaneous-tab input fields.
+     *
+     * @return true when all mounted inputs are valid
+     */
+    @Override
+    public boolean validate() {
+        boolean valid = true;
+        valid &= autoTeleportTargetInput == null || autoTeleportTargetInput.validateText();
+        valid &= lookAtInput == null || lookAtInput.validateText();
+        valid &= giveItemInput == null || giveItemInput.validateText();
+        return valid;
     }
 }

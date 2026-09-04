@@ -7,6 +7,7 @@ import com.google.gson.annotations.SerializedName;
  * This class is used for serializing colours to JSON with expanded field names.
  */
 public class Color {
+
     /**
      * Red component of the colour (0-255).
      */
@@ -86,10 +87,10 @@ public class Color {
     /**
      * Convert the colour to a hex value.
      *
-     * @return the hex representation as an integer
+     * @return the opaque ARGB hex representation as an integer
      */
     public int asHex() {
-        return (r << 16) | (g << 8) | b;
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     /**

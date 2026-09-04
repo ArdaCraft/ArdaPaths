@@ -31,6 +31,7 @@ import java.util.concurrent.CompletionException;
  */
 @Slf4j(topic = "ardapaths")
 public class MarkerScanner {
+
     /**
      * Full block entity identifier stored in chunk NBT for path markers.
      */
@@ -179,6 +180,40 @@ public class MarkerScanner {
     }
 
     /**
+     * Counts dimensions represented in a sorted region scan plan.
+     *
+     * @param regionTargets region scan plan
+     * @return number of dimensions with region files
+     */
+    private int countDistinctDimensions(List<RegionScanTarget> regionTargets) {
+        return (int) regionTargets.stream().map(RegionScanTarget::dimensionId).distinct().count();
+    }
+
+    /**
+     * Formats per-dimension region-file counts for scan-plan logging.
+     *
+     * @param regionTargets region scan plan
+     * @return comma-separated dimension counts
+     */
+    private String formatRegionCounts(List<RegionScanTarget> regionTargets) {
+        if (regionTargets.isEmpty()) {
+            return "none";
+        }
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (RegionScanTarget target : regionTargets) {
+            counts.merge(target.dimensionId(), 1, Integer::sum);
+        }
+
+        List<String> parts = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            parts.add(entry.getKey() + "=" + entry.getValue());
+        }
+
+        return String.join(", ", parts);
+    }
+
+    /**
      * Scans one region coordinate range for persisted path marker block entities.
      *
      * @param world        world whose vanilla chunk storage is read
@@ -209,6 +244,23 @@ public class MarkerScanner {
                     log.warn("Failed to read chunk {} from {}", read.chunkPos(), regionFile, exception);
                 }
             }
+        }
+    }
+
+    /**
+     * Parses region X/Z coordinates from a file name like {@code r.0.-1.mca}.
+     *
+     * @param fileName region file name
+     * @return two-element [regionX, regionZ], or null when the file name is invalid
+     */
+    static int[] parseRegionCoordinates(String fileName) {
+        String[] parts = fileName.split("\\.");
+        if (parts.length != 4 || !"r".equals(parts[0]) || !"mca".equals(parts[3])) return null;
+
+        try {
+            return new int[]{Integer.parseInt(parts[1]), Integer.parseInt(parts[2])};
+        } catch (NumberFormatException exception) {
+            return null;
         }
     }
 
@@ -255,6 +307,35 @@ public class MarkerScanner {
     }
 
     /**
+     * Extracts path marker entries from one chunk NBT compound.
+     *
+     * @param chunkNbt     chunk NBT read from disk
+     * @param dimensionId  dimension identifier for discovered markers
+     * @param markers      marker result accumulator
+     * @param emptyMarkers marker accumulator for path markers without path data
+     */
+    void scanChunk(CompoundTag chunkNbt, String dimensionId, List<ScannedMarkerData> markers, List<ScannedMarkerData> emptyMarkers) {
+        ListTag blockEntities = chunkNbt.getList("block_entities", Tag.TAG_COMPOUND);
+
+        for (int i = 0; i < blockEntities.size(); i++) {
+            CompoundTag blockEntityNbt = blockEntities.getCompound(i);
+            if (!PATH_MARKER_BLOCK_ENTITY_ID.equals(blockEntityNbt.getString("id"))) continue;
+
+            CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(blockEntityNbt.copy());
+            CompoundTag pathsNbt = NbtEncodeable.getCompound(converted, "paths");
+            Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = decodePathData(pathsNbt);
+
+            BlockPos position = new BlockPos(blockEntityNbt.getInt("x"), blockEntityNbt.getInt("y"), blockEntityNbt.getInt("z"));
+            if (pathData.isEmpty()) {
+                emptyMarkers.add(new ScannedMarkerData(dimensionId, position, pathData));
+                continue;
+            }
+
+            markers.add(new ScannedMarkerData(dimensionId, position, pathData));
+        }
+    }
+
+    /**
      * Builds every chunk position in a region when header prefiltering is unavailable.
      *
      * @param regionCoordinates parsed region coordinates
@@ -285,69 +366,6 @@ public class MarkerScanner {
     }
 
     /**
-     * Counts dimensions represented in a sorted region scan plan.
-     *
-     * @param regionTargets region scan plan
-     * @return number of dimensions with region files
-     */
-    private int countDistinctDimensions(List<RegionScanTarget> regionTargets) {
-        return (int) regionTargets.stream().map(RegionScanTarget::dimensionId).distinct().count();
-    }
-
-    /**
-     * Formats per-dimension region-file counts for scan-plan logging.
-     *
-     * @param regionTargets region scan plan
-     * @return comma-separated dimension counts
-     */
-    private String formatRegionCounts(List<RegionScanTarget> regionTargets) {
-        if (regionTargets.isEmpty()) {
-            return "none";
-        }
-
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (RegionScanTarget target : regionTargets) {
-            counts.merge(target.dimensionId(), 1, Integer::sum);
-        }
-
-        List<String> parts = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
-            parts.add(entry.getKey() + "=" + entry.getValue());
-        }
-
-        return String.join(", ", parts);
-    }
-
-    /**
-     * Extracts path marker entries from one chunk NBT compound.
-     *
-     * @param chunkNbt     chunk NBT read from disk
-     * @param dimensionId  dimension identifier for discovered markers
-     * @param markers      marker result accumulator
-     * @param emptyMarkers marker accumulator for path markers without path data
-     */
-    void scanChunk(CompoundTag chunkNbt, String dimensionId, List<ScannedMarkerData> markers, List<ScannedMarkerData> emptyMarkers) {
-        ListTag blockEntities = chunkNbt.getList("block_entities", Tag.TAG_COMPOUND);
-
-        for (int i = 0; i < blockEntities.size(); i++) {
-            CompoundTag blockEntityNbt = blockEntities.getCompound(i);
-            if (!PATH_MARKER_BLOCK_ENTITY_ID.equals(blockEntityNbt.getString("id"))) continue;
-
-            CompoundTag converted = PathMarkerBlockEntityConverter.convertNbt(blockEntityNbt.copy());
-            CompoundTag pathsNbt = NbtEncodeable.getCompound(converted, "paths");
-            Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = decodePathData(pathsNbt);
-
-            BlockPos position = new BlockPos(blockEntityNbt.getInt("x"), blockEntityNbt.getInt("y"), blockEntityNbt.getInt("z"));
-            if (pathData.isEmpty()) {
-                emptyMarkers.add(new ScannedMarkerData(dimensionId, position, pathData));
-                continue;
-            }
-
-            markers.add(new ScannedMarkerData(dimensionId, position, pathData));
-        }
-    }
-
-    /**
      * Decodes nested path/chapter marker payloads from NBT.
      *
      * @param pathsNbt marker paths compound
@@ -371,23 +389,6 @@ public class MarkerScanner {
     }
 
     /**
-     * Parses region X/Z coordinates from a file name like {@code r.0.-1.mca}.
-     *
-     * @param fileName region file name
-     * @return two-element [regionX, regionZ], or null when the file name is invalid
-     */
-    static int[] parseRegionCoordinates(String fileName) {
-        String[] parts = fileName.split("\\.");
-        if (parts.length != 4 || !"r".equals(parts[0]) || !"mca".equals(parts[3])) return null;
-
-        try {
-            return new int[]{Integer.parseInt(parts[1]), Integer.parseInt(parts[2])};
-        } catch (NumberFormatException exception) {
-            return null;
-        }
-    }
-
-    /**
      * Region coordinate file and dimension metadata to scan.
      *
      * @param world       world whose vanilla chunk storage is read
@@ -395,6 +396,7 @@ public class MarkerScanner {
      * @param regionFile  region file path used only for coordinate metadata
      */
     private record RegionScanTarget(ServerLevel world, String dimensionId, Path regionFile) {
+
     }
 
     /**
@@ -404,6 +406,7 @@ public class MarkerScanner {
      * @param future   pending block-entity-only chunk scan
      */
     private record ChunkRead(ChunkPos chunkPos, CompletableFuture<Optional<CompoundTag>> future) {
+
     }
 
     /**
@@ -413,6 +416,8 @@ public class MarkerScanner {
      * @param emptyMarkers      discovered path markers without path data
      * @param skippedDimensions dimension ids whose region directories were unreadable
      */
-    public record ScanResult(List<ScannedMarkerData> markers, List<ScannedMarkerData> emptyMarkers, List<String> skippedDimensions) {
+    public record ScanResult(List<ScannedMarkerData> markers, List<ScannedMarkerData> emptyMarkers,
+                             List<String> skippedDimensions) {
+
     }
 }

@@ -11,6 +11,7 @@ import space.ajcool.ardapaths.core.ModConstants;
  * Handles registration of sound events with the Minecraft registry.
  */
 public class ModSounds {
+
     /**
      * The sound event played when traversing a trail.
      */

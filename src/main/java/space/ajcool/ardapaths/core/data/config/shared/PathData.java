@@ -13,6 +13,13 @@ import java.util.Map;
  * This is a primary configuration object that is serialized to JSON.
  */
 public class PathData {
+
+    /**
+     * Map of chapter IDs to chapter data objects, representing all chapters in this path.
+     */
+    @SerializedName("chapters")
+    private final Map<String, ChapterData> chapters = new HashMap<>();
+
     /**
      * The unique identifier for this path.
      */
@@ -47,12 +54,6 @@ public class PathData {
     @Setter
     @SerializedName("tertiaryColor")
     private Color tertiaryColor;
-
-    /**
-     * Map of chapter IDs to chapter data objects, representing all chapters in this path.
-     */
-    @SerializedName("chapters")
-    private final Map<String, ChapterData> chapters = new HashMap<>();
 
     /**
      * @return The ID of this path

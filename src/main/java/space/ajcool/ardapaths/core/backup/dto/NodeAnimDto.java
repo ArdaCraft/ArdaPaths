@@ -12,4 +12,5 @@ public record NodeAnimDto(
         @SerializedName("packed") long packed,
         @SerializedName("decoded") int[] decoded
 ) {
+
 }

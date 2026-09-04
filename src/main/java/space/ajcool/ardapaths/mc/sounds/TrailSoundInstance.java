@@ -12,6 +12,7 @@ import net.minecraft.sounds.SoundSource;
  */
 @Environment(value = EnvType.CLIENT)
 public class TrailSoundInstance extends AbstractTickableSoundInstance {
+
     /**
      * The amount the sound envelope increases per tick while it is fading in.
      */

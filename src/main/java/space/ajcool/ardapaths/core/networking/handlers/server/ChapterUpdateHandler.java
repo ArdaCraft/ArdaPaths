@@ -14,11 +14,10 @@ import space.ajcool.ardapaths.core.networking.packets.server.ChapterUpdatePacket
  * Handles updates to chapter data in the server configuration.
  * Processes incoming {@link ChapterUpdatePacket} from clients and persists changes to chapter name, date, index, and warp settings.
  */
-public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacket>
-{
-    public ChapterUpdateHandler()
-    {
-        super(ChapterUpdatePacket.CHANNEL, ChapterUpdatePacket::read);
+public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacket> {
+
+    public ChapterUpdateHandler() {
+        super(ChapterUpdatePacket.TYPE, ChapterUpdatePacket::read);
     }
 
     /**
@@ -32,12 +31,10 @@ public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacke
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterUpdatePacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterUpdatePacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final PathData pathData = ArdaPaths.CONFIG.getPath(pathId);
-        if (pathData == null)
-        {
+        if (pathData == null) {
             return;
         }
 
@@ -46,7 +43,12 @@ public class ChapterUpdateHandler extends ServerPacketHandler<ChapterUpdatePacke
         final String chapterDate = packet.chapterDate();
         final int chapterIndex = packet.chapterIndex();
         final String warp = packet.warp();
-        final ChapterData chapterData = new ChapterData(chapterId, chapterName, chapterDate, chapterIndex,warp);
+        final ChapterData chapterData = new ChapterData(chapterId, chapterName, chapterDate, chapterIndex, warp);
+        ChapterData existingChapter = pathData.getChapter(chapterId);
+        if (existingChapter != null) {
+            chapterData.setCoordinates(existingChapter.getCoordinates());
+            chapterData.setDimension(existingChapter.getDimension());
+        }
 
         pathData.setChapter(chapterData);
         ArdaPaths.CONFIG_MANAGER.save();

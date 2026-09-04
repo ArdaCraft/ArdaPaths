@@ -13,6 +13,7 @@ import java.util.Locale;
  * Localized feedback text builders for marker editor server responses.
  */
 public final class MarkerFeedbackText {
+
     /**
      * Prevents construction of the static feedback-text helper.
      */
@@ -39,6 +40,17 @@ public final class MarkerFeedbackText {
     }
 
     /**
+     * Builds the shared marker editor status translation key.
+     *
+     * @param operation marker operation segment in the translation key
+     * @param status    operation status enum
+     * @return full translation key for the status
+     */
+    private static String statusKey(String operation, Enum<?> status) {
+        return "ardapaths.client.marker.configuration.screens.marker." + operation + ".status." + status.name().toLowerCase(Locale.ROOT);
+    }
+
+    /**
      * Converts a bulk-clear response into localized feedback text.
      *
      * @param response server response packet
@@ -56,16 +68,5 @@ public final class MarkerFeedbackText {
      */
     public static Component remoteMarkerStatusText(PathMarkerRemoteDataResponsePacket response) {
         return Component.translatable(statusKey("load", response.status()));
-    }
-
-    /**
-     * Builds the shared marker editor status translation key.
-     *
-     * @param operation marker operation segment in the translation key
-     * @param status    operation status enum
-     * @return full translation key for the status
-     */
-    private static String statusKey(String operation, Enum<?> status) {
-        return "ardapaths.client.marker.configuration.screens.marker." + operation + ".status." + status.name().toLowerCase(Locale.ROOT);
     }
 }

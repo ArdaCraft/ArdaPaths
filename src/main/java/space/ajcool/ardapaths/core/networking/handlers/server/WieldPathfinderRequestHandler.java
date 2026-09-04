@@ -3,7 +3,6 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -24,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j(topic = "ardapaths")
 public class WieldPathfinderRequestHandler extends RespondablePacketHandler<EmptyPacket, EmptyPacket> {
+
     /**
      * Minimum time between accepted wield requests from the same player.
      */
@@ -35,31 +35,28 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
     private final Map<UUID, Long> lastAcceptedRequests = new ConcurrentHashMap<>();
 
     /**
-     * Channel identifier for pathfinder wield requests and responses.
-     */
-    private static final ResourceLocation CHANNEL = ModConstants.modId("wield_pathfinder_request_channel");
-
-    /**
      * Handler constructor
      */
-    public WieldPathfinderRequestHandler()
-    {
-        super(CHANNEL, EmptyPacket::read, CHANNEL, EmptyPacket::read);
+    public WieldPathfinderRequestHandler() {
+        super(EmptyPacket.WIELD_PATHFINDER_TYPE, EmptyPacket.reader(EmptyPacket.WIELD_PATHFINDER_TYPE),
+                EmptyPacket.WIELD_PATHFINDER_TYPE, EmptyPacket.reader(EmptyPacket.WIELD_PATHFINDER_TYPE));
     }
 
     /**
      * Handles the packet by giving the player the pathfinder item.
-     * @param server the server instance
-     * @param player the current player
+     *
+     * @param server  the server instance
+     * @param player  the current player
      * @param handler the network handler
-     * @param packet the received packet
-     * @param sender the sender
+     * @param packet  the received packet
+     * @param sender  the sender
      */
+    @SuppressWarnings("unused")
     @Override
     public EmptyPacket handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, EmptyPacket packet, PacketSender sender) {
         if (!acceptRequest(player)) {
             log.warn("Rate-limited Pathfinder wield request from {}", player.getStringUUID());
-            return new EmptyPacket();
+            return new EmptyPacket(EmptyPacket.WIELD_PATHFINDER_TYPE);
         }
 
         Item pathfinder = BuiltInRegistries.ITEM.get(ModConstants.modId(ModItems.PATH_REVEALER_ID));
@@ -80,14 +77,14 @@ public class WieldPathfinderRequestHandler extends RespondablePacketHandler<Empt
                     inventory.setItem(i, oldSelected);
                 }
 
-                return new EmptyPacket();
+                return new EmptyPacket(EmptyPacket.WIELD_PATHFINDER_TYPE);
             }
         }
 
         // Not found, create one directly in hand
         inventory.setItem(selectedSlot, new ItemStack(pathfinder));
 
-        return new EmptyPacket();
+        return new EmptyPacket(EmptyPacket.WIELD_PATHFINDER_TYPE);
     }
 
     /**

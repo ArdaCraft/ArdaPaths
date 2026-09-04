@@ -2,6 +2,7 @@ package space.ajcool.ardapaths.paths.rendering;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.InteractionHand;
@@ -38,50 +39,9 @@ public class ProximityRenderer {
     /** The title currently being displayed, or null if none */
     private AnimatedTitle currentDisplayedTitle;
 
-    public static void render(GuiGraphics context, float delta) {
-        INSTANCE.renderNextItem(context, delta);
+    public static void render(GuiGraphics context, DeltaTracker delta) {
+        INSTANCE.renderNextItem(context, delta.getGameTimeDeltaTicks());
         updateVisualMessageStack(context);
-    }
-
-    /**
-     * Queues a new message for display with default animation parameters.
-     *
-     * @param animatedMessage the message to display
-     */
-    public static void addMessage(@NotNull AnimatedMessage animatedMessage) {
-
-        if (INSTANCE.currentDisplayedMessage != null
-                && !INSTANCE.currentDisplayedMessage.isFinished()
-                && INSTANCE.currentDisplayedMessage.equals(animatedMessage)) return;
-
-        INSTANCE.addToQueue(animatedMessage);
-    }
-
-    /**
-     * Queues a new title for display with default animation parameters.
-     *
-     * @param title the text content to display
-     * @param color the color of the title text
-     */
-    public static void addTitle(String title, Color color) {
-
-        var newTitle = new AnimatedTitle(title, color);
-
-        if (INSTANCE.currentDisplayedTitle != null
-                && !INSTANCE.currentDisplayedTitle.isFinished()
-                && INSTANCE.currentDisplayedTitle.equals(newTitle)) return;
-
-        INSTANCE.addToQueue(newTitle);
-    }
-
-    /**
-     * Checks if a title is currently being displayed.
-     *
-     * @return true if a title is in the process of being displayed, false otherwise
-     */
-    public static boolean isDisplayingTitle() {
-
-        return INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished();
     }
 
     /**
@@ -90,8 +50,8 @@ public class ProximityRenderer {
      * If the current item has finished or no item is displayed, the next item from
      * the queue is polled and rendered. If the queue is empty, no rendering occurs.
      *
-     * @param context the drawing context for rendering
-     * @param ignoredDelta   the time delta since last frame
+     * @param context      the drawing context for rendering
+     * @param ignoredDelta the time delta since last frame
      */
     private void renderNextItem(GuiGraphics context, float ignoredDelta) {
 
@@ -109,8 +69,8 @@ public class ProximityRenderer {
         }
 
         // Render current items if available
-        if (currentDisplayedMessage != null)    currentDisplayedMessage.render(context);
-        if (currentDisplayedTitle != null)      currentDisplayedTitle.render(context);
+        if (currentDisplayedMessage != null) currentDisplayedMessage.render(context);
+        if (currentDisplayedTitle != null) currentDisplayedTitle.render(context);
     }
 
     /**
@@ -122,7 +82,7 @@ public class ProximityRenderer {
      *
      * @param context the drawing context for rendering
      */
-    private static void updateVisualMessageStack(GuiGraphics context){
+    private static void updateVisualMessageStack(GuiGraphics context) {
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
@@ -159,6 +119,20 @@ public class ProximityRenderer {
     }
 
     /**
+     * Queues a new message for display with default animation parameters.
+     *
+     * @param animatedMessage the message to display
+     */
+    public static void addMessage(@NotNull AnimatedMessage animatedMessage) {
+
+        if (INSTANCE.currentDisplayedMessage != null
+                && !INSTANCE.currentDisplayedMessage.isFinished()
+                && INSTANCE.currentDisplayedMessage.equals(animatedMessage)) return;
+
+        INSTANCE.addToQueue(animatedMessage);
+    }
+
+    /**
      * Adds a renderable item to the display queue.
      * <p>
      * Duplicate prevention is enforced: items already in the queue or currently
@@ -171,6 +145,33 @@ public class ProximityRenderer {
         if (INSTANCE.renderQueue.contains(item)) return;
         item.reset();
         INSTANCE.renderQueue.add(item);
+    }
+
+    /**
+     * Queues a new title for display with default animation parameters.
+     *
+     * @param title the text content to display
+     * @param color the color of the title text
+     */
+    public static void addTitle(String title, Color color) {
+
+        var newTitle = new AnimatedTitle(title, color);
+
+        if (INSTANCE.currentDisplayedTitle != null
+                && !INSTANCE.currentDisplayedTitle.isFinished()
+                && INSTANCE.currentDisplayedTitle.equals(newTitle)) return;
+
+        INSTANCE.addToQueue(newTitle);
+    }
+
+    /**
+     * Checks if a title is currently being displayed.
+     *
+     * @return true if a title is in the process of being displayed, false otherwise
+     */
+    public static boolean isDisplayingTitle() {
+
+        return INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished();
     }
 
     /**

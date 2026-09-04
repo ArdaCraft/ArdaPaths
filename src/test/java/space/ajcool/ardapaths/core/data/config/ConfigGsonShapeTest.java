@@ -6,11 +6,11 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.client.SelectedPathData;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Gson shape tests for client/server configuration DTOs persisted on disk.
  */
 class ConfigGsonShapeTest {
+
     /**
      * Gson instance matching default field naming plus local SerializedName annotations.
      */
@@ -86,25 +87,35 @@ class ConfigGsonShapeTest {
                       "secondaryColor": {"red": 230, "green": 194, "blue": 0},
                       "tertiaryColor": {"red": 255, "green": 227, "blue": 77},
                       "chapters": {
-                        "shire": {"id": "shire", "name": "The Shire", "date": "12 Forelithe", "index": 1, "warp": "bag-end"}
+                        "shire": {
+                          "id": "shire",
+                          "name": "The Shire",
+                          "date": "12 Forelithe",
+                          "index": 1,
+                          "warp": "bag-end",
+                          "coordinates": {"x": 1, "y": 2, "z": 3},
+                          "dimension": "minecraft:the_nether"
+                        }
                       }
                     }
-                  ],
-                  "chapter_starts": {"frodo:shire": {"x": 1, "y": 2, "z": 3}}
+                  ]
                 }
                 """, ServerConfig.class);
 
         PathData path = config.getPath("frodo");
         assertNotNull(path);
         assertEquals("Frodo's Path", path.getName());
-        assertEquals(0xFFD700, path.getPrimaryColor().asHex());
+        assertEquals(0xFFFFD700, path.getPrimaryColor().asHex());
         ChapterData chapter = path.getChapter("shire");
         assertNotNull(chapter);
         assertEquals("The Shire", chapter.getName());
         assertEquals("12 Forelithe", chapter.getDate());
         assertEquals(1, chapter.getIndex());
         assertEquals("bag-end", chapter.getWarp());
-        assertEquals(new PositionData(1, 2, 3), config.getChapterStarts().get("frodo:shire"));
+        assertEquals(new PositionData(1, 2, 3), chapter.getCoordinates());
+        assertEquals("minecraft:the_nether", chapter.getDimension());
+        JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
+        assertFalse(json.has("chapter_starts"));
     }
 
     /**

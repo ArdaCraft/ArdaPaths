@@ -29,6 +29,7 @@ import java.util.function.Function;
  */
 @SuppressWarnings({"resource", "unused"})
 public class DropdownWidget<T> extends AbstractWidget {
+
     /**
      * The original width when not expanded.
      */
@@ -38,6 +39,11 @@ public class DropdownWidget<T> extends AbstractWidget {
      * The original height when not expanded.
      */
     private final int originalHeight;
+
+    /**
+     * Maximum number of options visible at once (for scrolling).
+     */
+    private final int maxVisibleOptions;
 
     /**
      * The list of available options to select from.
@@ -78,11 +84,6 @@ public class DropdownWidget<T> extends AbstractWidget {
     @Getter
     @Setter
     private boolean expanded;
-
-    /**
-     * Maximum number of options visible at once (for scrolling).
-     */
-    private final int maxVisibleOptions;
 
     /**
      * Current scroll offset in the options list.
@@ -133,12 +134,21 @@ public class DropdownWidget<T> extends AbstractWidget {
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        // First, draw the button itself.
-        super.render(context, mouseX, mouseY, delta);
+    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        int x = getX();
+        int y = getY();
         Component title = this.getMessage();
         Font textRenderer = Client.mc().font;
         int titleY = getY() - (textRenderer.lineHeight / 2) - 8;
+        PanelState state = (mouseX >= x && mouseX <= x + originalWidth
+                && mouseY >= y && mouseY <= y + originalHeight) ? PanelState.HOVERED : PanelState.SELECTED;
+        renderBox(context, x, y, selected, textRenderer, originalWidth, originalHeight, state,
+                expanded ? SliceCap.TOP : SliceCap.FULL);
+
+        String arrow = expanded ? "▲" : "▼";
+        int arrowX = x + originalWidth - textRenderer.width(arrow) - 4;
+        int arrowY = y + (originalHeight - textRenderer.lineHeight) / 2;
+        context.drawString(textRenderer, Component.literal(arrow), arrowX, arrowY, 0xFFFFFF);
         context.drawString(textRenderer, title, getX(), titleY, 0xFFFFFF);
 
         // If expanded, draw the dropdown list.
@@ -147,7 +157,6 @@ public class DropdownWidget<T> extends AbstractWidget {
             matrices.pushPose();
             matrices.translate(0, 0, 100); // Raise the dropdown above other elements.
 
-            int x = getX();
             int baseY = getY() + originalHeight;
 
             // Build a combined list of items. When allowNull is true we add a null entry
@@ -168,27 +177,49 @@ public class DropdownWidget<T> extends AbstractWidget {
                 int actualIndex = scrollOffset + i;
                 if (actualIndex >= totalItems) break;
                 T item = allItems.get(actualIndex);
-                int y = baseY + i * originalHeight;
+                int itemY = baseY + i * originalHeight;
                 boolean hovered = mouseX >= x && mouseX <= x + originalWidth &&
-                        mouseY >= y && mouseY <= y + originalHeight;
+                        mouseY >= itemY && mouseY <= itemY + originalHeight;
                 boolean isSelected = (item == null && selected == null)
                         || (item != null && item.equals(selected));
-                renderItem(context, x, y, item, isSelected, hovered, capFor(i, lastVisibleIndex));
+                renderItem(context, x, itemY, item, isSelected, hovered, capFor(i, lastVisibleIndex));
             }
             matrices.popPose();
         }
     }
 
     /**
+     * Renders a box with text. If item is null, "None" is displayed.
+     *
+     * @param context      the drawing context
+     * @param x            the x coordinate
+     * @param y            the y coordinate
+     * @param item         the item to render
+     * @param textRenderer the text renderer for drawing text
+     * @param width        the width of the box
+     * @param height       the height of the box
+     * @param state        visual panel state
+     * @param cap          caps to draw for this box
+     */
+    private void renderBox(GuiGraphics context, int x, int y, T item, Font textRenderer,
+                           int width, int height, PanelState state, SliceCap cap) {
+        GuiTextures.drawPanelSegment(context, x, y, width, height, state, cap);
+        Component display = (item == null) ? Component.literal("None") : optionDisplay.apply(item);
+        int textX = x + 4;
+        int textY = y + (height - textRenderer.lineHeight) / 2;
+        context.drawString(textRenderer, display, textX, textY, 0xFFFFFF);
+    }
+
+    /**
      * Renders an individual option in the dropdown.
      *
-     * @param context the drawing context
-     * @param x the x coordinate
-     * @param y the y coordinate
-     * @param item the item to render
+     * @param context  the drawing context
+     * @param x        the x coordinate
+     * @param y        the y coordinate
+     * @param item     the item to render
      * @param selected whether the item is selected
-     * @param hovered whether the item is hovered
-     * @param cap caps to draw for this row's list position
+     * @param hovered  whether the item is hovered
+     * @param cap      caps to draw for this row's list position
      */
     private void renderItem(GuiGraphics context, int x, int y, T item, boolean selected, boolean hovered,
                             SliceCap cap) {
@@ -204,41 +235,23 @@ public class DropdownWidget<T> extends AbstractWidget {
     }
 
     /**
-     * Renders a box with text. If item is null, "None" is displayed.
+     * Determines which caps a row should draw inside the visible list window.
      *
-     * @param context the drawing context
-     * @param x the x coordinate
-     * @param y the y coordinate
-     * @param item the item to render
-     * @param textRenderer the text renderer for drawing text
-     * @param width the width of the box
-     * @param height the height of the box
-     * @param state visual panel state
-     * @param cap caps to draw for this box
+     * @param visibleIndex     row index inside the currently visible window
+     * @param lastVisibleIndex last row index inside the currently visible window
+     * @return cap selection for the row
      */
-    private void renderBox(GuiGraphics context, int x, int y, T item, Font textRenderer,
-                           int width, int height, PanelState state, SliceCap cap) {
-        GuiTextures.drawPanelSegment(context, x, y, width, height, state, cap);
-        Component display = (item == null) ? Component.literal("None") : optionDisplay.apply(item);
-        int textX = x + 4;
-        int textY = y + (height - textRenderer.lineHeight) / 2;
-        context.drawString(textRenderer, display, textX, textY, 0xFFFFFF);
-    }
-
-    @Override
-    protected void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        Font textRenderer = Client.mc().font;
-        int x = getX();
-        int y = getY();
-
-        PanelState state = (mouseX >= x && mouseX <= x + originalWidth
-                && mouseY >= y && mouseY <= y + originalHeight) ? PanelState.HOVERED : PanelState.SELECTED;
-        renderBox(context, x, y, selected, textRenderer, originalWidth, originalHeight, state, SliceCap.FULL);
-
-        String arrow = expanded ? "▲" : "▼";
-        int arrowX = x + originalWidth - textRenderer.width(arrow) - 4;
-        int arrowY = y + (originalHeight - textRenderer.lineHeight) / 2;
-        context.drawString(textRenderer, Component.literal(arrow), arrowX, arrowY, 0xFFFFFF);
+    private SliceCap capFor(int visibleIndex, int lastVisibleIndex) {
+        if (lastVisibleIndex <= 0) {
+            return SliceCap.FULL;
+        }
+        if (visibleIndex == 0) {
+            return SliceCap.TOP;
+        }
+        if (visibleIndex == lastVisibleIndex) {
+            return SliceCap.BOTTOM;
+        }
+        return SliceCap.MIDDLE;
     }
 
     /**
@@ -297,7 +310,7 @@ public class DropdownWidget<T> extends AbstractWidget {
      * the user can scroll using the mouse wheel.
      */
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (expanded) {
             List<T> allItems = new ArrayList<>();
             if (allowNull) {
@@ -307,38 +320,18 @@ public class DropdownWidget<T> extends AbstractWidget {
             int totalItems = allItems.size();
             if (totalItems > maxVisibleOptions) {
                 // Adjust scrollOffset
-                scrollOffset -= (int) amount;
+                scrollOffset -= (int) verticalAmount;
                 scrollOffset = Math.max(0, scrollOffset);
                 scrollOffset = Math.min(scrollOffset, totalItems - maxVisibleOptions);
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
     protected void updateWidgetNarration(NarrationElementOutput builder) {
         defaultButtonNarrationText(builder);
-    }
-
-    /**
-     * Determines which caps a row should draw inside the visible list window.
-     *
-     * @param visibleIndex row index inside the currently visible window
-     * @param lastVisibleIndex last row index inside the currently visible window
-     * @return cap selection for the row
-     */
-    private SliceCap capFor(int visibleIndex, int lastVisibleIndex) {
-        if (lastVisibleIndex <= 0) {
-            return SliceCap.FULL;
-        }
-        if (visibleIndex == 0) {
-            return SliceCap.TOP;
-        }
-        if (visibleIndex == lastVisibleIndex) {
-            return SliceCap.BOTTOM;
-        }
-        return SliceCap.MIDDLE;
     }
 
     /**
@@ -361,6 +354,7 @@ public class DropdownWidget<T> extends AbstractWidget {
      * @param <T> the type of options in this dropdown
      */
     public static class DropdownBuilder<T> {
+
         /**
          * Default options used when no option list is configured.
          */

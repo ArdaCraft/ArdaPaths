@@ -13,7 +13,9 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
  * @param chapterStart     whether the marker is a chapter-start marker
  * @param chainBreak       whether this entry is a visual separator, not a marker
  */
-public record ChapterMarkerEntry(long packedPos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean chapterStart, boolean chainBreak) {
+public record ChapterMarkerEntry(long packedPos, int timeOfDay, int weather, String proximityMessage,
+                                 boolean hasMiscData, boolean chapterStart, boolean chainBreak) {
+
     /**
      * Maximum proximity tooltip payload length.
      */
@@ -39,15 +41,6 @@ public record ChapterMarkerEntry(long packedPos, int timeOfDay, int weather, Str
     }
 
     /**
-     * Creates a visual separator row between disconnected chains.
-     *
-     * @return chain-break row
-     */
-    public static ChapterMarkerEntry breakEntry() {
-        return new ChapterMarkerEntry(0L, TimeOfDay.UNSET, WeatherTypes.DEFAULT.ordinal(), "", false, false, true);
-    }
-
-    /**
      * Truncates proximity text for bounded tooltip transport.
      *
      * @param message proximity text from marker NBT
@@ -57,5 +50,14 @@ public record ChapterMarkerEntry(long packedPos, int timeOfDay, int weather, Str
         if (message == null) return "";
         if (message.length() <= MAX_PROXIMITY_MESSAGE_LENGTH) return message;
         return message.substring(0, MAX_PROXIMITY_MESSAGE_LENGTH);
+    }
+
+    /**
+     * Creates a visual separator row between disconnected chains.
+     *
+     * @return chain-break row
+     */
+    public static ChapterMarkerEntry breakEntry() {
+        return new ChapterMarkerEntry(0L, TimeOfDay.UNSET, WeatherTypes.DEFAULT.ordinal(), "", false, false, true);
     }
 }

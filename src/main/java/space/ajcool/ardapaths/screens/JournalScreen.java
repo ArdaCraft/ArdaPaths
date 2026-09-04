@@ -2,7 +2,6 @@ package space.ajcool.ardapaths.screens;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.Journal;
@@ -83,21 +82,21 @@ public class JournalScreen extends ArdaPathsScreen {
         int verticalOffset = ScreenLayout.verticalCenterOffset(titleY, listBottom, height);
 
         TextWidget titleWidget = TextWidget.create()
-                        .setX(center - 75)
-                        .setY(titleY + verticalOffset)
-                        .setWidth(150)
-                        .setHeight(20)
-                        .setMessage(Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()))
-                        .build();
+                .setX(center - 75)
+                .setY(titleY + verticalOffset)
+                .setWidth(150)
+                .setHeight(20)
+                .setMessage(Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()))
+                .build();
         this.addRenderableWidget(titleWidget);
 
         JournalListWidget listWidget = new JournalListWidget(
-                this.minecraft, totalUiWidth, listHeight, listTop, listBottom, 32
+                this.minecraft, totalUiWidth, listTop, listBottom, 32
         );
         listWidget.offsetY(verticalOffset);
 
         // Centre horizontally
-        listWidget.setLeftPos((width - totalUiWidth) / 2);
+        listWidget.setX((width - totalUiWidth) / 2);
 
         // Add pre-built entries
         for (JournalListEntry entry : entries) {
@@ -129,18 +128,4 @@ public class JournalScreen extends ArdaPathsScreen {
         }
     }
 
-    /**
-     * Renders the screen.
-     *
-     * @param context The draw context
-     * @param mouseX  The mouse X position
-     * @param mouseY  The mouse Y position
-     * @param delta   The delta time
-     */
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-
-        this.renderModBackground(context);
-        super.render(context, mouseX, mouseY, delta);
-    }
 }

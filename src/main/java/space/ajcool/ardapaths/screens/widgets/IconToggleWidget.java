@@ -15,6 +15,7 @@ import java.util.function.Consumer;
  * Square icon button that toggles between active and inactive states.
  */
 public class IconToggleWidget extends AbstractButton {
+
     /**
      * Texture displayed while the toggle is active.
      */
@@ -26,14 +27,14 @@ public class IconToggleWidget extends AbstractButton {
     private final ResourceLocation inactiveTexture;
 
     /**
-     * Whether the toggle is currently active.
-     */
-    private boolean active;
-
-    /**
      * Callback invoked when the active state changes.
      */
     private final Consumer<Boolean> onChange;
+
+    /**
+     * Whether the toggle is currently active.
+     */
+    private boolean active;
 
     /**
      * Whether the toggle can currently be interacted with.
@@ -78,7 +79,7 @@ public class IconToggleWidget extends AbstractButton {
         }
 
         ResourceLocation texture = active ? activeTexture : inactiveTexture;
-        GuiTextures.blit(context, texture, x, y, 0, 0, size, size, size, size);
+        GuiTextures.blitSprite(context, texture, x, y, size, size);
     }
 
     @Override

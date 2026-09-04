@@ -219,7 +219,7 @@ public class AnimatedMessage extends TextRenderable {
             int y = (int) ((10 * i) + titleOffset);
 
             if (ArdaRegionsState.isDisplaying()) y += (int) ((height / 2f) + titleOffset);
-            else y += (int) ((height - titleOffset)/ 5);
+            else y += (int) ((height - titleOffset) / 5);
 
             drawContext.drawCenteredString(
                     font,

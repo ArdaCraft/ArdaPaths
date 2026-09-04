@@ -21,15 +21,11 @@ import java.util.function.Supplier;
  */
 @Slf4j(topic = "ardapaths")
 public class BackupJobRunner {
+
     /**
      * Single background worker for file scanning and JSON work.
      */
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(new BackupThreadFactory());
-
-    /**
-     * Backup logic executed by worker jobs.
-     */
-    private final BackupManager backupManager = new BackupManager();
 
     /**
      * Active mutually exclusive backup or restore job.
@@ -37,44 +33,9 @@ public class BackupJobRunner {
     private static final AtomicReference<ActiveJob> ACTIVE = new AtomicReference<>();
 
     /**
-     * Starts a backup when no other backup job is active.
-     *
-     * @param source command source that requested the backup
-     * @return launch result with current progress when rejected
+     * Backup logic executed by worker jobs.
      */
-    public JobStartResult tryStartBackup(CommandSourceStack source) {
-        OperationProgress progress = new OperationProgress(OperationKind.BACKUP);
-        ActiveJob job = new ActiveJob(OperationKind.BACKUP, progress);
-
-        if (!ACTIVE.compareAndSet(null, job)) {
-            return JobStartResult.rejected(ACTIVE.get().progress().snapshot());
-        }
-
-        MinecraftServer server = source.getServer();
-        WORKER.submit(() -> runBackupJob(server, source, job));
-        return JobStartResult.started(progress.snapshot());
-    }
-
-    /**
-     * Starts a restore when no other backup job is active.
-     *
-     * @param source command source that requested the restore
-     * @param zipName optional backup zip file
-     * @param hard whether stale markers should be deleted
-     * @return launch result with current progress when rejected
-     */
-    public JobStartResult tryStartRestore(CommandSourceStack source, String zipName, boolean hard) {
-        OperationProgress progress = new OperationProgress(OperationKind.RESTORE);
-        ActiveJob job = new ActiveJob(OperationKind.RESTORE, progress);
-
-        if (!ACTIVE.compareAndSet(null, job)) {
-            return JobStartResult.rejected(ACTIVE.get().progress().snapshot());
-        }
-
-        MinecraftServer server = source.getServer();
-        WORKER.submit(() -> runRestoreJob(server, source, zipName, hard, job));
-        return JobStartResult.started(progress.snapshot());
-    }
+    private final BackupManager backupManager = new BackupManager();
 
     /**
      * Runs marker work on the shared backup worker with a server-thread gate.
@@ -105,12 +66,22 @@ public class BackupJobRunner {
     }
 
     /**
-     * Lists historical backup zip names for command suggestions.
+     * Starts a backup when no other backup job is active.
      *
-     * @return sorted zip names
+     * @param source command source that requested the backup
+     * @return launch result with current progress when rejected
      */
-    public java.util.List<String> listBackupZipNames() {
-        return backupManager.listBackupZipNames();
+    public JobStartResult tryStartBackup(CommandSourceStack source) {
+        OperationProgress progress = new OperationProgress(OperationKind.BACKUP);
+        ActiveJob job = new ActiveJob(OperationKind.BACKUP, progress);
+
+        if (!ACTIVE.compareAndSet(null, job)) {
+            return JobStartResult.rejected(ACTIVE.get().progress().snapshot());
+        }
+
+        MinecraftServer server = source.getServer();
+        WORKER.submit(() -> runBackupJob(server, source, job));
+        return JobStartResult.started(progress.snapshot());
     }
 
     /**
@@ -118,7 +89,7 @@ public class BackupJobRunner {
      *
      * @param server target server
      * @param source originating command source
-     * @param job active job state
+     * @param job    active job state
      */
     private void runBackupJob(MinecraftServer server, CommandSourceStack source, ActiveJob job) {
         long start = System.currentTimeMillis();
@@ -135,44 +106,6 @@ public class BackupJobRunner {
         } finally {
             ACTIVE.compareAndSet(job, null);
         }
-    }
-
-    /**
-     * Runs one restore job and reports completion.
-     *
-     * @param server target server
-     * @param source originating command source
-     * @param zipName optional backup zip file
-     * @param hard whether stale markers should be deleted
-     * @param job active job state
-     */
-    private void runRestoreJob(MinecraftServer server, CommandSourceStack source, String zipName, boolean hard, ActiveJob job) {
-        long start = System.currentTimeMillis();
-        log.info("ArdaPaths restore started{}", hard ? " in hard mode" : "");
-
-        try {
-            RestoreResult result = backupManager.runRestore(server, zipName, hard, new LoggingReporter(job.progress()), new SubmitServerGate(server));
-            long duration = System.currentTimeMillis() - start;
-            log.info("ArdaPaths restore completed in {} ms: {}", duration, describeRestore(result));
-            sendFeedback(server, source, describeRestore(result));
-        } catch (Throwable throwable) {
-            log.error("ArdaPaths restore failed", throwable);
-            sendError(server, source, "ArdaPaths restore failed: " + describeThrowable(throwable));
-        } finally {
-            ACTIVE.compareAndSet(job, null);
-        }
-    }
-
-    /**
-     * Formats a throwable with type information for operator-facing failures.
-     *
-     * @param throwable failure to describe
-     * @return class name and message suitable for command feedback
-     */
-    private String describeThrowable(Throwable throwable) {
-        String message = throwable.getMessage();
-        String type = throwable.getClass().getSimpleName();
-        return message == null || message.isBlank() ? type : type + ": " + message;
     }
 
     /**
@@ -198,6 +131,42 @@ public class BackupJobRunner {
     }
 
     /**
+     * Sends final command feedback on the server thread.
+     *
+     * @param server  target server
+     * @param source  command source
+     * @param message feedback message
+     */
+    private void sendFeedback(MinecraftServer server, CommandSourceStack source, String message) {
+        if (!server.isRunning()) return;
+        server.execute(() -> source.sendSuccess(() -> Component.literal(message), true));
+    }
+
+    /**
+     * Sends final command failure feedback on the server thread.
+     *
+     * @param server  target server
+     * @param source  command source
+     * @param message failure message
+     */
+    private void sendError(MinecraftServer server, CommandSourceStack source, String message) {
+        if (!server.isRunning()) return;
+        server.execute(() -> source.sendFailure(Component.literal(message)));
+    }
+
+    /**
+     * Formats a throwable with type information for operator-facing failures.
+     *
+     * @param throwable failure to describe
+     * @return class name and message suitable for command feedback
+     */
+    private String describeThrowable(Throwable throwable) {
+        String message = throwable.getMessage();
+        String type = throwable.getClass().getSimpleName();
+        return message == null || message.isBlank() ? type : type + ": " + message;
+    }
+
+    /**
      * Formats skipped dimension feedback for partial backups.
      *
      * @param result backup result
@@ -209,6 +178,53 @@ public class BackupJobRunner {
         }
 
         return " Skipped " + result.skippedDimensions().size() + " dimension(s) with unreadable world data: " + String.join(", ", result.skippedDimensions()) + ".";
+    }
+
+    /**
+     * Starts a restore when no other backup job is active.
+     *
+     * @param source  command source that requested the restore
+     * @param zipName optional backup zip file
+     * @param hard    whether stale markers should be deleted
+     * @return launch result with current progress when rejected
+     */
+    public JobStartResult tryStartRestore(CommandSourceStack source, String zipName, boolean hard) {
+        OperationProgress progress = new OperationProgress(OperationKind.RESTORE);
+        ActiveJob job = new ActiveJob(OperationKind.RESTORE, progress);
+
+        if (!ACTIVE.compareAndSet(null, job)) {
+            return JobStartResult.rejected(ACTIVE.get().progress().snapshot());
+        }
+
+        MinecraftServer server = source.getServer();
+        WORKER.submit(() -> runRestoreJob(server, source, zipName, hard, job));
+        return JobStartResult.started(progress.snapshot());
+    }
+
+    /**
+     * Runs one restore job and reports completion.
+     *
+     * @param server  target server
+     * @param source  originating command source
+     * @param zipName optional backup zip file
+     * @param hard    whether stale markers should be deleted
+     * @param job     active job state
+     */
+    private void runRestoreJob(MinecraftServer server, CommandSourceStack source, String zipName, boolean hard, ActiveJob job) {
+        long start = System.currentTimeMillis();
+        log.info("ArdaPaths restore started{}", hard ? " in hard mode" : "");
+
+        try {
+            RestoreResult result = backupManager.runRestore(server, zipName, hard, new LoggingReporter(job.progress()), new SubmitServerGate(server));
+            long duration = System.currentTimeMillis() - start;
+            log.info("ArdaPaths restore completed in {} ms: {}", duration, describeRestore(result));
+            sendFeedback(server, source, describeRestore(result));
+        } catch (Throwable throwable) {
+            log.error("ArdaPaths restore failed", throwable);
+            sendError(server, source, "ArdaPaths restore failed: " + describeThrowable(throwable));
+        } finally {
+            ACTIVE.compareAndSet(job, null);
+        }
     }
 
     /**
@@ -233,33 +249,19 @@ public class BackupJobRunner {
     }
 
     /**
-     * Sends final command feedback on the server thread.
+     * Lists historical backup zip names for command suggestions.
      *
-     * @param server  target server
-     * @param source  command source
-     * @param message feedback message
+     * @return sorted zip names
      */
-    private void sendFeedback(MinecraftServer server, CommandSourceStack source, String message) {
-        if (!server.isRunning()) return;
-        server.execute(() -> source.sendSuccess(() -> Component.literal(message), true));
-    }
-
-    /**
-     * Sends final command failure feedback on the server thread.
-     *
-     * @param server target server
-     * @param source command source
-     * @param message failure message
-     */
-    private void sendError(MinecraftServer server, CommandSourceStack source, String message) {
-        if (!server.isRunning()) return;
-        server.execute(() -> source.sendFailure(Component.literal(message)));
+    public java.util.List<String> listBackupZipNames() {
+        return backupManager.listBackupZipNames();
     }
 
     /**
      * Runs work that must execute on the server thread.
      */
     public interface ServerGate {
+
         /**
          * Runs server-thread-only work.
          *
@@ -283,6 +285,7 @@ public class BackupJobRunner {
      * @param server server receiving gated tasks
      */
     private record SubmitServerGate(MinecraftServer server) implements ServerGate {
+
         /**
          * Runs work on the server thread.
          *
@@ -321,6 +324,7 @@ public class BackupJobRunner {
      * Progress reporter that updates shared progress and logs throttled progress lines.
      */
     private static class LoggingReporter implements ProgressReporter {
+
         /**
          * Minimum milliseconds between repeated progress log lines.
          */
@@ -362,18 +366,6 @@ public class BackupJobRunner {
         }
 
         /**
-         * Updates and logs throttled numeric progress.
-         *
-         * @param done completed units
-         * @param total total units, or zero when unknown
-         */
-        @Override
-        public void advance(int done, int total) {
-            progress.advance(done, total);
-            logSnapshot(false);
-        }
-
-        /**
          * Logs the current progress snapshot when the throttle permits it.
          *
          * @param force whether to ignore the time throttle
@@ -388,24 +380,38 @@ public class BackupJobRunner {
                 log.info("ArdaPaths {} progress: {}", snapshot.kind().name().toLowerCase(Locale.ROOT), snapshot.format());
             }
         }
+
+        /**
+         * Updates and logs throttled numeric progress.
+         *
+         * @param done  completed units
+         * @param total total units, or zero when unknown
+         */
+        @Override
+        public void advance(int done, int total) {
+            progress.advance(done, total);
+            logSnapshot(false);
+        }
     }
 
     /**
      * Active job state held by the concurrency guard.
      *
-     * @param kind operation kind
+     * @param kind     operation kind
      * @param progress mutable progress state
      */
     private record ActiveJob(OperationKind kind, OperationProgress progress) {
+
     }
 
     /**
      * Result of attempting to start a backup job.
      *
-     * @param started whether a new job was started
+     * @param started  whether a new job was started
      * @param snapshot started job or already-active job progress
      */
     public record JobStartResult(boolean started, ProgressSnapshot snapshot) {
+
         /**
          * Creates a successful launch result.
          *
@@ -431,6 +437,7 @@ public class BackupJobRunner {
      * Thread factory for the backup worker.
      */
     private static class BackupThreadFactory implements ThreadFactory {
+
         /**
          * Creates a daemon worker thread.
          *

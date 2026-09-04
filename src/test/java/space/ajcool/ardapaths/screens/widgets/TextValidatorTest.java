@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Tests for the text validation callback contract.
  */
 class TextValidatorTest {
+
     /**
      * Verifies validator callbacks can accept valid text without throwing.
      */

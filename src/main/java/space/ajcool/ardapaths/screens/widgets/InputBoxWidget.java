@@ -21,6 +21,7 @@ import space.ajcool.ardapaths.screens.GuiTextures;
  */
 @Environment(EnvType.CLIENT)
 public class InputBoxWidget extends MultiLineEditBox {
+
     /**
      * The text validator that validates input content.
      */
@@ -145,8 +146,8 @@ public class InputBoxWidget extends MultiLineEditBox {
      */
     @SuppressWarnings("resource")
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
+    public void renderWidget(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        super.renderWidget(context, mouseX, mouseY, delta);
 
         if (!enabled) {
             PoseStack matrices = context.pose();

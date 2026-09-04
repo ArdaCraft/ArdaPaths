@@ -13,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.screens.Screens;
@@ -27,6 +26,7 @@ import java.util.List;
  * Right-clicking opens the path selection screen.
  */
 public class PathRevealerItem extends Item {
+
     /**
      * Constructs a Path Revealer item with the given properties.
      *
@@ -53,20 +53,6 @@ public class PathRevealerItem extends Item {
     }
 
     /**
-     * Appends tooltip information showing the current path and usage instructions.
-     *
-     * @param itemStack   the item stack
-     * @param level       the world, or null in inventory
-     * @param list        the tooltip lines to append to
-     * @param tooltipFlag the tooltip context
-     */
-    @Override
-    public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> list, TooltipFlag tooltipFlag) {
-        super.appendHoverText(itemStack, level, list, tooltipFlag);
-        list.addAll(createTooltipLines());
-    }
-
-    /**
      * Opens the selection screen when the item is used on a client world.
      *
      * @param level the world where the item was used
@@ -78,6 +64,20 @@ public class PathRevealerItem extends Item {
             return;
 
         Screens.openSelectionScreen();
+    }
+
+    /**
+     * Appends tooltip information showing the current path and usage instructions.
+     *
+     * @param itemStack   the item stack
+     * @param context     the item tooltip context
+     * @param list        the tooltip lines to append to
+     * @param tooltipFlag the tooltip context
+     */
+    @Override
+    public void appendHoverText(ItemStack itemStack, TooltipContext context, List<Component> list, TooltipFlag tooltipFlag) {
+        super.appendHoverText(itemStack, context, list, tooltipFlag);
+        list.addAll(createTooltipLines());
     }
 
     /**

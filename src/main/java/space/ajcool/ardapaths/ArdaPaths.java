@@ -20,6 +20,7 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.api.ArdaPathsApiImpl;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
+import space.ajcool.ardapaths.core.data.config.ServerConfigMigrator;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
@@ -36,6 +37,7 @@ import space.ajcool.ardapaths.mc.sounds.ModSounds;
  */
 @Slf4j(topic = "ardapaths")
 public class ArdaPaths implements ModInitializer {
+
     /**
      * The unique identifier for the ArdaPaths mod.
      */
@@ -74,6 +76,7 @@ public class ArdaPaths implements ModInitializer {
      */
     @Override
     public void onInitialize() {
+        ServerConfigMigrator.migrate("./config/arda-paths/server.json");
         CONFIG_MANAGER = new ServerConfigManager("./config/arda-paths/server.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 
@@ -115,17 +118,6 @@ public class ArdaPaths implements ModInitializer {
     }
 
     /**
-     * Checks whether a path marker item use should be allowed.
-     *
-     * @param player    player using the item
-     * @param itemStack item stack being used
-     * @return true when the interaction may continue
-     */
-    private static boolean canUsePathMarkerItem(Player player, ItemStack itemStack) {
-        return !itemStack.is(ModBlocks.PATH_MARKER.asItem()) || PermissionHelper.hasEditPermission(player);
-    }
-
-    /**
      * Queries Fabric for all mods that registered an {@code ardapaths:api} entrypoint and
      * calls {@link ArdaPathsApiEntrypoint#onApiReady(ArdaPathsApi)} on each of them.
      */
@@ -147,5 +139,16 @@ public class ArdaPaths implements ModInitializer {
                 log.error("[ArdaPaths] Exception in ardapaths:api entrypoint of mod '{}': {}", modId, throwable.getMessage(), throwable);
             }
         }
+    }
+
+    /**
+     * Checks whether a path marker item use should be allowed.
+     *
+     * @param player    player using the item
+     * @param itemStack item stack being used
+     * @return true when the interaction may continue
+     */
+    private static boolean canUsePathMarkerItem(Player player, ItemStack itemStack) {
+        return !itemStack.is(ModBlocks.PATH_MARKER.asItem()) || PermissionHelper.hasEditPermission(player);
     }
 }

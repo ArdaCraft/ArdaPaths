@@ -3,6 +3,7 @@ package space.ajcool.ardapaths.paths.rendering;
 import com.mojang.blaze3d.systems.RenderSystem;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,10 +21,11 @@ import space.ajcool.ardapaths.screens.GuiTextures;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class FocusPromptRenderer {
+
     /**
      * Texture used to indicate the focus action.
      */
-    private static final ResourceLocation EYE_ICON = ModConstants.modId("textures/gui/eye-icon.png");
+    private static final ResourceLocation EYE_ICON = ModConstants.modId("eye-icon");
 
     /**
      * Drawn icon size in screen pixels.
@@ -43,10 +45,10 @@ public final class FocusPromptRenderer {
     /**
      * Renders the focus prompt when a candidate is available and focus is idle.
      *
-     * @param context the drawing context used for HUD rendering
+     * @param context      the drawing context used for HUD rendering
      * @param ignoredDelta the frame delta supplied by Fabric
      */
-    public static void render(GuiGraphics context, float ignoredDelta) {
+    public static void render(GuiGraphics context, DeltaTracker ignoredDelta) {
         if (!FocusController.hasCandidate() || FocusController.isEngaged() || ArdaPathsClient.FOCUS_KEY == null) return;
 
         Minecraft client = Minecraft.getInstance();
@@ -63,7 +65,7 @@ public final class FocusPromptRenderer {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        GuiTextures.blit(context, EYE_ICON, x, y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+        GuiTextures.blitSprite(context, EYE_ICON, x, y, ICON_SIZE, ICON_SIZE);
         context.drawString(textRenderer, label, x + ICON_SIZE + ICON_TEXT_GAP, y + 2, 0xFFFFFF, true);
 
         RenderSystem.disableBlend();

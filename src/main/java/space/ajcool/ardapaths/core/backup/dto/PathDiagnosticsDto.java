@@ -19,4 +19,5 @@ public record PathDiagnosticsDto(
         @SerializedName("cycles") List<List<Long>> cycles,
         @SerializedName("multi_root") Map<String, List<Long>> multiRoot
 ) {
+
 }

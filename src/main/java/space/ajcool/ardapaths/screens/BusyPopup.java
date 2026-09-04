@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
  * Blocking progress popup used while waiting for a server response.
  */
 public class BusyPopup extends ArdaPathsScreen {
+
     /**
      * Number of screen ticks to wait before timing out the operation.
      */
@@ -77,7 +78,7 @@ public class BusyPopup extends ArdaPathsScreen {
     }
 
     /**
-     * Renders the blocking overlay and wait message.
+     * Renders the wait message after the modal blur pass has completed.
      *
      * @param context drawing context
      * @param mouseX  current mouse x coordinate
@@ -85,9 +86,7 @@ public class BusyPopup extends ArdaPathsScreen {
      * @param delta   partial tick delta
      */
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        this.renderModBackground(context);
+    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
         context.drawCenteredString(this.font, this.message, this.width / 2, this.height / 2 - 5, 0xFFFFFF);
-        super.render(context, mouseX, mouseY, delta);
     }
 }

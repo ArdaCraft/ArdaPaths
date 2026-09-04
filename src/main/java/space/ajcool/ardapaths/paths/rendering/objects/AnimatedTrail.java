@@ -19,6 +19,7 @@ import java.util.Arrays;
  * Handles animation timing, colour cycling, and height adjustment for rendering above/below blocks.
  */
 public class AnimatedTrail {
+
     /**
      * Animation speed factor controlling how fast the trail animates per tick.
      */
@@ -192,12 +193,26 @@ public class AnimatedTrail {
     }
 
     /**
-     * Create a new animated trail.
+     * Calculate the distance between two Vec3D along only the X and Z axes.
      *
      * @param start the starting position
-     * @param offset the offset from the starting position
+     * @param end   the ending position
+     * @return the flattened distance between the two positions
+     */
+    public double FlattenedDistance(Vec3 start, Vec3 end) {
+        var start2D = new Vec2((float) start.x(), (float) start.z());
+        var end2D = new Vec2((float) end.x(), (float) end.z());
+
+        return Math.sqrt(start2D.distanceToSqr(end2D));
+    }
+
+    /**
+     * Create a new animated trail.
+     *
+     * @param start       the starting position
+     * @param offset      the offset from the starting position
      * @param aboveBlocks whether the trail should render above blocks
-     * @param colors the colour of the trail
+     * @param colors      the colour of the trail
      * @return a new animated trail instance
      */
     public static AnimatedTrail from(BlockPos start, BlockPos offset, boolean aboveBlocks, Color[] colors) {
@@ -248,32 +263,6 @@ public class AnimatedTrail {
     }
 
     /**
-     * Returns the normalized projection point on this trail segment nearest to the supplied position.
-     *
-     * @param px the probe x coordinate
-     * @param py the probe y coordinate
-     * @param pz the probe z coordinate
-     * @return the clamped segment parameter in the range {@code [0, 1]}
-     */
-    public double closestSegmentT(double px, double py, double pz) {
-        double segmentX = end.x - startPos.x;
-        double segmentY = end.y - startPos.y;
-        double segmentZ = end.z - startPos.z;
-        double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ);
-
-        if (segmentLengthSquared == 0.0D) {
-            return 0.0D;
-        }
-
-        double relativeX = px - startPos.x;
-        double relativeY = py - startPos.y;
-        double relativeZ = pz - startPos.z;
-        double projection = ((relativeX * segmentX) + (relativeY * segmentY) + (relativeZ * segmentZ)) / segmentLengthSquared;
-
-        return Mth.clamp(projection, 0.0D, 1.0D);
-    }
-
-    /**
      * Returns the normalized projection point on a horizontal segment nearest to the supplied position.
      *
      * @param px the probe x coordinate
@@ -295,6 +284,32 @@ public class AnimatedTrail {
         double relativeX = px - sx;
         double relativeZ = pz - sz;
         double projection = ((relativeX * segmentX) + (relativeZ * segmentZ)) / segmentLengthSquared;
+
+        return Mth.clamp(projection, 0.0D, 1.0D);
+    }
+
+    /**
+     * Returns the normalized projection point on this trail segment nearest to the supplied position.
+     *
+     * @param px the probe x coordinate
+     * @param py the probe y coordinate
+     * @param pz the probe z coordinate
+     * @return the clamped segment parameter in the range {@code [0, 1]}
+     */
+    public double closestSegmentT(double px, double py, double pz) {
+        double segmentX = end.x - startPos.x;
+        double segmentY = end.y - startPos.y;
+        double segmentZ = end.z - startPos.z;
+        double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ);
+
+        if (segmentLengthSquared == 0.0D) {
+            return 0.0D;
+        }
+
+        double relativeX = px - startPos.x;
+        double relativeY = py - startPos.y;
+        double relativeZ = pz - startPos.z;
+        double projection = ((relativeX * segmentX) + (relativeY * segmentY) + (relativeZ * segmentZ)) / segmentLengthSquared;
 
         return Mth.clamp(projection, 0.0D, 1.0D);
     }
@@ -338,24 +353,6 @@ public class AnimatedTrail {
     }
 
     /**
-     * Advances this trail by distance carried over from a completed previous segment.
-     *
-     * @param blocks the number of segment-handoff blocks to add to the travelled distance
-     */
-    public void advanceBy(double blocks) {
-        distanceTravelled += Math.max(0.0D, blocks);
-    }
-
-    /**
-     * Returns the distance travelled beyond this trail segment's end.
-     *
-     * @return the excess travelled distance in blocks
-     */
-    public double overshoot() {
-        return Math.max(0.0D, distanceTravelled - totalDistance);
-    }
-
-    /**
      * Selects this tick's trail speed based on the lead over the player.
      *
      * @param lead the current horizontal distance from the player to the trail head
@@ -365,45 +362,6 @@ public class AnimatedTrail {
         double desired = lead >= TARGET_LEAD ? playerSpeed : playerSpeed * SPEED_MARGIN;
 
         return Mth.clamp(Math.max(SPEED, desired), SPEED, MAX_SPEED);
-    }
-
-    /**
-     * Emits enough particles between two rendered positions to preserve trail density at higher speeds.
-     *
-     * @param level    the client world receiving the particles
-     * @param previous the previous rendered head position
-     * @param current  the current rendered head position
-     */
-    private void emitParticles(ClientLevel level, Vec3 previous, Vec3 current) {
-        double stepDistance = previous.distanceTo(current);
-        int steps = Mth.clamp((int) Math.ceil(stepDistance / PARTICLE_SPACING), 1, MAX_PARTICLES_PER_TICK);
-
-        for (int i = 1; i <= steps; i++) {
-            Vec3 particlePos = previous.lerp(current, (double) i / steps);
-            level.addParticle(new PathParticleEffect(primaryColor, secondaryColor, tertiaryColor),
-                    particlePos.x,
-                    particlePos.y + 0.3,
-                    particlePos.z,
-                    0.0, 0.0, 0.0
-            );
-        }
-    }
-
-    /**
-     * Moves a scalar value toward a target by no more than the supplied step.
-     *
-     * @param current the current value
-     * @param target  the target value
-     * @param step    the maximum distance to move this tick
-     * @return the adjusted value
-     */
-    private double approach(double current, double target, double step) {
-        double delta = target - current;
-        if (Math.abs(delta) <= step) {
-            return target;
-        }
-
-        return current + (Math.signum(delta) * step);
     }
 
     /**
@@ -436,6 +394,45 @@ public class AnimatedTrail {
         cachedColumnZ = columnZ;
         cachedGroundY = scanGroundY(level, columnX, columnY, columnZ);
         return cachedGroundY;
+    }
+
+    /**
+     * Moves a scalar value toward a target by no more than the supplied step.
+     *
+     * @param current the current value
+     * @param target  the target value
+     * @param step    the maximum distance to move this tick
+     * @return the adjusted value
+     */
+    private double approach(double current, double target, double step) {
+        double delta = target - current;
+        if (Math.abs(delta) <= step) {
+            return target;
+        }
+
+        return current + (Math.signum(delta) * step);
+    }
+
+    /**
+     * Emits enough particles between two rendered positions to preserve trail density at higher speeds.
+     *
+     * @param level    the client world receiving the particles
+     * @param previous the previous rendered head position
+     * @param current  the current rendered head position
+     */
+    private void emitParticles(ClientLevel level, Vec3 previous, Vec3 current) {
+        double stepDistance = previous.distanceTo(current);
+        int steps = Mth.clamp((int) Math.ceil(stepDistance / PARTICLE_SPACING), 1, MAX_PARTICLES_PER_TICK);
+
+        for (int i = 1; i <= steps; i++) {
+            Vec3 particlePos = previous.lerp(current, (double) i / steps);
+            level.addParticle(new PathParticleEffect(primaryColor, secondaryColor, tertiaryColor),
+                    particlePos.x,
+                    particlePos.y + 0.3,
+                    particlePos.z,
+                    0.0, 0.0, 0.0
+            );
+        }
     }
 
     /**
@@ -478,24 +475,28 @@ public class AnimatedTrail {
     }
 
     /**
+     * Advances this trail by distance carried over from a completed previous segment.
+     *
+     * @param blocks the number of segment-handoff blocks to add to the travelled distance
+     */
+    public void advanceBy(double blocks) {
+        distanceTravelled += Math.max(0.0D, blocks);
+    }
+
+    /**
+     * Returns the distance travelled beyond this trail segment's end.
+     *
+     * @return the excess travelled distance in blocks
+     */
+    public double overshoot() {
+        return Math.max(0.0D, distanceTravelled - totalDistance);
+    }
+
+    /**
      * @return True if the trail has reached the end, otherwise false
      */
     public boolean isAtEnd() {
         return currentPos.equals(end);
-    }
-
-    /**
-     * Calculate the distance between two Vec3D along only the X and Z axes.
-     *
-     * @param start the starting position
-     * @param end the ending position
-     * @return the flattened distance between the two positions
-     */
-    public double FlattenedDistance(Vec3 start, Vec3 end) {
-        var start2D = new Vec2((float) start.x(), (float) start.z());
-        var end2D = new Vec2((float) end.x(), (float) end.z());
-
-        return Math.sqrt(start2D.distanceToSqr(end2D));
     }
 
 }

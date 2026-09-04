@@ -20,6 +20,7 @@ import java.util.function.Supplier;
  * Time and weather marker editor tab.
  */
 public class TimeWeatherTabSection implements MarkerEditorTab {
+
     /** Horizontal gutter between side-by-side time inputs. */
     private static final int INPUT_GUTTER = 2 * TabBarWidget.CONTENT_PADDING;
 
@@ -62,30 +63,6 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
     }
 
     /**
-     * Copies mounted time and weather widget values into a form state.
-     *
-     * @param state mutable form state to update
-     */
-    @Override
-    public void commitTo(MarkerFormState state) {
-        state.setTimeOfDay(MarkerFields.parseTimeOfDayOrFallback(timeOfDayInput, state.getTimeOfDay()));
-        state.setTimeTransitionRange(MarkerFields.parseTransitionRangeOrFallback(timeTransitionRangeInput, state.getTimeTransitionRange()));
-    }
-
-    /**
-     * Validates all mounted time and weather input fields.
-     *
-     * @return true when all mounted inputs are valid
-     */
-    @Override
-    public boolean validate() {
-        boolean valid = true;
-        valid &= timeOfDayInput == null || timeOfDayInput.validateText();
-        valid &= timeTransitionRangeInput == null || timeTransitionRangeInput.validateText();
-        return valid;
-    }
-
-    /**
      * Builds the optional weather selection dropdown for marker traversal behavior.
      *
      * @param screen marker edit screen that owns the widget
@@ -102,7 +79,8 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
                 .setSize(width, 20)
                 .setTitle(Component.translatable("ardapaths.client.marker.configuration.screens.weather"))
                 .setOptionDisplay(item -> {
-                    if (item == null) return Component.translatable("ardapaths.client.marker.configuration.screens.no_weather");
+                    if (item == null)
+                        return Component.translatable("ardapaths.client.marker.configuration.screens.no_weather");
                     return Component.literal(item.getDisplayName());
                 })
                 .setOptions(List.of(WeatherTypes.values()))
@@ -162,5 +140,29 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
             Component formattedFeedback = feedback.copy().withStyle(feedbackErrorSupplier.getAsBoolean() ? ChatFormatting.RED : ChatFormatting.GRAY);
             screen.add(new TextWidget(x, y + 30, width, 17, formattedFeedback));
         }
+    }
+
+    /**
+     * Copies mounted time and weather widget values into a form state.
+     *
+     * @param state mutable form state to update
+     */
+    @Override
+    public void commitTo(MarkerFormState state) {
+        state.setTimeOfDay(MarkerFields.parseTimeOfDayOrFallback(timeOfDayInput, state.getTimeOfDay()));
+        state.setTimeTransitionRange(MarkerFields.parseTransitionRangeOrFallback(timeTransitionRangeInput, state.getTimeTransitionRange()));
+    }
+
+    /**
+     * Validates all mounted time and weather input fields.
+     *
+     * @return true when all mounted inputs are valid
+     */
+    @Override
+    public boolean validate() {
+        boolean valid = true;
+        valid &= timeOfDayInput == null || timeOfDayInput.validateText();
+        valid &= timeTransitionRangeInput == null || timeTransitionRangeInput.validateText();
+        return valid;
     }
 }

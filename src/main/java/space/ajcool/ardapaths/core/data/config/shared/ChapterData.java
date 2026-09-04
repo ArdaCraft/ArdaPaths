@@ -9,6 +9,7 @@ import lombok.Setter;
  * This is a configuration object that is serialized to JSON.
  */
 public class ChapterData {
+
     /**
      * The unique identifier for this chapter within its path.
      */
@@ -41,6 +42,21 @@ public class ChapterData {
      */
     @SerializedName("warp")
     private String warp;
+
+    /**
+     * Optional coordinate fallback used when no warp service destination is available.
+     */
+    @Getter
+    @Setter
+    @SerializedName("coordinates")
+    private PositionData coordinates;
+
+    /**
+     * Dimension identifier that owns the coordinate fallback.
+     */
+    @Setter
+    @SerializedName("dimension")
+    private String dimension;
 
     /**
      * Constructs a ChapterData without a warp destination.
@@ -100,5 +116,12 @@ public class ChapterData {
      */
     public String getWarp() {
         return warp == null ? "" : warp;
+    }
+
+    /**
+     * @return the dimension identifier used for coordinate chapter starts
+     */
+    public String getDimension() {
+        return dimension == null || dimension.isBlank() ? "minecraft:overworld" : dimension;
     }
 }

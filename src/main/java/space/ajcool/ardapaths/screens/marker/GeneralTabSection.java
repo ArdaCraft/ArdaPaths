@@ -16,6 +16,7 @@ import space.ajcool.ardapaths.screens.widgets.TextWidget;
  * General marker editor tab containing proximity message and animation settings.
  */
 public class GeneralTabSection implements MarkerEditorTab {
+
     /** Width of compact numeric inputs used by animation settings. */
     private static final int INPUT_WIDTH = 40;
 
@@ -71,59 +72,6 @@ public class GeneralTabSection implements MarkerEditorTab {
         minOpacityInput.setValue(String.valueOf(state.getMinOpacity()));
 
         buildActivationRangeSlider(screen, layout.contentLeft(), contentTop + MarkerEditLayout.CONTENT_HEIGHT - 25, layout.contentWidth(), state);
-    }
-
-    /**
-     * Copies mounted general-tab widget values into a form state.
-     *
-     * @param state mutable form state to update
-     */
-    @Override
-    public void commitTo(MarkerFormState state) {
-        state.setCharRevealSpeed(MarkerFields.parseIntegerOrFallback(charRevealInput, state.getCharRevealSpeed()));
-        state.setFadeDelayOffset(MarkerFields.parseIntegerOrFallback(fadeDelayOffsetInput, state.getFadeDelayOffset()));
-        state.setFadeDelayFactor(MarkerFields.parseIntegerOrFallback(fadeDelayFactorInput, state.getFadeDelayFactor()));
-        state.setFadeSpeed(MarkerFields.parseIntegerOrFallback(fadeSpeedInput, state.getFadeSpeed()));
-        state.setMinOpacity(MarkerFields.parseIntegerOrFallback(minOpacityInput, state.getMinOpacity()));
-    }
-
-    /**
-     * Validates all mounted general-tab input fields.
-     *
-     * @return true when all mounted inputs are valid
-     */
-    @Override
-    public boolean validate() {
-        boolean valid = true;
-        valid &= charRevealInput == null || charRevealInput.validateText();
-        valid &= fadeDelayOffsetInput == null || fadeDelayOffsetInput.validateText();
-        valid &= fadeDelayFactorInput == null || fadeDelayFactorInput.validateText();
-        valid &= fadeSpeedInput == null || fadeSpeedInput.validateText();
-        valid &= minOpacityInput == null || minOpacityInput.validateText();
-        return valid;
-    }
-
-    /**
-     * Delegates mouse release to the multi-line edit box.
-     *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param button the mouse button code
-     * @return true if the multi-line edit box handled the release
-     */
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        return multiLineEditBox != null && multiLineEditBox.mouseReleased(mouseX, mouseY, button);
-    }
-
-    /**
-     * Ticks the multi-line edit box while the tab is mounted.
-     */
-    @Override
-    public void tick() {
-        if (multiLineEditBox != null) {
-            multiLineEditBox.tick();
-        }
     }
 
     /**
@@ -241,5 +189,55 @@ public class GeneralTabSection implements MarkerEditorTab {
                 state.setActivationRange(Mth.floor(Mth.clampedLerp(0.0, 100.0, this.value)));
             }
         });
+    }
+
+    /**
+     * Copies mounted general-tab widget values into a form state.
+     *
+     * @param state mutable form state to update
+     */
+    @Override
+    public void commitTo(MarkerFormState state) {
+        state.setCharRevealSpeed(MarkerFields.parseIntegerOrFallback(charRevealInput, state.getCharRevealSpeed()));
+        state.setFadeDelayOffset(MarkerFields.parseIntegerOrFallback(fadeDelayOffsetInput, state.getFadeDelayOffset()));
+        state.setFadeDelayFactor(MarkerFields.parseIntegerOrFallback(fadeDelayFactorInput, state.getFadeDelayFactor()));
+        state.setFadeSpeed(MarkerFields.parseIntegerOrFallback(fadeSpeedInput, state.getFadeSpeed()));
+        state.setMinOpacity(MarkerFields.parseIntegerOrFallback(minOpacityInput, state.getMinOpacity()));
+    }
+
+    /**
+     * Validates all mounted general-tab input fields.
+     *
+     * @return true when all mounted inputs are valid
+     */
+    @Override
+    public boolean validate() {
+        boolean valid = true;
+        valid &= charRevealInput == null || charRevealInput.validateText();
+        valid &= fadeDelayOffsetInput == null || fadeDelayOffsetInput.validateText();
+        valid &= fadeDelayFactorInput == null || fadeDelayFactorInput.validateText();
+        valid &= fadeSpeedInput == null || fadeSpeedInput.validateText();
+        valid &= minOpacityInput == null || minOpacityInput.validateText();
+        return valid;
+    }
+
+    /**
+     * Delegates mouse release to the multi-line edit box.
+     *
+     * @param mouseX the mouse x coordinate
+     * @param mouseY the mouse y coordinate
+     * @param button the mouse button code
+     * @return true if the multi-line edit box handled the release
+     */
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        return multiLineEditBox != null && multiLineEditBox.mouseReleased(mouseX, mouseY, button);
+    }
+
+    /**
+     * Ticks the multi-line edit box while the tab is mounted.
+     */
+    @Override
+    public void tick() {
     }
 }

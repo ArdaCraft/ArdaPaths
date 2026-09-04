@@ -4,6 +4,7 @@ package space.ajcool.ardapaths.screens.widgets;
  * An exception thrown when text validation fails.
  */
 public class TextValidationError extends Exception {
+
     /**
      * Constructs a TextValidationError with the given error message.
      *

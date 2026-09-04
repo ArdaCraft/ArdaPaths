@@ -15,11 +15,10 @@ import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacke
  * A packet sent from the client to the server to request path data.
  */
 @Slf4j(topic = "ardapaths")
-public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUpdatePacket>
-{
-    public PathDataUpdateRequestHandler()
-    {
-        super(PathDataUpdatePacket.CHANNEL, PathDataUpdatePacket::read);
+public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUpdatePacket> {
+
+    public PathDataUpdateRequestHandler() {
+        super(PathDataUpdatePacket.TYPE, PathDataUpdatePacket::read);
     }
 
     /**
@@ -33,8 +32,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathDataUpdatePacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, PathDataUpdatePacket packet, PacketSender sender) {
         final String pathId = packet.id();
         final String name = packet.name();
         final int primaryColor = packet.primaryColor();

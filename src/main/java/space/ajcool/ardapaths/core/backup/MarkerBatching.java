@@ -11,6 +11,7 @@ import java.util.function.ToLongFunction;
  * Shared pacing rules for marker operations that can load cold chunks.
  */
 public final class MarkerBatching {
+
     /** Maximum number of distinct chunks to touch in one server-thread batch. */
     public static final int CHUNKS_PER_BATCH = 4;
 
@@ -50,6 +51,17 @@ public final class MarkerBatching {
     }
 
     /**
+     * Creates a compact identity for one dimension chunk.
+     *
+     * @param dimensionId    dimension identifier
+     * @param packedChunkPos packed chunk position
+     * @return marker chunk identity
+     */
+    private static String markerLocation(String dimensionId, long packedChunkPos) {
+        return dimensionId + ":" + packedChunkPos;
+    }
+
+    /**
      * Pauses the worker between marker batches to give the server room to tick.
      *
      * @param processed processed marker count
@@ -64,16 +76,5 @@ public final class MarkerBatching {
             Thread.currentThread().interrupt();
             throw new CancellationException("marker batch pacing interrupted");
         }
-    }
-
-    /**
-     * Creates a compact identity for one dimension chunk.
-     *
-     * @param dimensionId    dimension identifier
-     * @param packedChunkPos packed chunk position
-     * @return marker chunk identity
-     */
-    private static String markerLocation(String dimensionId, long packedChunkPos) {
-        return dimensionId + ":" + packedChunkPos;
     }
 }

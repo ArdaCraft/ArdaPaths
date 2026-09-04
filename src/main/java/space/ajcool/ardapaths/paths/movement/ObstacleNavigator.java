@@ -100,6 +100,101 @@ final class ObstacleNavigator {
     }
 
     /**
+     * Checks whether a float-over lift should keep applying upward velocity.
+     *
+     * @param player player being lifted
+     * @return true when the player's feet have not reached the active lift target
+     */
+    private static boolean shouldKeepFloating(LocalPlayer player) {
+        if (floatOverTargetY == Double.NEGATIVE_INFINITY) return false;
+        if (player.getY() < floatOverTargetY) return true;
+
+        floatOverTargetY = Double.NEGATIVE_INFINITY;
+        return false;
+    }
+
+    /**
+     * Measures the highest collision surface in the forward movement probe.
+     *
+     * @param player     player being driven
+     * @param directionX normalized horizontal x movement direction
+     * @param directionZ normalized horizontal z movement direction
+     * @return maximum obstacle top Y, or negative infinity when no obstacle is ahead
+     */
+    @SuppressWarnings("resource")
+    private static double forwardObstacleTop(LocalPlayer player, double directionX, double directionZ) {
+        AABB collisionProbe = lowerForwardProbeBox(player, directionX, directionZ);
+        double obstacleTop = Double.NEGATIVE_INFINITY;
+        for (VoxelShape shape : player.level().getBlockCollisions(player, collisionProbe)) {
+            if (shape.isEmpty()) continue;
+
+            obstacleTop = Math.max(obstacleTop, shape.bounds().maxY);
+        }
+
+        return obstacleTop;
+    }
+
+    /**
+     * Builds the full-height forward probe box at the player's current position.
+     *
+     * @param player     player being driven
+     * @param directionX normalized horizontal x movement direction
+     * @param directionZ normalized horizontal z movement direction
+     * @return player collision box shifted forward by the obstacle probe distance
+     */
+    private static AABB forwardProbeBox(LocalPlayer player, double directionX, double directionZ) {
+        return player.getBoundingBox().move(directionX * OBSTACLE_PROBE_DISTANCE, 0.0D, directionZ * OBSTACLE_PROBE_DISTANCE);
+    }
+
+    /**
+     * Checks whether a blocking obstacle can be cleared by a normal jump this tick.
+     *
+     * @param player      player being driven
+     * @param directionX  normalized horizontal x movement direction
+     * @param directionZ  normalized horizontal z movement direction
+     * @param obstacleTop measured top of the obstacle ahead
+     * @return true when auto-walk should keep the trail direction and issue a jump
+     */
+    private static boolean canJumpOver(LocalPlayer player, double directionX, double directionZ, double obstacleTop) {
+        return player.onGround()
+                && obstacleTop - player.getY() <= JUMP_MAX_STEP
+                && hasClearanceAtFeetY(player, forwardProbeBox(player, directionX, directionZ), player.getY() + 1.0D);
+    }
+
+    /**
+     * Checks whether the player's collision box would fit with feet at a target height.
+     *
+     * @param player    player being driven
+     * @param targetBox target player collision box at the player's current feet height
+     * @param feetY     target world Y for the player's feet
+     * @return true when the target player volume is empty
+     */
+    @SuppressWarnings("resource")
+    private static boolean hasClearanceAtFeetY(LocalPlayer player, AABB targetBox, double feetY) {
+        return player.level().noCollision(player, targetBox.move(0.0D, feetY - player.getY(), 0.0D));
+    }
+
+    /**
+     * Builds the lower forward probe area used to measure nearby obstacle heights.
+     *
+     * @param player     player being driven
+     * @param directionX normalized horizontal x movement direction
+     * @param directionZ normalized horizontal z movement direction
+     * @return forward probe box clipped to the lower obstacle-sampling range
+     */
+    private static AABB lowerForwardProbeBox(LocalPlayer player, double directionX, double directionZ) {
+        AABB forwardBox = forwardProbeBox(player, directionX, directionZ);
+        return new AABB(
+                forwardBox.minX,
+                forwardBox.minY,
+                forwardBox.minZ,
+                forwardBox.maxX,
+                Math.min(forwardBox.maxY, player.getY() + OBSTACLE_PROBE_HEIGHT),
+                forwardBox.maxZ
+        );
+    }
+
+    /**
      * Chooses the horizontal movement direction, including any committed obstacle detour.
      *
      * @param player      player being driven
@@ -136,40 +231,44 @@ final class ObstacleNavigator {
     }
 
     /**
-     * Clears obstacle navigation state for a fresh auto-walk engagement.
-     */
-    static void reset() {
-        floatOverTargetY = Double.NEGATIVE_INFINITY;
-        detourTarget = null;
-    }
-
-    /**
-     * Checks whether a float-over lift should keep applying upward velocity.
+     * Builds a normalized horizontal direction from a position to a target.
      *
-     * @param player player being lifted
-     * @return true when the player's feet have not reached the active lift target
+     * @param position current position
+     * @param target   target position
+     * @return normalized horizontal direction, or null when the target is too close
      */
-    private static boolean shouldKeepFloating(LocalPlayer player) {
-        if (floatOverTargetY == Double.NEGATIVE_INFINITY) return false;
-        if (player.getY() < floatOverTargetY) return true;
+    @Nullable
+    private static Vec3 directionToTarget(Vec3 position, Vec3 target) {
+        double deltaX = target.x - position.x;
+        double deltaZ = target.z - position.z;
+        double length = Math.hypot(deltaX, deltaZ);
+        if (length < MIN_SEGMENT_LENGTH) return null;
 
-        floatOverTargetY = Double.NEGATIVE_INFINITY;
-        return false;
+        return new Vec3(deltaX / length, 0.0D, deltaZ / length);
     }
 
     /**
-     * Checks whether a blocking obstacle can be cleared by a normal jump this tick.
+     * Checks whether the player has reached a committed detour waypoint.
+     *
+     * @param position player's current position
+     * @param target   detour waypoint
+     * @return true when the player is horizontally close enough to the target
+     */
+    private static boolean hasArrivedAtDetour(Vec3 position, Vec3 target) {
+        double distanceX = target.x - position.x;
+        double distanceZ = target.z - position.z;
+        return Math.hypot(distanceX, distanceZ) < DETOUR_ARRIVAL_DISTANCE;
+    }
+
+    /**
+     * Checks whether an obstacle top is high enough to require detouring or lifting.
      *
      * @param player      player being driven
-     * @param directionX  normalized horizontal x movement direction
-     * @param directionZ  normalized horizontal z movement direction
      * @param obstacleTop measured top of the obstacle ahead
-     * @return true when auto-walk should keep the trail direction and issue a jump
+     * @return true when the obstacle is taller than the player's step height
      */
-    private static boolean canJumpOver(LocalPlayer player, double directionX, double directionZ, double obstacleTop) {
-        return player.onGround()
-                && obstacleTop - player.getY() <= JUMP_MAX_STEP
-                && hasClearanceAtFeetY(player, forwardProbeBox(player, directionX, directionZ), player.getY() + 1.0D);
+    private static boolean isBlockingObstacle(LocalPlayer player, double obstacleTop) {
+        return obstacleTop != Double.NEGATIVE_INFINITY && obstacleTop - player.getY() > player.maxUpStep();
     }
 
     /**
@@ -210,100 +309,6 @@ final class ObstacleNavigator {
     }
 
     /**
-     * Checks whether an obstacle top is high enough to require detouring or lifting.
-     *
-     * @param player      player being driven
-     * @param obstacleTop measured top of the obstacle ahead
-     * @return true when the obstacle is taller than the player's step height
-     */
-    private static boolean isBlockingObstacle(LocalPlayer player, double obstacleTop) {
-        return obstacleTop != Double.NEGATIVE_INFINITY && obstacleTop - player.getY() > player.maxUpStep();
-    }
-
-    /**
-     * Checks whether the player has reached a committed detour waypoint.
-     *
-     * @param position player's current position
-     * @param target   detour waypoint
-     * @return true when the player is horizontally close enough to the target
-     */
-    private static boolean hasArrivedAtDetour(Vec3 position, Vec3 target) {
-        double distanceX = target.x - position.x;
-        double distanceZ = target.z - position.z;
-        return Math.hypot(distanceX, distanceZ) < DETOUR_ARRIVAL_DISTANCE;
-    }
-
-    /**
-     * Builds a normalized horizontal direction from a position to a target.
-     *
-     * @param position current position
-     * @param target   target position
-     * @return normalized horizontal direction, or null when the target is too close
-     */
-    @Nullable
-    private static Vec3 directionToTarget(Vec3 position, Vec3 target) {
-        double deltaX = target.x - position.x;
-        double deltaZ = target.z - position.z;
-        double length = Math.hypot(deltaX, deltaZ);
-        if (length < MIN_SEGMENT_LENGTH) return null;
-
-        return new Vec3(deltaX / length, 0.0D, deltaZ / length);
-    }
-
-    /**
-     * Measures the highest collision surface in the forward movement probe.
-     *
-     * @param player     player being driven
-     * @param directionX normalized horizontal x movement direction
-     * @param directionZ normalized horizontal z movement direction
-     * @return maximum obstacle top Y, or negative infinity when no obstacle is ahead
-     */
-    @SuppressWarnings("resource")
-    private static double forwardObstacleTop(LocalPlayer player, double directionX, double directionZ) {
-        AABB collisionProbe = lowerForwardProbeBox(player, directionX, directionZ);
-        double obstacleTop = Double.NEGATIVE_INFINITY;
-        for (VoxelShape shape : player.level().getBlockCollisions(player, collisionProbe)) {
-            if (shape.isEmpty()) continue;
-
-            obstacleTop = Math.max(obstacleTop, shape.bounds().maxY);
-        }
-
-        return obstacleTop;
-    }
-
-    /**
-     * Builds the full-height forward probe box at the player's current position.
-     *
-     * @param player     player being driven
-     * @param directionX normalized horizontal x movement direction
-     * @param directionZ normalized horizontal z movement direction
-     * @return player collision box shifted forward by the obstacle probe distance
-     */
-    private static AABB forwardProbeBox(LocalPlayer player, double directionX, double directionZ) {
-        return player.getBoundingBox().move(directionX * OBSTACLE_PROBE_DISTANCE, 0.0D, directionZ * OBSTACLE_PROBE_DISTANCE);
-    }
-
-    /**
-     * Builds the lower forward probe area used to measure nearby obstacle heights.
-     *
-     * @param player     player being driven
-     * @param directionX normalized horizontal x movement direction
-     * @param directionZ normalized horizontal z movement direction
-     * @return forward probe box clipped to the lower obstacle-sampling range
-     */
-    private static AABB lowerForwardProbeBox(LocalPlayer player, double directionX, double directionZ) {
-        AABB forwardBox = forwardProbeBox(player, directionX, directionZ);
-        return new AABB(
-                forwardBox.minX,
-                forwardBox.minY,
-                forwardBox.minZ,
-                forwardBox.maxX,
-                Math.min(forwardBox.maxY, player.getY() + OBSTACLE_PROBE_HEIGHT),
-                forwardBox.maxZ
-        );
-    }
-
-    /**
      * Builds a forward-and-lateral probe box for a possible obstacle detour.
      *
      * @param player         player being driven
@@ -321,19 +326,6 @@ final class ObstacleNavigator {
                 0.0D,
                 (directionZ * forwardOffset) + (perpendicularZ * lateralOffset)
         );
-    }
-
-    /**
-     * Checks whether the player's collision box would fit with feet at a target height.
-     *
-     * @param player    player being driven
-     * @param targetBox target player collision box at the player's current feet height
-     * @param feetY     target world Y for the player's feet
-     * @return true when the target player volume is empty
-     */
-    @SuppressWarnings("resource")
-    private static boolean hasClearanceAtFeetY(LocalPlayer player, AABB targetBox, double feetY) {
-        return player.level().noCollision(player, targetBox.move(0.0D, feetY - player.getY(), 0.0D));
     }
 
     /**
@@ -375,5 +367,13 @@ final class ObstacleNavigator {
         }
 
         return false;
+    }
+
+    /**
+     * Clears obstacle navigation state for a fresh auto-walk engagement.
+     */
+    static void reset() {
+        floatOverTargetY = Double.NEGATIVE_INFINITY;
+        detourTarget = null;
     }
 }

@@ -10,12 +10,14 @@ import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Integrity tests for the backup exporter and restorer marker NBT contract.
  */
 class MarkerNbtRoundTripTest {
+
     /**
      * Verifies exported nodes restore to the same chapter compound written by marker NBT.
      */

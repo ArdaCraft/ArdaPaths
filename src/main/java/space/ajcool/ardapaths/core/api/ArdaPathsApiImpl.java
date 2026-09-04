@@ -55,7 +55,7 @@ public final class ArdaPathsApiImpl implements ArdaPathsApi {
 
         if (putPathfinderInHands) {
 
-            PacketRegistry.WIELD_PATHFINDER_REQUEST.send(new EmptyPacket(), response -> selectPathAndChapter(pathId, chapterId, teleport));
+            PacketRegistry.WIELD_PATHFINDER_REQUEST.send(new EmptyPacket(EmptyPacket.WIELD_PATHFINDER_TYPE), response -> selectPathAndChapter(pathId, chapterId, teleport));
         } else {
 
             selectPathAndChapter(pathId, chapterId, teleport);

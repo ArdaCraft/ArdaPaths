@@ -12,20 +12,11 @@ import org.jetbrains.annotations.Nullable;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class GiveItemAction {
+
     /**
      * Authored keyword that stores the held non-Pathfinder item back into inventory.
      */
     public static final String CLEAR_KEYWORD = "clear";
-
-    /**
-     * Checks whether a configured give-item value is the clear keyword.
-     *
-     * @param value the configured give-item text
-     * @return true when the value requests clearing the non-Pathfinder hand
-     */
-    public static boolean isClear(String value) {
-        return value != null && CLEAR_KEYWORD.equalsIgnoreCase(value.trim());
-    }
 
     /**
      * Resolves a configured give-item value to a registered Minecraft item.
@@ -43,5 +34,15 @@ public final class GiveItemAction {
         if (id == null) return null;
 
         return BuiltInRegistries.ITEM.getOptional(id).orElse(null);
+    }
+
+    /**
+     * Checks whether a configured give-item value is the clear keyword.
+     *
+     * @param value the configured give-item text
+     * @return true when the value requests clearing the non-Pathfinder hand
+     */
+    public static boolean isClear(String value) {
+        return value != null && CLEAR_KEYWORD.equalsIgnoreCase(value.trim());
     }
 }

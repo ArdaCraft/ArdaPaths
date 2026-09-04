@@ -20,4 +20,5 @@ public record PathFileDto(
         @SerializedName("chapters") List<PathChapterDto> chapters,
         @SerializedName("diagnostics") PathDiagnosticsDto diagnostics
 ) {
+
 }

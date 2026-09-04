@@ -8,27 +8,25 @@ import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.data.WarpTarget;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * Server-side configuration containing all paths and chapter start positions.
+ * Server-side configuration containing all paths and chapter metadata.
  * This is the authoritative source for path data on the server.
  * Serialized to and from JSON in server.json.
  */
 public class ServerConfig {
+
     /**
      * List of all paths available on this server.
      */
     @Getter
     @SerializedName("paths")
     private final List<PathData> paths = new ArrayList<>();
-
-    /**
-     * Map of chapter IDs to their start positions used for the "Return to Chapter Start" feature.
-     */
-    @SerializedName("chapter_starts")
-    private final Map<String, PositionData> chapterStarts = new HashMap<>();
 
     /**
      * Get a path by its ID.
@@ -60,39 +58,22 @@ public class ServerConfig {
     }
 
     /**
-     * Gets a snapshot of all explicit chapter start positions.
-     *
-     * @return immutable map of {@code pathId:chapterId} keys to positions
-     */
-    public Map<String, PositionData> getChapterStarts() {
-        return Collections.unmodifiableMap(chapterStarts);
-    }
-
-    /**
      * @param pathId    The ID of the path
      * @param chapterId The ID of the chapter
      * @return The chapter start position for the given path
      */
     public @NotNull Optional<String> getChapterStartWarp(String pathId, String chapterId) {
         Optional<String> startWarp = Optional.empty();
-        Optional<PathData> pathData = paths.stream()
-                .filter(item -> pathId.equals(item.getId()))
-                .findFirst();
+        ChapterData chapterData = resolveChapter(pathId, chapterId);
 
-        if (pathData.isPresent()) {
+        if (chapterData != null) {
 
-            String warpData;
-            ChapterData chapterData = pathData.get().getChapter(chapterId);
+            String warpData = chapterData.getWarp();
 
-            if (chapterData != null) {
+            if (warpData != null && !warpData.isBlank()) {
 
-                warpData = chapterData.getWarp();
-
-                if (warpData != null && !warpData.isBlank()) {
-
-                    if (!WarpTarget.isCoordinates(warpData)) {
-                        startWarp = Optional.of(warpData.trim());
-                    }
+                if (!WarpTarget.isCoordinates(warpData)) {
+                    startWarp = Optional.of(warpData.trim());
                 }
             }
         }
@@ -101,40 +82,17 @@ public class ServerConfig {
     }
 
     /**
+     * Resolves a chapter from the authoritative path list.
+     *
      * @param pathId    The ID of the path
      * @param chapterId The ID of the chapter
-     * @return The chapter start position for the given path
+     * @return chapter data, or null when the path or chapter is unknown
      */
-    public @Nullable BlockPos getChapterStartCoordinates(String pathId, String chapterId) {
-        BlockPos startPosition = null;
+    private @Nullable ChapterData resolveChapter(String pathId, String chapterId) {
         Optional<PathData> pathData = paths.stream()
                 .filter(item -> pathId.equals(item.getId()))
                 .findFirst();
-
-        if (pathData.isPresent()) {
-
-            String warpData;
-            ChapterData chapterData = pathData.get().getChapter(chapterId);
-
-            if (chapterData != null) {
-
-                warpData = chapterData.getWarp();
-
-                if (warpData != null && !warpData.isBlank()) {
-
-                    startPosition = WarpTarget.parseCoordinates(warpData);
-                }
-            }
-        }
-
-        return startPosition != null ? startPosition : getChapterStartPosition(pathId, chapterId);
-    }
-
-    private BlockPos getChapterStartPosition(String pathId, String chapterId) {
-
-        var data = chapterStarts.get(pathId + ":" + chapterId);
-
-        return data != null ? data.toBlockPos() : null;
+        return pathData.map(path -> path.getChapter(chapterId)).orElse(null);
     }
 
     /**
@@ -157,23 +115,59 @@ public class ServerConfig {
     }
 
     /**
+     * @param pathId    The ID of the path
+     * @param chapterId The ID of the chapter
+     * @return The chapter start position for the given path
+     */
+    public @Nullable BlockPos getChapterStartCoordinates(String pathId, String chapterId) {
+        ChapterData chapter = resolveChapter(pathId, chapterId);
+        PositionData coordinates = chapter == null ? null : chapter.getCoordinates();
+        return coordinates == null ? null : coordinates.toBlockPos();
+    }
+
+    /**
+     * Gets the dimension for a configured coordinate chapter start.
+     *
+     * @param pathId    The ID of the path
+     * @param chapterId The ID of the chapter
+     * @return dimension identifier, or null when no coordinates are configured
+     */
+    public @Nullable String getChapterStartDimension(String pathId, String chapterId) {
+        ChapterData chapter = resolveChapter(pathId, chapterId);
+        if (chapter == null || chapter.getCoordinates() == null) return null;
+        return chapter.getDimension();
+    }
+
+    /**
      * Sets the chapter start position for the given path.
      *
      * @param pathId    The ID of the path
      * @param chapterId The ID of the chapter
      * @param pos       The chapter start position
+     * @param dimension The dimension containing the chapter start position
      */
-    public void setChapterStart(String pathId, String chapterId, PositionData pos) {
-        chapterStarts.put(pathId + ":" + chapterId, pos);
+    public void setChapterStart(String pathId, String chapterId, PositionData pos, String dimension) {
+        ChapterData chapter = resolveChapter(pathId, chapterId);
+        if (chapter == null) return;
+        chapter.setCoordinates(pos);
+        chapter.setDimension(dimension);
     }
 
     /**
-     * Removes the chapter start position for the given path.
+     * Removes the chapter start position for the given path when it matches the expected position.
      *
-     * @param pathId    The ID of the path
-     * @param chapterId The ID of the chapter
+     * @param pathId      The ID of the path
+     * @param chapterId   The ID of the chapter
+     * @param expectedPos Position the client believes is currently recorded
+     * @return true when the chapter start was present and removed
      */
-    public void removeChapterStart(String pathId, String chapterId) {
-        chapterStarts.remove(pathId + ":" + chapterId);
+    public boolean removeChapterStart(String pathId, String chapterId, PositionData expectedPos) {
+        ChapterData chapter = resolveChapter(pathId, chapterId);
+        PositionData recordedStart = chapter == null ? null : chapter.getCoordinates();
+        if (!expectedPos.equals(recordedStart)) return false;
+
+        chapter.setCoordinates(null);
+        chapter.setDimension(null);
+        return true;
     }
 }

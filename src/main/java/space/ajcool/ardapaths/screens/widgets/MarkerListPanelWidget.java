@@ -30,6 +30,7 @@ import java.util.function.Consumer;
  * Composite marker navigation column for the marker editor.
  */
 public class MarkerListPanelWidget implements Renderable, GuiEventListener, NarratableEntry {
+
     /**
      * Width of the marker navigation column.
      */
@@ -63,42 +64,42 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     /**
      * Icon texture for an active weather marker filter.
      */
-    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("textures/gui/cloud-icon.png");
+    private static final ResourceLocation CLOUD_ICON = ModConstants.modId("cloud-icon");
 
     /**
      * Icon texture for an inactive weather marker filter.
      */
-    private static final ResourceLocation CLOUD_ICON_OUTLINED = ModConstants.modId("textures/gui/cloud-icon-outlined.png");
+    private static final ResourceLocation CLOUD_ICON_OUTLINED = ModConstants.modId("cloud-icon-outlined");
 
     /**
      * Icon texture for an active time marker filter.
      */
-    private static final ResourceLocation MOON_ICON = ModConstants.modId("textures/gui/moon-icon.png");
+    private static final ResourceLocation MOON_ICON = ModConstants.modId("moon-icon");
 
     /**
      * Icon texture for an inactive time marker filter.
      */
-    private static final ResourceLocation MOON_ICON_OUTLINED = ModConstants.modId("textures/gui/moon-icon-outlined.png");
+    private static final ResourceLocation MOON_ICON_OUTLINED = ModConstants.modId("moon-icon-outlined");
 
     /**
      * Icon texture for an active proximity text marker filter.
      */
-    private static final ResourceLocation TEXT_ICON = ModConstants.modId("textures/gui/text-icon.png");
+    private static final ResourceLocation TEXT_ICON = ModConstants.modId("text-icon");
 
     /**
      * Icon texture for an inactive proximity text marker filter.
      */
-    private static final ResourceLocation TEXT_ICON_OUTLINED = ModConstants.modId("textures/gui/text-icon-outlined.png");
+    private static final ResourceLocation TEXT_ICON_OUTLINED = ModConstants.modId("text-icon-outlined");
 
     /**
      * Icon texture for an active miscellaneous marker action filter.
      */
-    private static final ResourceLocation GEAR_ICON = ModConstants.modId("textures/gui/gear-icon.png");
+    private static final ResourceLocation GEAR_ICON = ModConstants.modId("gear-icon");
 
     /**
      * Icon texture for an inactive miscellaneous marker action filter.
      */
-    private static final ResourceLocation GEAR_ICON_OUTLINED = ModConstants.modId("textures/gui/gear-icon-outlined.png");
+    private static final ResourceLocation GEAR_ICON_OUTLINED = ModConstants.modId("gear-icon-outlined");
 
     /**
      * Whether the marker list hides markers without selected-chapter weather data.
@@ -119,48 +120,6 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * Whether the marker list hides markers without selected-chapter action data.
      */
     private static boolean filterMisc;
-
-    /**
-     * X coordinate of the marker column.
-     */
-    @Getter
-    @Setter
-    private int x;
-
-    /**
-     * Y coordinate of the marker column.
-     */
-    @Getter
-    @Setter
-    private int y;
-
-    /**
-     * Full screen height used by the nested list widget.
-     */
-    @Getter
-    @Setter
-    private int screenHeight;
-
-    /**
-     * Bottom boundary of the scrollable marker list.
-     */
-    @Getter
-    @Setter
-    private int listBottom;
-
-    /**
-     * X coordinate for the divider separating the marker list from the form.
-     */
-    @Getter
-    @Setter
-    private int dividerX;
-
-    /**
-     * Height of the divider separating the marker list from the form.
-     */
-    @Getter
-    @Setter
-    private int dividerHeight;
 
     /**
      * Callback used when the player selects a marker for editing.
@@ -218,6 +177,48 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     private final MarkerListWidget markerList;
 
     /**
+     * X coordinate of the marker column.
+     */
+    @Getter
+    @Setter
+    private int x;
+
+    /**
+     * Y coordinate of the marker column.
+     */
+    @Getter
+    @Setter
+    private int y;
+
+    /**
+     * Full screen height used by the nested list widget.
+     */
+    @Getter
+    @Setter
+    private int screenHeight;
+
+    /**
+     * Bottom boundary of the scrollable marker list.
+     */
+    @Getter
+    @Setter
+    private int listBottom;
+
+    /**
+     * X coordinate for the divider separating the marker list from the form.
+     */
+    @Getter
+    @Setter
+    private int dividerX;
+
+    /**
+     * Height of the divider separating the marker list from the form.
+     */
+    @Getter
+    @Setter
+    private int dividerHeight;
+
+    /**
      * Rows that survived filtering in current list order.
      */
     private List<MarkerRow> visibleRows = List.of();
@@ -269,6 +270,173 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     }
 
     /**
+     * Builds the marker list header widget.
+     *
+     * @return header widget
+     */
+    private TextWidget buildHeader() {
+        return TextWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(MARKER_LIST_WIDTH)
+                .setHeight(MARKER_LIST_HEADER_HEIGHT)
+                .setMessage(Component.empty())
+                .build();
+    }
+
+    /**
+     * Builds the weather filter toggle.
+     *
+     * @return weather filter toggle
+     */
+    @SuppressWarnings("SuspiciousNameCombination")
+    private IconToggleWidget buildWeatherFilter() {
+        IconToggleWidget filter = IconToggleWidget.create()
+                .setX(filterX())
+                .setY(filterY())
+                .setWidth(MARKER_LIST_FILTER_HEIGHT)
+                .setHeight(MARKER_LIST_FILTER_HEIGHT)
+                .setActiveTexture(CLOUD_ICON)
+                .setInactiveTexture(CLOUD_ICON_OUTLINED)
+                .setActive(filterWeather)
+                .setEnabled(true)
+                .setOnChange(active -> {
+                    filterWeather = active;
+                    onFiltersChanged.run();
+                })
+                .build();
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.weather.tooltip")));
+        return filter;
+    }
+
+    /**
+     * Builds the time filter toggle.
+     *
+     * @return time filter toggle
+     */
+    @SuppressWarnings("SuspiciousNameCombination")
+    private IconToggleWidget buildTimeFilter() {
+        IconToggleWidget filter = IconToggleWidget.create()
+                .setX(filterX() + MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP)
+                .setY(filterY())
+                .setWidth(MARKER_LIST_FILTER_HEIGHT)
+                .setHeight(MARKER_LIST_FILTER_HEIGHT)
+                .setActiveTexture(MOON_ICON)
+                .setInactiveTexture(MOON_ICON_OUTLINED)
+                .setActive(filterTime)
+                .setEnabled(true)
+                .setOnChange(active -> {
+                    filterTime = active;
+                    onFiltersChanged.run();
+                })
+                .build();
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.time.tooltip")));
+        return filter;
+    }
+
+    /**
+     * Builds the proximity text filter toggle.
+     *
+     * @return proximity text filter toggle
+     */
+    @SuppressWarnings("SuspiciousNameCombination")
+    private IconToggleWidget buildProximityTextFilter() {
+        IconToggleWidget filter = IconToggleWidget.create()
+                .setX(filterX() + (MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP) * 2)
+                .setY(filterY())
+                .setWidth(MARKER_LIST_FILTER_HEIGHT)
+                .setHeight(MARKER_LIST_FILTER_HEIGHT)
+                .setActiveTexture(TEXT_ICON)
+                .setInactiveTexture(TEXT_ICON_OUTLINED)
+                .setActive(filterProximityText)
+                .setEnabled(true)
+                .setOnChange(active -> {
+                    filterProximityText = active;
+                    onFiltersChanged.run();
+                })
+                .build();
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.text.tooltip")));
+        return filter;
+    }
+
+    /**
+     * Builds the miscellaneous action filter toggle.
+     *
+     * @return miscellaneous action filter toggle
+     */
+    @SuppressWarnings("SuspiciousNameCombination")
+    private IconToggleWidget buildMiscFilter() {
+        IconToggleWidget filter = IconToggleWidget.create()
+                .setX(filterX() + (MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP) * 3)
+                .setY(filterY())
+                .setWidth(MARKER_LIST_FILTER_HEIGHT)
+                .setHeight(MARKER_LIST_FILTER_HEIGHT)
+                .setActiveTexture(GEAR_ICON)
+                .setInactiveTexture(GEAR_ICON_OUTLINED)
+                .setActive(filterMisc)
+                .setEnabled(true)
+                .setOnChange(active -> {
+                    filterMisc = active;
+                    onFiltersChanged.run();
+                })
+                .build();
+        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.misc.tooltip")));
+        return filter;
+    }
+
+    /**
+     * Builds the scrollable marker row list.
+     *
+     * @return marker row list
+     */
+    private MarkerListWidget buildMarkerList() {
+        MarkerListWidget list = new MarkerListWidget(
+                Client.mc(),
+                MARKER_LIST_WIDTH,
+                y + MARKER_LIST_HEADER_HEIGHT + MARKER_LIST_FILTER_HEIGHT + 8,
+                listBottom,
+                16
+        );
+        list.setX(x);
+        return list;
+    }
+
+    /**
+     * Updates the header for the active marker row data source.
+     *
+     * @param active whether server-provided chapter rows are being shown
+     */
+    public void setServerListActive(boolean active) {
+        if (active) {
+            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers"));
+            header.setColor(HEADER_CHAPTER_COLOR);
+            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.tooltip")));
+        } else {
+            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers"));
+            header.setColor(HEADER_LOCAL_COLOR);
+            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.tooltip")));
+        }
+    }
+
+    /**
+     * Computes the x coordinate for the first filter toggle.
+     *
+     * @return first filter x coordinate
+     */
+    private int filterX() {
+        return x + MARKER_LIST_WIDTH - (MARKER_LIST_FILTER_HEIGHT * 4) - (MARKER_LIST_FILTER_GAP * 3);
+    }
+
+    /**
+     * Computes the y coordinate shared by filter toggles.
+     *
+     * @return filter y coordinate
+     */
+    private int filterY() {
+        return y + MARKER_LIST_HEADER_HEIGHT + 2;
+    }
+
+    /**
      * Replaces the panel rows after applying the active marker filters.
      *
      * @param rows             source rows supplied by the screen
@@ -281,6 +449,146 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
         this.markerList.setMarkers(this.visibleRows.stream()
                 .map(this::toEntry)
                 .toList(), scrollToSelected);
+    }
+
+    /**
+     * Checks whether a row passes the active marker filters.
+     *
+     * @param row row data to inspect
+     * @return true when the row should be visible
+     */
+    private boolean isVisible(MarkerRow row) {
+        return row.isNotice() ||
+                noFiltersActive() ||
+                row.focused() ||
+                (filterWeather && hasWeatherData(row)) ||
+                (filterTime && hasTimeData(row)) ||
+                (filterProximityText && hasProximityMessage(row)) ||
+                (filterMisc && row.hasMiscData());
+    }
+
+    /**
+     * Converts panel row data into a rendered marker list entry.
+     *
+     * @param row row data to convert
+     * @return marker list entry
+     */
+    private MarkerListEntry toEntry(MarkerRow row) {
+        if (row.isNotice()) {
+            return MarkerListEntry.notice(row.noticeText());
+        }
+
+        return new MarkerListEntry(
+                row.pos(),
+                row.timeOfDay(),
+                hasWeatherData(row),
+                hasProximityMessage(row),
+                row.hasMiscData(),
+                row.focused(),
+                row.selected(),
+                markerTooltipLines(row),
+                onSelect,
+                onTeleport,
+                onRangeSelect,
+                onContextMenu
+        );
+    }
+
+    /**
+     * Checks whether no marker facet filters are active.
+     *
+     * @return true when all marker rows should be shown
+     */
+    private boolean noFiltersActive() {
+        return !filterWeather && !filterTime && !filterProximityText && !filterMisc;
+    }
+
+    /**
+     * Checks whether row weather data should be shown and filtered.
+     *
+     * @param row row data to inspect
+     * @return true when the row has non-default weather data
+     */
+    private boolean hasWeatherData(MarkerRow row) {
+        return row.weather() != ChapterNbtData.UNSET && WeatherTypes.fromInt(row.weather()) != WeatherTypes.DEFAULT;
+    }
+
+    /**
+     * Checks whether row time data should be shown and filtered.
+     *
+     * @param row row data to inspect
+     * @return true when the row has configured time data
+     */
+    private boolean hasTimeData(MarkerRow row) {
+        return row.timeOfDay() != ChapterNbtData.UNSET;
+    }
+
+    /**
+     * Checks whether row proximity text should be shown and filtered.
+     *
+     * @param row row data to inspect
+     * @return true when the row has proximity text
+     */
+    private boolean hasProximityMessage(MarkerRow row) {
+        return !row.proximityMessage().isEmpty();
+    }
+
+    /**
+     * Builds hover tooltip lines for marker row data.
+     *
+     * @param row row data to describe
+     * @return styled tooltip lines for marker data and actions
+     */
+    private List<Component> markerTooltipLines(MarkerRow row) {
+        List<Component> lines = new ArrayList<>();
+        MutableComponent environment = Component.empty();
+        boolean hasTime = hasTimeData(row);
+        boolean hasWeather = hasWeatherData(row);
+
+        if (hasTime) {
+            environment.append(Component.literal(TimeOfDay.format(row.timeOfDay())).withStyle(ChatFormatting.BLUE));
+        }
+
+        if (hasTime && hasWeather) {
+            environment.append(Component.literal(" - ").withStyle(ChatFormatting.GRAY));
+        }
+
+        if (hasWeather) {
+            environment.append(Component.literal(WeatherTypes.fromInt(row.weather()).getDisplayName()).withStyle(ChatFormatting.GREEN));
+        }
+
+        if (hasTime || hasWeather) {
+            lines.add(environment);
+        }
+
+        if (!row.proximityMessage().isEmpty()) {
+            lines.add(Component.literal("\"" + ellipsizeTooltipText(row.proximityMessage()) + "\"").withStyle(ChatFormatting.WHITE));
+        }
+
+        if (row.hasMiscData()) {
+            lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.misc_hint")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+
+        lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.teleport_hint")
+                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        return lines;
+    }
+
+    /**
+     * Shortens proximity text for compact marker-row tooltips.
+     *
+     * @param text proximity text to shorten
+     * @return single-line text with an ellipsis when it exceeds the preview length
+     */
+    private String ellipsizeTooltipText(String text) {
+        String flattened = text.replace('\n', ' ').trim();
+        int maxLength = 80;
+        if (flattened.length() <= maxLength) {
+            return flattened;
+        }
+
+        return flattened.substring(0, maxLength - 3).stripTrailing() + "...";
     }
 
     /**
@@ -325,23 +633,6 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
         signature = signature * 31 + (filterProximityText ? 1 : 0);
         signature = signature * 31 + (filterMisc ? 1 : 0);
         return signature;
-    }
-
-    /**
-     * Updates the header for the active marker row data source.
-     *
-     * @param active whether server-provided chapter rows are being shown
-     */
-    public void setServerListActive(boolean active) {
-        if (active) {
-            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers"));
-            header.setColor(HEADER_CHAPTER_COLOR);
-            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.tooltip")));
-        } else {
-            header.setText(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers"));
-            header.setColor(HEADER_LOCAL_COLOR);
-            header.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.tooltip")));
-        }
     }
 
     /**
@@ -420,14 +711,15 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     /**
      * Forwards mouse wheel handling to the marker list.
      *
-     * @param mouseX the mouse x coordinate
-     * @param mouseY the mouse y coordinate
-     * @param amount scroll wheel amount
+     * @param mouseX           the mouse x coordinate
+     * @param mouseY           the mouse y coordinate
+     * @param horizontalAmount horizontal scroll wheel amount
+     * @param verticalAmount   vertical scroll wheel amount
      * @return true when the list consumes the scroll
      */
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        return markerList.mouseScrolled(mouseX, mouseY, amount);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return markerList.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     /**
@@ -448,6 +740,16 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     }
 
     /**
+     * Checks whether this composite is focused.
+     *
+     * @return true when focused
+     */
+    @Override
+    public boolean isFocused() {
+        return focused;
+    }
+
+    /**
      * Updates composite focus state.
      *
      * @param focused whether the panel should be focused
@@ -456,16 +758,6 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     public void setFocused(boolean focused) {
         this.focused = focused;
         markerList.setFocused(focused);
-    }
-
-    /**
-     * Checks whether this composite is focused.
-     *
-     * @return true when focused
-     */
-    @Override
-    public boolean isFocused() {
-        return focused;
     }
 
     /**
@@ -489,297 +781,6 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     }
 
     /**
-     * Builds the marker list header widget.
-     *
-     * @return header widget
-     */
-    private TextWidget buildHeader() {
-        return TextWidget.create()
-                .setX(x)
-                .setY(y)
-                .setWidth(MARKER_LIST_WIDTH)
-                .setHeight(MARKER_LIST_HEADER_HEIGHT)
-                .setMessage(Component.empty())
-                .build();
-    }
-
-    /**
-     * Builds the weather filter toggle.
-     *
-     * @return weather filter toggle
-     */
-    @SuppressWarnings("SuspiciousNameCombination")
-    private IconToggleWidget buildWeatherFilter() {
-        IconToggleWidget filter = IconToggleWidget.create()
-                .setX(filterX())
-                .setY(filterY())
-                .setWidth(MARKER_LIST_FILTER_HEIGHT)
-                .setHeight(MARKER_LIST_FILTER_HEIGHT)
-                .setActiveTexture(CLOUD_ICON)
-                .setInactiveTexture(CLOUD_ICON_OUTLINED)
-                .setActive(filterWeather)
-                .setEnabled(true)
-                .setOnChange(active -> {
-                    filterWeather = active;
-                    onFiltersChanged.run();
-                })
-                .build();
-        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.weather.tooltip")));
-        return filter;
-    }
-
-    /**
-     * Builds the time filter toggle.
-     *
-     * @return time filter toggle
-     */
-    @SuppressWarnings("SuspiciousNameCombination")
-    private IconToggleWidget buildTimeFilter() {
-        IconToggleWidget filter = IconToggleWidget.create()
-                .setX(filterX() + MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP)
-                .setY(filterY())
-                .setWidth(MARKER_LIST_FILTER_HEIGHT)
-                .setHeight(MARKER_LIST_FILTER_HEIGHT)
-                .setActiveTexture(MOON_ICON)
-                .setInactiveTexture(MOON_ICON_OUTLINED)
-                .setActive(filterTime)
-                .setEnabled(true)
-                .setOnChange(active -> {
-                    filterTime = active;
-                    onFiltersChanged.run();
-                })
-                .build();
-        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.time.tooltip")));
-        return filter;
-    }
-
-    /**
-     * Builds the proximity text filter toggle.
-     *
-     * @return proximity text filter toggle
-     */
-    @SuppressWarnings("SuspiciousNameCombination")
-    private IconToggleWidget buildProximityTextFilter() {
-         IconToggleWidget filter = IconToggleWidget.create()
-                .setX(filterX() + (MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP) * 2)
-                .setY(filterY())
-                .setWidth(MARKER_LIST_FILTER_HEIGHT)
-                .setHeight(MARKER_LIST_FILTER_HEIGHT)
-                .setActiveTexture(TEXT_ICON)
-                .setInactiveTexture(TEXT_ICON_OUTLINED)
-                .setActive(filterProximityText)
-                .setEnabled(true)
-                .setOnChange(active -> {
-                    filterProximityText = active;
-                    onFiltersChanged.run();
-                })
-                .build();
-        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.text.tooltip")));
-        return filter;
-    }
-
-    /**
-     * Builds the miscellaneous action filter toggle.
-     *
-     * @return miscellaneous action filter toggle
-     */
-    @SuppressWarnings("SuspiciousNameCombination")
-    private IconToggleWidget buildMiscFilter() {
-        IconToggleWidget filter = IconToggleWidget.create()
-                .setX(filterX() + (MARKER_LIST_FILTER_HEIGHT + MARKER_LIST_FILTER_GAP) * 3)
-                .setY(filterY())
-                .setWidth(MARKER_LIST_FILTER_HEIGHT)
-                .setHeight(MARKER_LIST_FILTER_HEIGHT)
-                .setActiveTexture(GEAR_ICON)
-                .setInactiveTexture(GEAR_ICON_OUTLINED)
-                .setActive(filterMisc)
-                .setEnabled(true)
-                .setOnChange(active -> {
-                    filterMisc = active;
-                    onFiltersChanged.run();
-                })
-                .build();
-        filter.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.local_markers.filter.misc.tooltip")));
-        return filter;
-    }
-
-    /**
-     * Builds the scrollable marker row list.
-     *
-     * @return marker row list
-     */
-    private MarkerListWidget buildMarkerList() {
-        MarkerListWidget list = new MarkerListWidget(
-                Client.mc(),
-                MARKER_LIST_WIDTH,
-                screenHeight,
-                y + MARKER_LIST_HEADER_HEIGHT + MARKER_LIST_FILTER_HEIGHT + 8,
-                listBottom,
-                16
-        );
-        list.setLeftPos(x);
-        return list;
-    }
-
-    /**
-     * Computes the y coordinate shared by filter toggles.
-     *
-     * @return filter y coordinate
-     */
-    private int filterY() {
-        return y + MARKER_LIST_HEADER_HEIGHT + 2;
-    }
-
-    /**
-     * Computes the x coordinate for the first filter toggle.
-     *
-     * @return first filter x coordinate
-     */
-    private int filterX() {
-        return x + MARKER_LIST_WIDTH - (MARKER_LIST_FILTER_HEIGHT * 4) - (MARKER_LIST_FILTER_GAP * 3);
-    }
-
-    /**
-     * Checks whether a row passes the active marker filters.
-     *
-     * @param row row data to inspect
-     * @return true when the row should be visible
-     */
-    private boolean isVisible(MarkerRow row) {
-        return row.isNotice() ||
-                noFiltersActive() ||
-                row.focused() ||
-                (filterWeather && hasWeatherData(row)) ||
-                (filterTime && hasTimeData(row)) ||
-                (filterProximityText && hasProximityMessage(row)) ||
-                (filterMisc && row.hasMiscData());
-    }
-
-    /**
-     * Checks whether no marker facet filters are active.
-     *
-     * @return true when all marker rows should be shown
-     */
-    private boolean noFiltersActive() {
-        return !filterWeather && !filterTime && !filterProximityText && !filterMisc;
-    }
-
-    /**
-     * Converts panel row data into a rendered marker list entry.
-     *
-     * @param row row data to convert
-     * @return marker list entry
-     */
-    private MarkerListEntry toEntry(MarkerRow row) {
-        if (row.isNotice()) {
-            return MarkerListEntry.notice(row.noticeText());
-        }
-
-        return new MarkerListEntry(
-                row.pos(),
-                row.timeOfDay(),
-                hasWeatherData(row),
-                hasProximityMessage(row),
-                row.hasMiscData(),
-                row.focused(),
-                row.selected(),
-                markerTooltipLines(row),
-                onSelect,
-                onTeleport,
-                onRangeSelect,
-                onContextMenu
-        );
-    }
-
-    /**
-     * Checks whether row time data should be shown and filtered.
-     *
-     * @param row row data to inspect
-     * @return true when the row has configured time data
-     */
-    private boolean hasTimeData(MarkerRow row) {
-        return row.timeOfDay() != ChapterNbtData.UNSET;
-    }
-
-    /**
-     * Checks whether row weather data should be shown and filtered.
-     *
-     * @param row row data to inspect
-     * @return true when the row has non-default weather data
-     */
-    private boolean hasWeatherData(MarkerRow row) {
-        return row.weather() != ChapterNbtData.UNSET && WeatherTypes.fromInt(row.weather()) != WeatherTypes.DEFAULT;
-    }
-
-    /**
-     * Checks whether row proximity text should be shown and filtered.
-     *
-     * @param row row data to inspect
-     * @return true when the row has proximity text
-     */
-    private boolean hasProximityMessage(MarkerRow row) {
-        return !row.proximityMessage().isEmpty();
-    }
-
-    /**
-     * Builds hover tooltip lines for marker row data.
-     *
-     * @param row row data to describe
-     * @return styled tooltip lines for marker data and actions
-     */
-    private List<Component> markerTooltipLines(MarkerRow row) {
-        List<Component> lines = new ArrayList<>();
-        MutableComponent environment = Component.empty();
-        boolean hasTime = hasTimeData(row);
-        boolean hasWeather = hasWeatherData(row);
-
-        if (hasTime) {
-            environment.append(Component.literal(TimeOfDay.format(row.timeOfDay())).withStyle(ChatFormatting.BLUE));
-        }
-
-        if (hasTime && hasWeather) {
-            environment.append(Component.literal(" - ").withStyle(ChatFormatting.GRAY));
-        }
-
-        if (hasWeather) {
-            environment.append(Component.literal(WeatherTypes.fromInt(row.weather()).getDisplayName()).withStyle(ChatFormatting.GREEN));
-        }
-
-        if (hasTime || hasWeather) {
-            lines.add(environment);
-        }
-
-        if (!row.proximityMessage().isEmpty()) {
-            lines.add(Component.literal("\"" + ellipsizeTooltipText(row.proximityMessage()) + "\"").withStyle(ChatFormatting.WHITE));
-        }
-
-        if (row.hasMiscData()) {
-            lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.misc_hint")
-                    .withStyle(ChatFormatting.GRAY));
-        }
-
-        lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.teleport_hint")
-                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
-        return lines;
-    }
-
-    /**
-     * Shortens proximity text for compact marker-row tooltips.
-     *
-     * @param text proximity text to shorten
-     * @return single-line text with an ellipsis when it exceeds the preview length
-     */
-    private String ellipsizeTooltipText(String text) {
-        String flattened = text.replace('\n', ' ').trim();
-        int maxLength = 80;
-        if (flattened.length() <= maxLength) {
-            return flattened;
-        }
-
-        return flattened.substring(0, maxLength - 3).stripTrailing() + "...";
-    }
-
-    /**
      * Data the screen supplies for one marker-list row.
      *
      * @param pos              marker position represented by the row
@@ -791,8 +792,10 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @param selected         whether this marker is in the current multi-selection
      * @param noticeText       inert notice label, or null for marker rows
      */
-    public record MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused,
+    public record MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData,
+                            boolean focused,
                             boolean selected, Component noticeText) {
+
         /**
          * Creates a marker row with no notice label.
          *
@@ -809,12 +812,12 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
         }
 
         /**
-         * Checks whether this row is an inert notice instead of a marker.
+         * Creates an inert separator between disconnected marker chains.
          *
-         * @return true when the row renders only a notice label
+         * @return chain-break row data
          */
-        public boolean isNotice() {
-            return noticeText != null;
+        public static MarkerRow chainBreak() {
+            return notice(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.break"));
         }
 
         /**
@@ -828,12 +831,12 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
         }
 
         /**
-         * Creates an inert separator between disconnected marker chains.
+         * Checks whether this row is an inert notice instead of a marker.
          *
-         * @return chain-break row data
+         * @return true when the row renders only a notice label
          */
-        public static MarkerRow chainBreak() {
-            return notice(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.break"));
+        public boolean isNotice() {
+            return noticeText != null;
         }
     }
 }

@@ -2,6 +2,7 @@ package space.ajcool.ardapaths.core.integration;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -9,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
  * First-party bridge for optional chapter-start warp integrations.
  */
 public interface WarpService {
+
     /**
      * Resolves a named warp to a world and block position.
      *

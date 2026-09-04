@@ -5,8 +5,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.visitors.CollectFields;
 import net.minecraft.nbt.visitors.FieldSelector;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.nio.file.Path;
@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
  * Minecraft 1.20.1 implementation of backup access to vanilla chunk storage.
  */
 public class Minecraft120ChunkStorageAccess implements ChunkStorageAccess {
+
     /**
      * NBT query selecting the root chunk block entity list.
      */

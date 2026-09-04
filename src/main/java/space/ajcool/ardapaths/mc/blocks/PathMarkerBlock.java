@@ -1,12 +1,12 @@
 package space.ajcool.ardapaths.mc.blocks;
 
+import com.mojang.serialization.MapCodec;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
@@ -36,9 +36,14 @@ import space.ajcool.ardapaths.screens.Screens;
  * Players place these blocks to define waypoints and trail segments in paths.
  * Supports Ctrl+click to open the marker editor and regular clicks to link markers.
  */
-@SuppressWarnings("deprecation")
 @Slf4j(topic = "ardapaths")
 public class PathMarkerBlock extends BaseEntityBlock {
+
+    /**
+     * Codec used by vanilla block serialization.
+     */
+    public static final MapCodec<PathMarkerBlock> CODEC = simpleCodec(PathMarkerBlock::new);
+
     /**
      * The block position of the currently selected origin marker for linking paths,
      * or null if no marker is currently selected.
@@ -55,19 +60,28 @@ public class PathMarkerBlock extends BaseEntityBlock {
     }
 
     /**
+     * Gets the vanilla block codec for this block type.
+     *
+     * @return the path marker block codec
+     */
+    @Override
+    protected @NotNull MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
+    /**
      * Handles the player clicking on a Path Marker block.
      * Validates permissions and delegates to {@link #validateOnUse} if the player has edit permission.
      *
-     * @param blockState      the state of the block
-     * @param level           the world
-     * @param blockPos        the position of the block
-     * @param player          the player who clicked
-     * @param interactionHand the hand used
-     * @param blockHitResult  the hit result
+     * @param blockState     the state of the block
+     * @param level          the world
+     * @param blockPos       the position of the block
+     * @param player         the player who clicked
+     * @param blockHitResult the hit result
      * @return the action result (CONSUME if handled, PASS otherwise)
      */
     @Override
-    public @NotNull InteractionResult use(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult) {
+    protected @NotNull InteractionResult useWithoutItem(BlockState blockState, Level level, BlockPos blockPos, Player player, BlockHitResult blockHitResult) {
         BlockEntity selectedBlockEntity = level.getBlockEntity(blockPos);
 
         if (selectedBlockEntity == null) return InteractionResult.PASS;
@@ -130,8 +144,8 @@ public class PathMarkerBlock extends BaseEntityBlock {
                         data.setTarget(blockPos.subtract(selectedBlockPosition));
                     }
 
-                    PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getBlockPos(), pathMarker.saveWithoutMetadata());
-                    PacketRegistry.PATH_MARKER_UPDATE.send(packet);
+                    PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(pathMarker.getBlockPos(), pathMarker.saveWithoutMetadata(level.registryAccess()));
+                    PacketRegistry.PATH_MARKER_UPDATE.send(packet, null);
                     player.sendSystemMessage(message);
                     log.info("Sending Update Packet");
                 }

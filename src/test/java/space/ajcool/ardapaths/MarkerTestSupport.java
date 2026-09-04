@@ -18,6 +18,7 @@ import static org.mockito.Mockito.mock;
  * Shared fixtures for Path Marker NBT tests that avoid Minecraft registry bootstrap.
  */
 public final class MarkerTestSupport {
+
     /**
      * Gson instance used for inline config fixture JSON.
      */
@@ -56,9 +57,9 @@ public final class MarkerTestSupport {
     /**
      * Assigns a field declared on a class in the target object's hierarchy.
      *
-     * @param target object whose field should be updated
+     * @param target    object whose field should be updated
      * @param fieldName field name to find
-     * @param value value to assign to the field
+     * @param value     value to assign to the field
      * @throws ReflectiveOperationException if the field cannot be found or written
      */
     public static void setField(Object target, String fieldName, Object value) throws ReflectiveOperationException {
@@ -70,7 +71,7 @@ public final class MarkerTestSupport {
     /**
      * Finds a declared field on a class or one of its superclasses.
      *
-     * @param type class where the search starts
+     * @param type      class where the search starts
      * @param fieldName field name to find
      * @return matching field
      * @throws NoSuchFieldException if no field with the supplied name exists
@@ -96,21 +97,6 @@ public final class MarkerTestSupport {
     }
 
     /**
-     * Installs a minimal client config with the paths and chapters used by marker NBT tests.
-     */
-    public static void installClientConfig() {
-        ArdaPathsClient.CONFIG = GSON.fromJson(configJson(), ClientConfig.class);
-    }
-
-    /**
-     * Clears static config references used by marker NBT tests.
-     */
-    public static void clearConfigs() {
-        ArdaPaths.CONFIG = null;
-        ArdaPathsClient.CONFIG = null;
-    }
-
-    /**
      * Creates inline JSON for a two-path config fixture.
      *
      * @return JSON shared by client and server config DTOs
@@ -130,5 +116,20 @@ public final class MarkerTestSupport {
                   ]
                 }
                 """;
+    }
+
+    /**
+     * Installs a minimal client config with the paths and chapters used by marker NBT tests.
+     */
+    public static void installClientConfig() {
+        ArdaPathsClient.CONFIG = GSON.fromJson(configJson(), ClientConfig.class);
+    }
+
+    /**
+     * Clears static config references used by marker NBT tests.
+     */
+    public static void clearConfigs() {
+        ArdaPaths.CONFIG = null;
+        ArdaPathsClient.CONFIG = null;
     }
 }

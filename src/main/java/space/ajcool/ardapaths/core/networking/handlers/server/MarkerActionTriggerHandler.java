@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j(topic = "ardapaths")
 public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerActionTriggerPacket> {
+
     /**
      * Minimum marker action trigger range in blocks.
      */
@@ -57,7 +58,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
      * Creates the marker-action trigger packet handler.
      */
     public MarkerActionTriggerHandler() {
-        super(MarkerActionTriggerPacket.CHANNEL, MarkerActionTriggerPacket::read);
+        super(MarkerActionTriggerPacket.TYPE, MarkerActionTriggerPacket::read);
     }
 
     /**
@@ -245,8 +246,10 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
     private @Nullable InteractionHand freeNonPathfinderHand(ServerPlayer player) {
         Item pathfinder = pathfinderItem();
 
-        if (player.getMainHandItem().is(pathfinder) && player.getOffhandItem().isEmpty()) return InteractionHand.OFF_HAND;
-        if (player.getOffhandItem().is(pathfinder) && player.getMainHandItem().isEmpty()) return InteractionHand.MAIN_HAND;
+        if (player.getMainHandItem().is(pathfinder) && player.getOffhandItem().isEmpty())
+            return InteractionHand.OFF_HAND;
+        if (player.getOffhandItem().is(pathfinder) && player.getMainHandItem().isEmpty())
+            return InteractionHand.MAIN_HAND;
 
         return null;
     }
@@ -305,7 +308,7 @@ public class MarkerActionTriggerHandler extends ServerPacketHandler<MarkerAction
     private boolean storeInSlotRange(Inventory inventory, ItemStack stack, int startSlot, int endSlot) {
         for (int slot = startSlot; slot < endSlot; slot++) {
             ItemStack existing = inventory.getItem(slot);
-            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) continue;
+            if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, stack)) continue;
             if (existing.getCount() + stack.getCount() > existing.getMaxStackSize()) continue;
 
             existing.grow(stack.getCount());

@@ -3,7 +3,9 @@ package space.ajcool.ardapaths.core.networking.packets.server;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
@@ -15,24 +17,16 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
  * @param chapterId the selected chapter identifier
  */
 public record MarkerActionTriggerPacket(BlockPos markerPos, String pathId, String chapterId) implements IPacket {
+
     /**
      * Network channel used for authored marker action triggers.
      */
     public static final ResourceLocation CHANNEL = ModConstants.modId("marker_action_trigger");
 
     /**
-     * Builds this marker-action trigger into a packet buffer.
-     *
-     * @return packet buffer containing the marker position and path chapter ids
+     * Custom payload type used for typed Fabric networking.
      */
-    @Override
-    public FriendlyByteBuf build() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
-        buf.writeBlockPos(markerPos);
-        buf.writeUtf(pathId);
-        buf.writeUtf(chapterId);
-        return buf;
-    }
+    public static final CustomPacketPayload.Type<MarkerActionTriggerPacket> TYPE = new CustomPacketPayload.Type<>(CHANNEL);
 
     /**
      * Reads a marker-action trigger from a packet buffer.
@@ -45,5 +39,24 @@ public record MarkerActionTriggerPacket(BlockPos markerPos, String pathId, Strin
         String pathId = buf.readUtf();
         String chapterId = buf.readUtf();
         return new MarkerActionTriggerPacket(markerPos, pathId, chapterId);
+    }
+
+    /**
+     * Gets the custom payload type for this packet.
+     *
+     * @return this packet's payload type
+     */
+    @Override
+    public CustomPacketPayload.@NotNull Type<MarkerActionTriggerPacket> type() {
+        return TYPE;
+    }
+
+    @Override
+    public FriendlyByteBuf build() {
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(markerPos);
+        buf.writeUtf(pathId);
+        buf.writeUtf(chapterId);
+        return buf;
     }
 }

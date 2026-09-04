@@ -10,6 +10,7 @@ import space.ajcool.ardapaths.core.data.config.shared.PathData;
  * Handles loading/saving server configuration with default paths.
  */
 public class ServerConfigManager extends ConfigManager<ServerConfig> {
+
     /**
      * Constructs a ServerConfigManager and loads configuration from the given path.
      *

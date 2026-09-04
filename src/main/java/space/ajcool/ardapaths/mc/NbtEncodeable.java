@@ -1,19 +1,16 @@
 package space.ajcool.ardapaths.mc;
 
-import org.jetbrains.annotations.Nullable;
-import java.util.Optional;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.LongTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.*;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 /**
  * Interface for objects that can be serialized to and deserialized from NBT (Named Binary Tag).
  */
 public interface NbtEncodeable {
+
     /**
      * Create an empty object.
      *
@@ -55,11 +52,7 @@ public interface NbtEncodeable {
      * @return the decoded position, or empty when no position exists
      */
     static Optional<BlockPos> getBlockPos(CompoundTag nbt, String key) {
-        if (!hasCompound(nbt, key)) {
-            return Optional.empty();
-        }
-
-        return Optional.of(NbtUtils.readBlockPos(nbt.getCompound(key)));
+        return NbtUtils.readBlockPos(nbt, key);
     }
 
     /**
@@ -218,6 +211,7 @@ public interface NbtEncodeable {
      *
      * @param nbt The NBT compound
      */
+    @SuppressWarnings("unused")
     void applyNbt(CompoundTag nbt);
 
     /**

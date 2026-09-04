@@ -1,11 +1,12 @@
 package space.ajcool.ardapaths;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -34,7 +35,7 @@ import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
 import space.ajcool.ardapaths.paths.rendering.FocusPromptRenderer;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
-import com.mojang.blaze3d.platform.InputConstants;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -44,6 +45,7 @@ import java.util.Set;
  * Handles UI rendering, client-side state management, and input handling.
  */
 public class ArdaPathsClient implements ClientModInitializer {
+
     /**
      * Manager for client-side configuration, handles loading and saving config.json.
      */
@@ -108,7 +110,7 @@ public class ArdaPathsClient implements ClientModInitializer {
         {
             FocusController.renderCameraFrame();
             AutoWalker.renderCameraFrame();
-            EnvironmentController.renderFrame(context.tickDelta());
+            EnvironmentController.renderFrame(context.tickCounter().getGameTimeDeltaTicks());
         });
 
         ClientTickEvents.END_WORLD_TICK.register(TrailRenderer::render);

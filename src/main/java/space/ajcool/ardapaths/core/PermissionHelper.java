@@ -71,24 +71,6 @@ public class PermissionHelper {
     }
 
     /**
-     * Resolves the logical-server player matching the given player.
-     * In single player, client-side callers pass a client player entity, which the Fabric Permissions API
-     * cannot check; in that case the counterpart is looked up on the integrated server.
-     *
-     * @param player the player to resolve
-     * @return the matching server player, or null if none could be resolved
-     */
-    private static @Nullable ServerPlayer resolveServerPlayer(@NotNull Player player) {
-
-        if (player instanceof ServerPlayer serverPlayer) return serverPlayer;
-
-        // Dedicated servers only ever see real server players, so there is nothing else to resolve
-        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) return null;
-
-        return Client.getIntegratedServerPlayer(player);
-    }
-
-    /**
      * Checks the player's edit permission on the client side with local caching.
      * Sends a permission check packet to the server if the cached result is stale.
      *
@@ -106,13 +88,31 @@ public class PermissionHelper {
             log.debug("Refreshing permissions");
 
             lastPermissionCheckTime = currentTime;
-            PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(), response -> hasEditPermission = response.hasPermission());
+            PacketRegistry.PERMISSION_CHECK.send(new EmptyPacket(EmptyPacket.PERMISSION_CHECK_TYPE), response -> hasEditPermission = response.hasPermission());
 
             // Default to false until we get a response from the server
             return hasEditPermission != null ? hasEditPermission : false;
         }
 
         return hasEditPermission;
+    }
+
+    /**
+     * Resolves the logical-server player matching the given player.
+     * In single player, client-side callers pass a client player entity, which the Fabric Permissions API
+     * cannot check; in that case the counterpart is looked up on the integrated server.
+     *
+     * @param player the player to resolve
+     * @return the matching server player, or null if none could be resolved
+     */
+    private static @Nullable ServerPlayer resolveServerPlayer(@NotNull Player player) {
+
+        if (player instanceof ServerPlayer serverPlayer) return serverPlayer;
+
+        // Dedicated servers only ever see real server players, so there is nothing else to resolve
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) return null;
+
+        return Client.getIntegratedServerPlayer(player);
     }
 
     /**

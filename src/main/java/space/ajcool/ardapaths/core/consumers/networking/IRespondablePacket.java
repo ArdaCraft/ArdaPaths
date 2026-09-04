@@ -8,6 +8,7 @@ import java.util.UUID;
  * @param <T> concrete packet type returned by the request-id wither
  */
 public interface IRespondablePacket<T extends IRespondablePacket<T>> extends IPacket {
+
     /**
      * Placeholder request id used before a respondable packet is sent.
      */

@@ -1,5 +1,6 @@
 package space.ajcool.ardapaths.core.conversions;
 
+import net.minecraft.nbt.CompoundTag;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Fabric;
@@ -7,7 +8,6 @@ import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 
 import java.util.List;
-import net.minecraft.nbt.CompoundTag;
 
 /**
  * Handles migration of PathMarkerBlockEntity NBT data to newer formats.
@@ -52,9 +52,9 @@ public class PathMarkerBlockEntityConverter {
 
         for (PathData path : paths) {
             String legacyKey = "targetOffset-" + i;
-            if (NbtEncodeable.hasCompound(oldNbt, legacyKey)) {
+            if (oldNbt.contains(legacyKey)) {
                 CompoundTag dataCompound = new CompoundTag();
-                dataCompound.put("target", NbtEncodeable.getCompound(oldNbt, legacyKey));
+                dataCompound.put("target", oldNbt.get(legacyKey));
                 NbtEncodeable.putStringIfNotEmpty(dataCompound, "proximity_message", proximityMessage);
                 NbtEncodeable.putIntIfNonZero(dataCompound, "activation_range", activationRange);
 
@@ -100,7 +100,7 @@ public class PathMarkerBlockEntityConverter {
     /**
      * Checks whether a marker tag contains any key from the legacy flat marker format.
      *
-     * @param oldNbt marker NBT to inspect
+     * @param oldNbt    marker NBT to inspect
      * @param pathCount number of configured paths available for positional target keys
      * @return true when the tag should be migrated from the legacy format
      */
@@ -110,7 +110,7 @@ public class PathMarkerBlockEntityConverter {
         }
 
         for (int i = 0; i < pathCount; i++) {
-            if (NbtEncodeable.hasCompound(oldNbt, "targetOffset-" + i)) {
+            if (oldNbt.contains("targetOffset-" + i)) {
                 return true;
             }
         }

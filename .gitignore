@@ -119,6 +119,9 @@ review/
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
 
+# Versioned API stubs for optional integrations
+!stubs/*.jar
+
 # Ignore DevAuth tokens
 .devauth/microsoft_accounts.json
 !README.md

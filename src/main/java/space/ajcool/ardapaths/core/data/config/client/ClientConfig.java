@@ -22,6 +22,7 @@ import java.util.Map;
  * Serialized to JSON in config.json.
  */
 public class ClientConfig {
+
     /**
      * Map of server addresses to their selected path/chapter data.
      */

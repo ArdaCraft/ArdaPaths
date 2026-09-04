@@ -2,7 +2,6 @@ package space.ajcool.ardapaths.screens;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -23,7 +22,7 @@ import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.screens.layout.ScreenLayout;
-import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
+import space.ajcool.ardapaths.screens.widgets.CheckboxRow;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
@@ -38,8 +37,8 @@ import java.util.function.Supplier;
  * and adjusting animation speeds and appearance settings.
  */
 @Environment(value = EnvType.CLIENT)
-public class PathSelectionScreen extends ArdaPathsScreen
-{
+public class PathSelectionScreen extends ArdaPathsScreen {
+
     /** Horizontal gap between left and right UI columns. */
     private static final int COLUMNS_SPACING = 10;
 
@@ -58,6 +57,16 @@ public class PathSelectionScreen extends ArdaPathsScreen
     /** Vertical spacing below the title. */
     private static final int TITLE_SPACING = 20;
 
+    /** Multiplier applied to proximity message display speed. */
+
+    private final double proximityTextSpeedMultiplier;
+
+    /** Client preference controlling auto-walk speed relative to vanilla walking. */
+    private final double autoWalkSpeedFactor;
+
+    /** Duration in milliseconds that chapter titles remain visible on screen. */
+    private final float titleDisplaySpeed;
+
     /** ID of the currently selected path. */
     private String selectedPathId;
 
@@ -73,16 +82,8 @@ public class PathSelectionScreen extends ArdaPathsScreen
     /** Whether waypoint markers are displayed along the trail. */
     private boolean showTrailWaypoints;
 
-    /**  Whether the client allows followed trail markers to change time and weather.*/
+    /** Whether the client allows followed trail markers to change time and weather. */
     private boolean useDynamicEnvironment;
-    /** Multiplier applied to proximity message display speed. */
-
-    private final double proximityTextSpeedMultiplier;
-    /** Client preference controlling auto-walk speed relative to vanilla walking. */
-    private final double autoWalkSpeedFactor;
-
-    /** Duration in milliseconds that chapter titles remain visible on screen. */
-    private final float titleDisplaySpeed;
 
     /** Slider widget for adjusting proximity message display speed. */
     private AbstractSliderButton proximityTextSpeedSlider;
@@ -93,8 +94,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
     /**
      * Initializes a new path selection screen with the current player's configuration state.
      */
-    public PathSelectionScreen()
-    {
+    public PathSelectionScreen() {
         super(Component.literal(Component.translatable("ardapaths.client.configuration.screens.path_selection").getString()));
         this.selectedPathId = ArdaPathsClient.CONFIG.getSelectedPathId();
         this.selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
@@ -111,8 +111,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
      * Initializes and lays out all UI elements for the path selection screen.
      */
     @Override
-    protected void init()
-    {
+    protected void init() {
         int center = width / 2;
         int y = 0;
 
@@ -123,39 +122,39 @@ public class PathSelectionScreen extends ArdaPathsScreen
         String currentPathName = currentPath != null ? currentPath.getName() : Component.translatable("ardapaths.client.configuration.screens.generic_path").toString();
 
         this.addRenderableWidget(TextWidget.create()
-                        .setX(center - 75)
-                        .setY(y)
-                        .setWidth(150)
-                        .setHeight(20)
-                        .setMessage(Component.literal(Component.translatable("ardapaths.client.configuration.screens.path_selection.current_path_chapter",currentChapterName).getString())
-                                .append(Component.literal(Component.translatable(currentPathName).getString())
+                .setX(center - 75)
+                .setY(y)
+                .setWidth(150)
+                .setHeight(20)
+                .setMessage(Component.literal(Component.translatable("ardapaths.client.configuration.screens.path_selection.current_path_chapter", currentChapterName).getString())
+                        .append(Component.literal(Component.translatable(currentPathName).getString())
                                 .withStyle(Style.EMPTY.withColor(currentPath != null ? currentPath.getPrimaryColor().asHex() : Color.fromRgb(100, 100, 100).asHex()))))
-                        .build()
+                .build()
         );
 
-        var horizontalHalfCenterGap = COLUMNS_SPACING /2;
+        var horizontalHalfCenterGap = COLUMNS_SPACING / 2;
         var uiElementVerticalGap = UI_ELEMENT_HEIGHT + UI_ELEMENT_SPACING;
 
         this.addRenderableWidget(initializePathSelectionDropDown(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap + TITLE_SPACING));
         this.addRenderableWidget(this.initializeChapterSelectionDropDown(center + horizontalHalfCenterGap, y, currentPath, currentChapter));
-        this.addRenderableWidget(initializeReturnToChapterStartButton(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y+= uiElementVerticalGap));
-        this.addRenderableWidget(initializeReturnToPathButton(center + horizontalHalfCenterGap,y));
+        this.addRenderableWidget(initializeReturnToChapterStartButton(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
+        this.addRenderableWidget(initializeReturnToPathButton(center + horizontalHalfCenterGap, y));
 
         // Horizontal Gap
 
-        this.addRenderableWidget(initializeProximityTextToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y += uiElementVerticalGap + UI_SEPARATOR_SPACING));
+        this.addCheckboxRow(initializeProximityTextToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap + UI_SEPARATOR_SPACING));
         proximityTextSpeedSlider = this.addRenderableWidget(initializeProximityTextSpeedMultiplierSlider(center + horizontalHalfCenterGap, y));
-        this.addRenderableWidget(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y += uiElementVerticalGap));
+        this.addCheckboxRow(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         titleDisplaySpeedSlider = this.addRenderableWidget(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
 
         this.addRenderableWidget(initializeAutoWalkSpeedSlider(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
-        this.addRenderableWidget(initializeShowTrailWaypointsToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y += uiElementVerticalGap));
+        this.addCheckboxRow(initializeShowTrailWaypointsToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
 
         if (Weathers.isAvailable() || DaylightCycles.isAvailable()) {
-            this.addRenderableWidget(initializeDynamicEnvironmentToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
+            this.addCheckboxRow(initializeDynamicEnvironmentToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         }
 
-        this.addRenderableWidget(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap));
+        this.addRenderableWidget(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2), y + uiElementVerticalGap));
 
         ScreenLayout.centerVertically(this);
     }
@@ -164,14 +163,14 @@ public class PathSelectionScreen extends ArdaPathsScreen
      * Creates the dropdown for selecting which path to follow.
      *
      * @param center the x coordinate of the dropdown center
-     * @param y the y coordinate of the dropdown
+     * @param y      the y coordinate of the dropdown
      * @return the configured path selection dropdown
      */
     private @NotNull DropdownWidget<PathData> initializePathSelectionDropDown(int center, int y) {
         DropdownWidget<PathData> pathSelectionDropdown = DropdownWidget.<PathData>create()
-                .setPosition(center,y)
+                .setPosition(center, y)
                 .setSize(UI_ELEMENT_WIDTH, UI_ELEMENT_HEIGHT)
-                .setTitle(Component.translatable( "ardapaths.client.configuration.screens.select_path_follow"))
+                .setTitle(Component.translatable("ardapaths.client.configuration.screens.select_path_follow"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(item ->
                 {
@@ -181,8 +180,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
                 .setSelected(ArdaPathsClient.CONFIG.getSelectedPath())
                 .setOnSelect(path ->
                 {
-                    if (!path.getId().equalsIgnoreCase(selectedPathId))
-                    {
+                    if (!path.getId().equalsIgnoreCase(selectedPathId)) {
                         TrailRenderer.clearTrails();
                     }
 
@@ -190,7 +188,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
                     ArdaPathsClient.lastVisitedTrailNodeData = null;
 
                     selectedPathId = path.getId();
-                    selectedChapterId = path.getChapterIds().get(0);
+                    selectedChapterId = path.getChapterIds().getFirst();
 
                     Paths.setSelectedPath(selectedPathId);
                     Paths.gotoChapter(selectedChapterId, false);
@@ -206,9 +204,9 @@ public class PathSelectionScreen extends ArdaPathsScreen
     /**
      * Creates the dropdown for selecting which chapter to follow within the current path.
      *
-     * @param center the x coordinate of the dropdown center
-     * @param y the y coordinate of the dropdown
-     * @param currentPath the path data for populating available chapters
+     * @param center         the x coordinate of the dropdown center
+     * @param y              the y coordinate of the dropdown
+     * @param currentPath    the path data for populating available chapters
      * @param currentChapter the currently selected chapter
      * @return the configured chapter selection dropdown
      */
@@ -224,7 +222,8 @@ public class PathSelectionScreen extends ArdaPathsScreen
                 .setOptions(chapterData)
                 .setOptionDisplay(item ->
                 {
-                    if (item == null) return Component.translatable("ardapaths.client.configuration.screens.no_chapter");
+                    if (item == null)
+                        return Component.translatable("ardapaths.client.configuration.screens.no_chapter");
                     return Component.literal(item.getName());
                 })
                 .setSelected(currentChapter)
@@ -243,10 +242,39 @@ public class PathSelectionScreen extends ArdaPathsScreen
     }
 
     /**
+     * Creates the button to teleport the player to the start of the current chapter.
+     *
+     * @param center the x coordinate of the button center
+     * @param y      the y coordinate of the button
+     * @return the configured return to chapter start button
+     */
+    private @NotNull Button initializeReturnToChapterStartButton(int center, int y) {
+
+        Button returnChapterStartButton = new Button(
+                center, y,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
+                Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start").getString()),
+                button ->
+                {
+                    this.onClose();
+                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty()) {
+                        ProximityRenderer.clear();
+                        Paths.gotoChapter(selectedChapterId);
+                    }
+                },
+                Supplier::get
+        );
+        returnChapterStartButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start_tooltip")));
+
+        return returnChapterStartButton;
+    }
+
+    /**
      * Creates the button to teleport the player to the start of the current path.
      *
      * @param center the x coordinate of the button center
-     * @param y the y coordinate of the button
+     * @param y      the y coordinate of the button
      * @return the configured return to path button
      */
     private @NotNull Button initializeReturnToPathButton(int center, int y) {
@@ -265,95 +293,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
         );
         returnToPathButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_path_tooltip")));
 
-        return  returnToPathButton;
-    }
-
-    /**
-     * Creates the button to teleport the player to the start of the current chapter.
-     *
-     * @param center the x coordinate of the button center
-     * @param y the y coordinate of the button
-     * @return the configured return to chapter start button
-     */
-    private @NotNull Button initializeReturnToChapterStartButton(int center, int y) {
-
-        Button returnChapterStartButton = new Button(
-                center, y,
-                UI_ELEMENT_WIDTH,
-                UI_ELEMENT_HEIGHT,
-                Component.literal(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start").getString()),
-                button ->
-                {
-                    this.onClose();
-                    if (!selectedPathId.isEmpty() && !selectedChapterId.isEmpty())
-                    {
-                        ProximityRenderer.clear();
-                        Paths.gotoChapter(selectedChapterId);
-                    }
-                },
-                Supplier::get
-        );
-        returnChapterStartButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_chapter_start_tooltip")));
-
-        return returnChapterStartButton;
-    }
-
-    /**
-     * Creates the button to open the proximity message journal.
-     *
-     * @param x the x coordinate of the button
-     * @param y the y coordinate of the button
-     * @return the configured journal button
-     */
-    private @NotNull Button initializeJournalButton(int x, int y) {
-
-        Button journalButton = new Button(
-                x, y,
-                UI_ELEMENT_WIDTH,
-                UI_ELEMENT_HEIGHT,
-                Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()),
-                button ->
-                {
-                    this.onClose();
-                    if (this.minecraft != null)
-                        this.minecraft.setScreen(new JournalScreen());
-                },
-                Supplier::get
-        );
-        journalButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.journal.screen.title.tooltip")));
-        journalButton.active = !Journal.getEntries().isEmpty();
-
-        return journalButton;
-    }
-
-    /**
-     * Creates the checkbox to toggle chapter title display.
-     *
-     * @param x the x coordinate of the checkbox
-     * @param y the y coordinate of the checkbox
-     * @return the configured chapter title display toggle
-     */
-    private @NotNull CheckboxWidget initializeChapterTitleDisplayToggle(int x, int y) {
-
-        CheckboxWidget chapterTitleDisplayToggle = CheckboxWidget.create()
-                .setX(x)
-                .setY(y)
-                .setWidth(UI_ELEMENT_WIDTH)
-                .setHeight(UI_ELEMENT_HEIGHT)
-                .setText(Component.translatable("ardapaths.client.configuration.screens.chapter_titles", (showChapterTitles ? Component.translatable("ardapaths.generic.on"):Component.translatable("ardapaths.generic.off"))))
-                .setChecked(showChapterTitles)
-                .setEnabled(true)
-                .setOnChange(checked -> {
-                    showChapterTitles = checked;
-                    titleDisplaySpeedSlider.active = checked;
-                    Paths.showChapterTitles(showChapterTitles);
-                    ProximityRenderer.clear();
-                })
-                .build();
-
-        chapterTitleDisplayToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.chapter_titles_tooltip")));
-
-        return chapterTitleDisplayToggle;
+        return returnToPathButton;
     }
 
     /**
@@ -363,14 +303,14 @@ public class PathSelectionScreen extends ArdaPathsScreen
      * @param y the y coordinate of the checkbox
      * @return the configured proximity text toggle
      */
-    private @NotNull CheckboxWidget initializeProximityTextToggle(int x, int y) {
+    private @NotNull CheckboxRow initializeProximityTextToggle(int x, int y) {
 
-        CheckboxWidget proximityTextToggle = CheckboxWidget.create()
+        return CheckboxRow.create()
                 .setX(x)
                 .setY(y)
                 .setWidth(UI_ELEMENT_WIDTH)
                 .setHeight(UI_ELEMENT_HEIGHT)
-                .setText(Component.translatable("ardapaths.client.configuration.screens.proximity_text", (showProximityMessages ? Component.translatable("ardapaths.generic.on"):Component.translatable("ardapaths.generic.off"))))
+                .setText(Component.translatable("ardapaths.client.configuration.screens.proximity_text"))
                 .setChecked(showProximityMessages)
                 .setEnabled(true)
                 .setOnChange(checked -> {
@@ -379,75 +319,15 @@ public class PathSelectionScreen extends ArdaPathsScreen
                     Paths.showProximityMessages(showProximityMessages);
                     ProximityRenderer.clear();
                 })
+                .setTooltip(Component.translatable("ardapaths.client.configuration.screens.proximity_text_tooltip"))
                 .build();
-
-        proximityTextToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.proximity_text_tooltip")));
-
-        return proximityTextToggle;
-    }
-
-    /**
-     * Creates the checkbox to toggle trail waypoint display.
-     *
-     * @param x the x coordinate of the checkbox
-     * @param y the y coordinate of the checkbox
-     * @return the configured trail waypoint toggle
-     */
-    private @NotNull CheckboxWidget initializeShowTrailWaypointsToggle(int x, int y) {
-
-        CheckboxWidget trailWaypointToggle = CheckboxWidget.create()
-                .setX(x)
-                .setY(y)
-                .setWidth(UI_ELEMENT_WIDTH * 2 +COLUMNS_SPACING)
-                .setHeight(UI_ELEMENT_HEIGHT)
-                .setText(Component.translatable("ardapaths.client.configuration.screens.trail_waypoints", (showTrailWaypoints ? Component.translatable("ardapaths.generic.on"):Component.translatable("ardapaths.generic.off"))))
-                .setChecked(showTrailWaypoints)
-                .setEnabled(true)
-                .setOnChange(checked -> {
-                    showTrailWaypoints = checked;
-                    Paths.showTrailWaypoints(showTrailWaypoints);
-                    ProximityRenderer.clear();
-                })
-                .build();
-
-        trailWaypointToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.trail_waypoints.tooltip")));
-
-        return trailWaypointToggle;
-    }
-
-    /**
-     * Creates the toggle used to opt into dynamic time and weather changes from trail markers.
-     *
-     * @param x      the left edge of the checkbox row
-     * @param y      the checkbox y coordinate
-     * @return the configured dynamic environment toggle
-     */
-    private @NotNull CheckboxWidget initializeDynamicEnvironmentToggle(int x, int y) {
-
-        CheckboxWidget dynamicEnvironmentToggle = CheckboxWidget.create()
-                .setX(x)
-                .setY(y)
-                .setWidth(UI_ELEMENT_WIDTH * 2 +COLUMNS_SPACING)
-                .setHeight(UI_ELEMENT_HEIGHT)
-                .setText(Component.translatable("ardapaths.client.configuration.screens.dynamic_environment"))
-                .setChecked(useDynamicEnvironment)
-                .setEnabled(true)
-                .setOnChange(checked -> {
-                    useDynamicEnvironment = checked;
-                    Paths.useDynamicEnvironment(useDynamicEnvironment);
-                })
-                .build();
-
-        dynamicEnvironmentToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.dynamic_environment_tooltip")));
-
-        return dynamicEnvironmentToggle;
     }
 
     /**
      * Creates the slider for adjusting proximity message display speed.
      *
      * @param center the x coordinate of the slider center
-     * @param y the y coordinate of the slider
+     * @param y      the y coordinate of the slider
      * @return the configured proximity text speed slider
      */
     private @NotNull AbstractSliderButton initializeProximityTextSpeedMultiplierSlider(int center, int y) {
@@ -481,10 +361,37 @@ public class PathSelectionScreen extends ArdaPathsScreen
     }
 
     /**
+     * Creates the checkbox to toggle chapter title display.
+     *
+     * @param x the x coordinate of the checkbox
+     * @param y the y coordinate of the checkbox
+     * @return the configured chapter title display toggle
+     */
+    private @NotNull CheckboxRow initializeChapterTitleDisplayToggle(int x, int y) {
+
+        return CheckboxRow.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(UI_ELEMENT_WIDTH)
+                .setHeight(UI_ELEMENT_HEIGHT)
+                .setText(Component.translatable("ardapaths.client.configuration.screens.chapter_titles"))
+                .setChecked(showChapterTitles)
+                .setEnabled(true)
+                .setOnChange(checked -> {
+                    showChapterTitles = checked;
+                    titleDisplaySpeedSlider.active = checked;
+                    Paths.showChapterTitles(showChapterTitles);
+                    ProximityRenderer.clear();
+                })
+                .setTooltip(Component.translatable("ardapaths.client.configuration.screens.chapter_titles_tooltip"))
+                .build();
+    }
+
+    /**
      * Creates the slider for adjusting chapter title display duration.
      *
      * @param center the x coordinate of the slider center
-     * @param y the y coordinate of the slider
+     * @param y      the y coordinate of the slider
      * @return the configured title display speed slider
      */
     private @NotNull AbstractSliderButton initializeTitleDisplaySpeedSlider(int center, int y) {
@@ -502,14 +409,14 @@ public class PathSelectionScreen extends ArdaPathsScreen
 
             @Override
             protected void updateMessage() {
-                var seconds = (int)(1.0 + this.value * 4.0);
+                var seconds = (int) (1.0 + this.value * 4.0);
                 this.setMessage(Component.literal(seconds + "s"));
             }
 
             @Override
             protected void applyValue() {
 
-                float seconds = (float)(1.0 + this.value * 4.0);
+                float seconds = (float) (1.0 + this.value * 4.0);
                 Paths.setChapterTitleDisplaySpeed(seconds * 1000);
             }
         };
@@ -533,7 +440,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
 
         AbstractSliderButton sliderWidget = new AbstractSliderButton(
                 center, y,
-                UI_ELEMENT_WIDTH * 2 +COLUMNS_SPACING,
+                UI_ELEMENT_WIDTH * 2 + COLUMNS_SPACING,
                 UI_ELEMENT_HEIGHT,
                 Component.literal(Component.translatable("ardapaths.client.configuration.screens.auto_walk_speed").getString()),
                 autoWalkSpeedClamped
@@ -541,7 +448,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
 
             @Override
             protected void updateMessage() {
-                int percent = (int)Math.round(25.0D + this.value * 150.0D);
+                int percent = (int) Math.round(25.0D + this.value * 150.0D);
                 this.setMessage(Component.literal(percent + "%"));
             }
 
@@ -557,18 +464,82 @@ public class PathSelectionScreen extends ArdaPathsScreen
     }
 
     /**
-     * Renders the screen background and all UI elements.
+     * Creates the checkbox to toggle trail waypoint display.
      *
-     * @param context the draw context for rendering
-     * @param mouseX the current mouse x coordinate
-     * @param mouseY the current mouse y coordinate
-     * @param delta the partial tick delta for animation
+     * @param x the x coordinate of the checkbox
+     * @param y the y coordinate of the checkbox
+     * @return the configured trail waypoint toggle
      */
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta)
-    {
+    private @NotNull CheckboxRow initializeShowTrailWaypointsToggle(int x, int y) {
 
-        this.renderModBackground(context);
-        super.render(context, mouseX, mouseY, delta);
+        return CheckboxRow.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(UI_ELEMENT_WIDTH * 2 + COLUMNS_SPACING)
+                .setHeight(UI_ELEMENT_HEIGHT)
+                .setText(Component.translatable("ardapaths.client.configuration.screens.trail_waypoints"))
+                .setChecked(showTrailWaypoints)
+                .setEnabled(true)
+                .setOnChange(checked -> {
+                    showTrailWaypoints = checked;
+                    Paths.showTrailWaypoints(showTrailWaypoints);
+                    ProximityRenderer.clear();
+                })
+                .setTooltip(Component.translatable("ardapaths.client.configuration.screens.trail_waypoints.tooltip"))
+                .build();
     }
+
+    /**
+     * Creates the toggle used to opt into dynamic time and weather changes from trail markers.
+     *
+     * @param x the left edge of the checkbox row
+     * @param y the checkbox y coordinate
+     * @return the configured dynamic environment toggle
+     */
+    private @NotNull CheckboxRow initializeDynamicEnvironmentToggle(int x, int y) {
+
+        return CheckboxRow.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(UI_ELEMENT_WIDTH * 2 + COLUMNS_SPACING)
+                .setHeight(UI_ELEMENT_HEIGHT)
+                .setText(Component.translatable("ardapaths.client.configuration.screens.dynamic_environment"))
+                .setChecked(useDynamicEnvironment)
+                .setEnabled(true)
+                .setOnChange(checked -> {
+                    useDynamicEnvironment = checked;
+                    Paths.useDynamicEnvironment(useDynamicEnvironment);
+                })
+                .setTooltip(Component.translatable("ardapaths.client.configuration.screens.dynamic_environment_tooltip"))
+                .build();
+    }
+
+    /**
+     * Creates the button to open the proximity message journal.
+     *
+     * @param x the x coordinate of the button
+     * @param y the y coordinate of the button
+     * @return the configured journal button
+     */
+    private @NotNull Button initializeJournalButton(int x, int y) {
+
+        Button journalButton = new Button(
+                x, y,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
+                Component.literal(Component.translatable("ardapaths.client.journal.screen.title").getString()),
+                button ->
+                {
+                    this.onClose();
+                    if (this.minecraft != null)
+                        this.minecraft.setScreen(new JournalScreen());
+                },
+                Supplier::get
+        );
+        journalButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.journal.screen.title.tooltip")));
+        journalButton.active = !Journal.getEntries().isEmpty();
+
+        return journalButton;
+    }
+
 }

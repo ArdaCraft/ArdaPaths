@@ -1,55 +1,34 @@
 package space.ajcool.ardapaths.screens.layout;
 
-import java.util.Collection;
-import java.util.List;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Stateless helpers for measuring and repositioning screen widget groups.
  */
 public final class ScreenLayout {
+
     /**
      * Prevents construction of this utility class.
      */
-    private ScreenLayout()
-    {
+    private ScreenLayout() {
     }
 
     /**
-     * Measures the vertical span occupied by a collection of widgets.
+     * Vertically centers all clickable widgets currently attached to a screen.
      *
-     * @param widgets the widgets to measure
-     * @return the distance between the highest top edge and lowest bottom edge, or zero when empty
+     * @param screen the screen whose clickable widgets should be repositioned
      */
-    public static int contentHeight(Collection<? extends AbstractWidget> widgets)
-    {
-        if (widgets.isEmpty()) {
-            return 0;
-        }
+    public static void centerVertically(Screen screen) {
+        List<AbstractWidget> widgets = screen.children().stream()
+                .filter(AbstractWidget.class::isInstance)
+                .map(AbstractWidget.class::cast)
+                .toList();
 
-        int minTop = Integer.MAX_VALUE;
-        int maxBottom = Integer.MIN_VALUE;
-        for (AbstractWidget widget : widgets) {
-            minTop = Math.min(minTop, widget.getY());
-            maxBottom = Math.max(maxBottom, widget.getY() + widget.getHeight());
-        }
-
-        return maxBottom - minTop;
-    }
-
-    /**
-     * Calculates the vertical offset needed to center a bounded content block.
-     *
-     * @param minTop       the top edge of the content block
-     * @param maxBottom    the bottom edge of the content block
-     * @param screenHeight the height of the containing screen
-     * @return the offset to add to each y coordinate in the content block
-     */
-    public static int verticalCenterOffset(int minTop, int maxBottom, int screenHeight)
-    {
-        int contentHeight = maxBottom - minTop;
-        return (screenHeight - contentHeight) / 2 - minTop;
+        centerVertically(widgets, screen.height);
     }
 
     /**
@@ -58,8 +37,7 @@ public final class ScreenLayout {
      * @param widgets      the widgets to reposition
      * @param screenHeight the height of the containing screen
      */
-    public static void centerVertically(Collection<? extends AbstractWidget> widgets, int screenHeight)
-    {
+    public static void centerVertically(Collection<? extends AbstractWidget> widgets, int screenHeight) {
         if (widgets.isEmpty()) {
             return;
         }
@@ -76,17 +54,36 @@ public final class ScreenLayout {
     }
 
     /**
-     * Vertically centers all clickable widgets currently attached to a screen.
+     * Calculates the vertical offset needed to center a bounded content block.
      *
-     * @param screen the screen whose clickable widgets should be repositioned
+     * @param minTop       the top edge of the content block
+     * @param maxBottom    the bottom edge of the content block
+     * @param screenHeight the height of the containing screen
+     * @return the offset to add to each y coordinate in the content block
      */
-    public static void centerVertically(Screen screen)
-    {
-        List<AbstractWidget> widgets = screen.children().stream()
-                .filter(AbstractWidget.class::isInstance)
-                .map(AbstractWidget.class::cast)
-                .toList();
+    public static int verticalCenterOffset(int minTop, int maxBottom, int screenHeight) {
+        int contentHeight = maxBottom - minTop;
+        return (screenHeight - contentHeight) / 2 - minTop;
+    }
 
-        centerVertically(widgets, screen.height);
+    /**
+     * Measures the vertical span occupied by a collection of widgets.
+     *
+     * @param widgets the widgets to measure
+     * @return the distance between the highest top edge and lowest bottom edge, or zero when empty
+     */
+    public static int contentHeight(Collection<? extends AbstractWidget> widgets) {
+        if (widgets.isEmpty()) {
+            return 0;
+        }
+
+        int minTop = Integer.MAX_VALUE;
+        int maxBottom = Integer.MIN_VALUE;
+        for (AbstractWidget widget : widgets) {
+            minTop = Math.min(minTop, widget.getY());
+            maxBottom = Math.max(maxBottom, widget.getY() + widget.getHeight());
+        }
+
+        return maxBottom - minTop;
     }
 }

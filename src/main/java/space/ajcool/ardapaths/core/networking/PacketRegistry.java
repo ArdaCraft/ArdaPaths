@@ -2,19 +2,21 @@ package space.ajcool.ardapaths.core.networking;
 
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Fabric;
-import space.ajcool.ardapaths.core.ModConstants;
+import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 import space.ajcool.ardapaths.core.consumers.networking.IServerPacketHandler;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
 import space.ajcool.ardapaths.core.data.Json;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.handlers.server.*;
-import space.ajcool.ardapaths.core.networking.packets.client.PathDataResponsePacket;
+import space.ajcool.ardapaths.core.networking.packets.client.PathDataSyncPacket;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -25,10 +27,6 @@ import java.util.List;
  * Handlers are registered statically during class initialization and can be accessed as public constants.
  */
 public class PacketRegistry {
-    /**
-     * Server-to-client channel used to push path data after server-side restore.
-     */
-    private static final ResourceLocation PATH_DATA_SYNC_CHANNEL = ModConstants.modId("path_data_sync");
 
     /**
      * Handler for player teleport requests (client to server).
@@ -119,16 +117,40 @@ public class PacketRegistry {
      * Registers a packet handler on both server and client sides if applicable.
      * For respondable handlers, also registers the response channel on the client.
      *
-     * @param <T> the type of server packet handler
+     * @param <T>     the type of server packet handler
      * @param handler the handler to register
      * @return the handler instance
      */
     private static <T extends IServerPacketHandler<?>> T register(T handler) {
-        ServerPlayNetworking.registerGlobalReceiver(handler.getChannelId(), handler::handle);
+        registerServerPayload(handler);
         if (Fabric.isClient() && handler instanceof RespondablePacketHandler<?, ?> responseHandler) {
-            ClientPlayNetworking.registerGlobalReceiver(responseHandler.getResponseChannelId(), responseHandler::handle);
+            registerClientPayload(responseHandler);
         }
         return handler;
+    }
+
+    /**
+     * Registers a client-to-server payload type and receiver.
+     *
+     * @param handler handler for the payload
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerServerPayload(IServerPacketHandler<?> handler) {
+        PayloadTypeRegistry.playC2S().register((CustomPacketPayload.Type) handler.getType(), (StreamCodec) handler.getCodec());
+        ServerPlayNetworking.registerGlobalReceiver((CustomPacketPayload.Type) handler.getType(),
+                (packet, context) -> ((IServerPacketHandler) handler).receive((IPacket) packet, context));
+    }
+
+    /**
+     * Registers a server-to-client response payload type and receiver.
+     *
+     * @param handler respondable handler owning the response channel
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerClientPayload(RespondablePacketHandler<?, ?> handler) {
+        PayloadTypeRegistry.playS2C().register((CustomPacketPayload.Type) handler.getResponseType(), (StreamCodec) handler.getResponseCodec());
+        ClientPlayNetworking.registerGlobalReceiver((CustomPacketPayload.Type) handler.getResponseType(),
+                (packet, context) -> handler.receive((IPacket) packet, context));
     }
 
     /**
@@ -142,34 +164,33 @@ public class PacketRegistry {
     }
 
     /**
+     * Registers the client receiver for server-pushed path data.
+     */
+    @SuppressWarnings("resource")
+    private static void registerPathDataSyncClient() {
+        PayloadTypeRegistry.playS2C().register(PathDataSyncPacket.TYPE, IPacket.codec(PathDataSyncPacket::read));
+        ClientPlayNetworking.registerGlobalReceiver(PathDataSyncPacket.TYPE, (packet, context) -> context.client().execute(() -> {
+            Type listType = new TypeToken<ArrayList<PathData>>() {
+            }.getType();
+
+            List<PathData> paths = Json.fromJson(packet.json(), listType);
+            if (paths != null) {
+                ArdaPathsClient.CONFIG_MANAGER.onPathData(paths);
+            }
+        }));
+    }
+
+    /**
      * Sends the current server path data to every connected client.
      *
      * @param server the Minecraft server instance
      */
     public static void syncPathDataToClients(MinecraftServer server) {
         String json = Json.toJson(ArdaPaths.CONFIG.getPaths());
-        PathDataResponsePacket packet = new PathDataResponsePacket(json);
+        PathDataSyncPacket packet = new PathDataSyncPacket(json);
 
         for (var player : server.getPlayerList().getPlayers()) {
-            ServerPlayNetworking.send(player, PATH_DATA_SYNC_CHANNEL, packet.build());
+            ServerPlayNetworking.send(player, packet);
         }
-    }
-
-    /**
-     * Registers the client receiver for server-pushed path data.
-     */
-    private static void registerPathDataSyncClient() {
-        ClientPlayNetworking.registerGlobalReceiver(PATH_DATA_SYNC_CHANNEL, (client, handler, buf, sender) -> {
-            PathDataResponsePacket packet = PathDataResponsePacket.read(buf);
-            client.execute(() -> {
-                Type listType = new TypeToken<ArrayList<PathData>>() {
-                }.getType();
-
-                List<PathData> paths = Json.fromJson(packet.json(), listType);
-                if (paths != null) {
-                    ArdaPathsClient.CONFIG_MANAGER.onPathData(paths);
-                }
-            });
-        });
     }
 }

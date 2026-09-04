@@ -6,6 +6,7 @@ import space.ajcool.ardapaths.screens.MarkerEditScreen;
  * One mountable marker editor tab section.
  */
 public interface MarkerEditorTab {
+
     /**
      * Builds this tab's widgets into the marker edit screen.
      *
@@ -44,6 +45,7 @@ public interface MarkerEditorTab {
     /**
      * Updates tab-owned widgets that need a per-tick hook.
      */
+    @SuppressWarnings("EmptyMethod")
     default void tick() {
     }
 }

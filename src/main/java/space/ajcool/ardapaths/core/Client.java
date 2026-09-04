@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 @Environment(EnvType.CLIENT)
 @UtilityClass
 public class Client {
+
     /**
      * @return The client's player, or null if not available
      */
@@ -56,7 +57,7 @@ public class Client {
      * @return The player's UUID as a string, or an empty string if not available
      */
     public static String getUuidString() {
-        return mc().getUser().getUuid();
+        return mc().getUser().getProfileId().toString();
     }
 
     /**

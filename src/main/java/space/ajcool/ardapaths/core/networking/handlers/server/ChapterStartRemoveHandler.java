@@ -6,18 +6,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterStartRemovePacket;
 
 /**
  * Handles the removal of a chapter start position from the server configuration.
  * Processes incoming {@link ChapterStartRemovePacket} from clients and updates the server-side config.
  */
-public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartRemovePacket>
-{
-    public ChapterStartRemoveHandler()
-    {
-        super(ChapterStartRemovePacket.CHANNEL, ChapterStartRemovePacket::read);
+public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartRemovePacket> {
+
+    public ChapterStartRemoveHandler() {
+        super(ChapterStartRemovePacket.TYPE, ChapterStartRemovePacket::read);
     }
 
     /**
@@ -31,14 +30,11 @@ public class ChapterStartRemoveHandler extends ServerPacketHandler<ChapterStartR
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartRemovePacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterStartRemovePacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
-        PositionData recordedStart = ArdaPaths.CONFIG.getChapterStarts().get(pathId + ":" + chapterId);
         PositionData requestedPosition = PositionData.fromBlockPos(packet.position());
-        if (requestedPosition.equals(recordedStart)) {
-            ArdaPaths.CONFIG.removeChapterStart(pathId, chapterId);
+        if (ArdaPaths.CONFIG.removeChapterStart(pathId, chapterId, requestedPosition)) {
             ArdaPaths.CONFIG_MANAGER.save();
         }
     }

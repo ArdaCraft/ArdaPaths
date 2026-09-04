@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j(topic = "ardapaths")
 public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkClearPacket, MarkerBulkClearResponsePacket> {
+
     /**
      * Maximum number of markers accepted in one bulk-clear request.
      */
@@ -37,7 +38,7 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * Constructs the handler and its request and response channels.
      */
     public MarkerBulkClearHandler() {
-        super(MarkerBulkClearPacket.CHANNEL, MarkerBulkClearPacket::read, MarkerBulkClearResponsePacket.CHANNEL, MarkerBulkClearResponsePacket::read);
+        super(MarkerBulkClearPacket.TYPE, MarkerBulkClearPacket::read, MarkerBulkClearResponsePacket.TYPE, MarkerBulkClearResponsePacket::read);
     }
 
     /**
@@ -79,13 +80,14 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
     }
 
     /**
-     * Creates an error response when asynchronous marker work fails before producing a normal response.
+     * Creates a response packet.
      *
-     * @return invalid-data response packet
+     * @param status       response status
+     * @param updatedCount number of updated markers
+     * @return response packet
      */
-    @Override
-    protected MarkerBulkClearResponsePacket errorResponse() {
-        return response(TimeSpreadStatus.INVALID_DATA, 0);
+    private MarkerBulkClearResponsePacket response(TimeSpreadStatus status, int updatedCount) {
+        return new MarkerBulkClearResponsePacket(status, updatedCount);
     }
 
     /**
@@ -155,14 +157,13 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
     }
 
     /**
-     * Creates a response packet.
+     * Creates an error response when asynchronous marker work fails before producing a normal response.
      *
-     * @param status       response status
-     * @param updatedCount number of updated markers
-     * @return response packet
+     * @return invalid-data response packet
      */
-    private MarkerBulkClearResponsePacket response(TimeSpreadStatus status, int updatedCount) {
-        return new MarkerBulkClearResponsePacket(status, updatedCount);
+    @Override
+    protected MarkerBulkClearResponsePacket errorResponse() {
+        return response(TimeSpreadStatus.INVALID_DATA, 0);
     }
 
     /**
@@ -172,5 +173,6 @@ public class MarkerBulkClearHandler extends RespondablePacketHandler<MarkerBulkC
      * @param updatedCount number of markers updated in the batch
      */
     private record BatchClearResult(boolean ok, int updatedCount) {
+
     }
 }

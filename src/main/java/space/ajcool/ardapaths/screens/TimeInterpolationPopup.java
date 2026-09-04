@@ -1,5 +1,10 @@
 package space.ajcool.ardapaths.screens;
 
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.data.MarkerId;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
@@ -7,16 +12,12 @@ import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.function.Consumer;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 
 /**
  * Modal screen for choosing the endpoint markers and times used by server-side interpolation.
  */
 public class TimeInterpolationPopup extends ArdaPathsScreen {
+
     /**
      * Width of text input controls.
      */
@@ -151,19 +152,6 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     }
 
     /**
-     * Validates a required time-of-day value.
-     *
-     * @param text input text
-     * @throws TextValidationError when the value is blank or malformed
-     */
-    private void validateRequiredTime(String text) throws TextValidationError {
-        int parsed = TimeOfDay.parse(text);
-        if (parsed == TimeOfDay.UNSET) {
-            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.time_required").getString());
-        }
-    }
-
-    /**
      * Validates fields, sends endpoint data to the callback, and closes the popup.
      */
     private void confirm() {
@@ -196,7 +184,20 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     }
 
     /**
-     * Renders the modal background and contents.
+     * Validates a required time-of-day value.
+     *
+     * @param text input text
+     * @throws TextValidationError when the value is blank or malformed
+     */
+    private void validateRequiredTime(String text) throws TextValidationError {
+        int parsed = TimeOfDay.parse(text);
+        if (parsed == TimeOfDay.UNSET) {
+            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.time_required").getString());
+        }
+    }
+
+    /**
+     * Renders the modal title after the blur pass has completed.
      *
      * @param context draw context
      * @param mouseX  current mouse x coordinate
@@ -204,10 +205,8 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
      * @param delta   partial tick delta
      */
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        this.renderModBackground(context);
+    protected void renderModContent(GuiGraphics context, int mouseX, int mouseY, float delta) {
         context.drawCenteredString(this.font, this.title, this.width / 2, this.height / 2 - 65, 0xFFFFFF);
-        super.render(context, mouseX, mouseY, delta);
     }
 
     /**
@@ -219,5 +218,6 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
      * @param endTime     end time in daytime ticks
      */
     public record Endpoints(long startPacked, long endPacked, int startTime, int endTime) {
+
     }
 }

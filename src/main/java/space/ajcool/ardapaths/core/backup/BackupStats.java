@@ -10,4 +10,5 @@ package space.ajcool.ardapaths.core.backup;
  * @param nodes      marker node count
  */
 public record BackupStats(int dimensions, int markers, int paths, int chapters, int nodes) {
+
 }

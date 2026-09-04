@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.Tooltip;
@@ -19,23 +18,21 @@ import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
-import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
-import space.ajcool.ardapaths.core.data.MarkerId;
-import space.ajcool.ardapaths.core.data.PathMarkerRemoteDataStatus;
-import space.ajcool.ardapaths.core.data.TimeSpreadStatus;
+import space.ajcool.ardapaths.core.data.*;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerBulkClearResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerTimeSpreadResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerRemoteDataResponsePacket;
+import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerUpdateResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.*;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 import space.ajcool.ardapaths.screens.marker.*;
-import space.ajcool.ardapaths.screens.widgets.CheckboxWidget;
+import space.ajcool.ardapaths.screens.widgets.CheckboxRow;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.TabBarWidget;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
@@ -53,6 +50,15 @@ import static space.ajcool.ardapaths.screens.marker.MarkerEditLayout.*;
 @Environment(value = EnvType.CLIENT)
 @Slf4j(topic = "ardapaths")
 public class MarkerEditScreen extends ArdaPathsScreen {
+
+    /** Shared row height for the marker editor checkboxes. */
+    private static final int CHECKBOX_ROW_HEIGHT = 17;
+
+    /** Shared width of the two chapter-start checkbox rows; also their right-alignment offset. */
+    private static final int CHAPTER_START_CHECKBOX_WIDTH = 135;
+
+    /** Width of the footer display-above-blocks checkbox row. */
+    private static final int DISPLAY_ABOVE_BLOCKS_CHECKBOX_WIDTH = 187;
 
     /** The marker block entity being edited. */
     private final PathMarkerBlockEntity MARKER;
@@ -76,7 +82,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     private String selectedChapterId;
 
     /** Checkbox controlling whether to show chapter title on the trail. */
-    private CheckboxWidget displayChapterTitleOnTrail;
+    private CheckboxRow displayChapterTitleOnTrail;
 
     /** Currently visible tab in the fixed content area. */
     private int activeTab;
@@ -193,22 +199,22 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         int footerY = layout.footerY();
 
         this.buildMarkerIdButton(centerX, top - 10);
-        this.buildTitle(centerX, top + 10);
+        this.buildTitle(layout, top + 10);
         this.buildPathSelectionDropdown(layout.leftColumnX(), top + PATH_Y_OFFSET);
         this.buildChapterSelectionDropdown(layout.leftColumnX(), top + CHAPTER_Y_OFFSET);
-        this.buildEditChaptersButton(centerX + 40, top + CHAPTER_Y_OFFSET);
+        this.buildEditChaptersButton(layout.panelRight() - 100, top + CHAPTER_Y_OFFSET);
         this.buildChapterStartCheckbox(layout.leftColumnX(), top + CHAPTER_START_Y_OFFSET);
-        displayChapterTitleOnTrail = this.buildChapterStartHideTitleCheckbox(centerX + 5, top + CHAPTER_START_Y_OFFSET);
+        displayChapterTitleOnTrail = this.buildChapterStartHideTitleCheckbox(layout.panelRight() - CHAPTER_START_CHECKBOX_WIDTH, top + CHAPTER_START_Y_OFFSET);
         this.buildTabBar(layout.leftColumnX(), top + TAB_BAR_Y_OFFSET, layout.tabContentHeight());
 
         tabs.get(activeTab).build(this, layout, state);
 
         this.buildDisplayAboveBlocksCheckbox(layout.leftColumnX(), footerY);
-        this.buildCloseButton(centerX + 15, footerY - 2);
-        this.buildSaveButton(centerX + 80, footerY - 2);
+        this.buildCloseButton(layout.panelRight() - 125, footerY - 2);
+        this.buildSaveButton(layout.panelRight() - 60, footerY - 2);
         markerList.setChapter(selectedPathId, selectedChapterId);
         markerList.build(layout);
-        this.buildMarkerLoadFeedback(centerX, footerY);
+        this.buildMarkerLoadFeedback(layout, footerY);
 
         if (reloadFromMarker) {
             formHash = calculateFormHash();
@@ -257,11 +263,12 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     /**
      * Creates and adds the title showing linked paths and chapters to the screen.
      *
-     * @param x the x coordinate of the subtitle
-     * @param y the y coordinate of the subtitle
+     * @param layout the active marker editor layout
+     * @param y      the y coordinate of the subtitle
      */
-    private void buildTitle(int x, int y) {
+    private void buildTitle(MarkerEditLayout layout, int y) {
 
+        int x = layout.centerX();
         MarkerLinkTracker.LinkCounts linkCounts = linkTracker.linkCounts();
         int linkedPaths = linkCounts.paths();
         int linkedChapters = linkCounts.chapters();
@@ -289,13 +296,13 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 this.buildMarkerEditLinksButton(x + (fullWidth / 2) - 60, y);
         } else {
             var message = Component.translatable("ardapaths.client.marker.configuration.screens.no_linked_chapters_and_paths");
-            var fullWidth = font.width(message);
             this.addRenderableWidget(TextWidget.create()
-                    .setX(x - fullWidth / 2)
+                    .setX(layout.leftColumnX())
                     .setY(y)
-                    .setWidth(280)
+                    .setWidth(MAIN_CONTROL_WIDTH)
                     .setHeight(20)
                     .setMessage(message)
+                    .setScrolling(true)
                     .build()
             );
         }
@@ -356,8 +363,8 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         if (this.minecraft == null || selectedMarkers.size() < 2) return;
         this.minecraft.setScreen(new TimeInterpolationPopup(
                 this,
-                selectedMarkers.get(0),
-                selectedMarkers.get(selectedMarkers.size() - 1),
+                selectedMarkers.getFirst(),
+                selectedMarkers.getLast(),
                 this::startTimeInterpolation
         ));
     }
@@ -491,7 +498,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
             if (response.status() == PathMarkerRemoteDataStatus.OK) {
                 BlockPos pos = BlockPos.of(response.packedPos()).immutable();
                 PathMarkerBlockEntity remote = new PathMarkerBlockEntity(pos, ModBlocks.PATH_MARKER.defaultBlockState());
-                remote.load(response.data());
+                remote.loadValidated(response.data());
                 MarkerEditScreen nextScreen = new MarkerEditScreen(remote, null, selection);
                 nextScreen.seedChapterMarkers(markerList.serverMarkers(), markerList.serverListActive(), markerList.currentMarkerListScrollAmount());
                 minecraftClient.setScreen(nextScreen);
@@ -517,7 +524,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     private void buildPathSelectionDropdown(int x, int y) {
         this.addRenderableWidget(DropdownWidget.<PathData>create()
                 .setPosition(x, y)
-                .setSize(280, 20)
+                .setSize(MAIN_CONTROL_WIDTH, CONTROL_HEIGHT)
                 .setTitle(Component.translatable("ardapaths.client.marker.configuration.screens.edit_path_data"))
                 .setOptions(ArdaPathsClient.CONFIG.getPaths())
                 .setOptionDisplay(item ->
@@ -574,7 +581,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
             return linkedConfiguredChapters.stream()
                     .min(Comparator.comparing(ChapterData::getName, String.CASE_INSENSITIVE_ORDER))
                     .map(ChapterData::getId)
-                    .orElse(linkedConfiguredChapters.get(0).getId());
+                    .orElse(linkedConfiguredChapters.getFirst().getId());
         }
 
         if (linkTracker.isPathAndChapterLinked(path.getId(), "default")) {
@@ -582,7 +589,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         }
 
         List<String> chapterIds = path.getChapterIds();
-        return chapterIds.isEmpty() ? "" : chapterIds.get(0);
+        return chapterIds.isEmpty() ? "" : chapterIds.getFirst();
     }
 
     /**
@@ -635,7 +642,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
 
         this.addRenderableWidget(DropdownWidget.<ChapterData>create()
                 .setPosition(x, y)
-                .setSize(175, 20)
+                .setSize(MAIN_CONTROL_WIDTH - 105, CONTROL_HEIGHT)
                 .setTitle(Component.translatable("ardapaths.client.marker.configuration.screens.chapter"))
                 .setOptionDisplay(item ->
                 {
@@ -663,14 +670,14 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     /**
      * Adds marker-load feedback to the main panel when a remote marker request fails.
      *
-     * @param centerX the x coordinate of the screen center
+     * @param layout  the active marker editor layout
      * @param footerY the y coordinate of the footer row
      */
-    private void buildMarkerLoadFeedback(int centerX, int footerY) {
+    private void buildMarkerLoadFeedback(MarkerEditLayout layout, int footerY) {
         if (markerLoadFeedback == null) return;
 
         Component formattedFeedback = markerLoadFeedback.copy().withStyle(markerLoadFeedbackError ? ChatFormatting.RED : ChatFormatting.GRAY);
-        this.addRenderableWidget(new TextWidget(centerX - MAIN_LEFT_OFFSET, footerY - 24, MAIN_CONTROL_WIDTH, 17, formattedFeedback));
+        this.addRenderableWidget(new TextWidget(layout.leftColumnX(), footerY - 24, MAIN_CONTROL_WIDTH, 17, formattedFeedback));
     }
 
     /**
@@ -737,11 +744,11 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the checkbox
      */
     private void buildChapterStartCheckbox(int x, int y) {
-        this.addRenderableWidget(CheckboxWidget.create()
+        this.addCheckboxRow(CheckboxRow.create()
                 .setX(x)
                 .setY(y)
-                .setWidth(135)
-                .setHeight(15)
+                .setWidth(CHAPTER_START_CHECKBOX_WIDTH)
+                .setHeight(CHECKBOX_ROW_HEIGHT)
                 .setText(Component.translatable("ardapaths.client.marker.configuration.screens.is_chapter_start"))
                 .setChecked(state.isChapterStart())
                 .setEnabled(true)
@@ -762,12 +769,12 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the checkbox
      * @return the configured chapter start title checkbox
      */
-    private CheckboxWidget buildChapterStartHideTitleCheckbox(int x, int y) {
-        return addRenderableWidget(CheckboxWidget.create()
+    private CheckboxRow buildChapterStartHideTitleCheckbox(int x, int y) {
+        return addCheckboxRow(CheckboxRow.create()
                 .setX(x)
                 .setY(y)
-                .setWidth(135)
-                .setHeight(15)
+                .setWidth(CHAPTER_START_CHECKBOX_WIDTH)
+                .setHeight(CHECKBOX_ROW_HEIGHT)
                 .setText(Component.translatable("ardapaths.client.marker.configuration.screens.show_title_on_trail"))
                 .setChecked(state.isShowChapterStartTitle())
                 .setEnabled(state.isChapterStart())
@@ -783,11 +790,11 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * @param y the y coordinate of the checkbox
      */
     private void buildDisplayAboveBlocksCheckbox(int x, int y) {
-        this.addRenderableWidget(CheckboxWidget.create()
+        this.addCheckboxRow(CheckboxRow.create()
                 .setX(x)
                 .setY(y)
-                .setWidth(145)
-                .setHeight(15)
+                .setWidth(DISPLAY_ABOVE_BLOCKS_CHECKBOX_WIDTH)
+                .setHeight(CHECKBOX_ROW_HEIGHT)
                 .setText(Component.translatable("ardapaths.client.marker.configuration.screens.display_trail_above_blocks"))
                 .setChecked(state.isDisplayAboveBlocks())
                 .setEnabled(true)
@@ -841,20 +848,6 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 },
                 Supplier::get
         ));
-    }
-
-    /**
-     * Renders the screen background, UI elements, and animation parameter labels.
-     *
-     * @param context the draw context for rendering
-     * @param mouseX  the current mouse x coordinate
-     * @param mouseY  the current mouse y coordinate
-     * @param delta   the partial tick delta for animation
-     */
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        this.renderModBackground(context);
-        super.render(context, mouseX, mouseY, delta);
     }
 
     /**
@@ -997,6 +990,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      * Persists all form data to the marker's NBT and sends update packets to the server.
      *
      */
+    @SuppressWarnings("resource")
     private void save() {
         if (selectedPathId.isEmpty()) return;
 
@@ -1023,7 +1017,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         }
 
         PathMarkerUpdatePacket packet = new PathMarkerUpdatePacket(MARKER.getBlockPos(), MARKER.toNbt());
-        PacketRegistry.PATH_MARKER_UPDATE.send(packet);
+        PacketRegistry.PATH_MARKER_UPDATE.send(packet, response -> Client.mc().execute(() -> onMarkerSaveResponse(response)));
         MARKER.markUpdated();
         syncPathfinderSelection();
     }
@@ -1034,9 +1028,27 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     private void saveAndRefreshMarkerList() {
         save();
         formHash = calculateFormHash();
-        markerList.patchSavedServerRow();
-        markerList.refresh(false);
-        markerList.requestChapterMarkers();
+    }
+
+    /**
+     * Handles the server response for a marker save request.
+     *
+     * @param response server response packet
+     */
+    @SuppressWarnings("resource")
+    private void onMarkerSaveResponse(PathMarkerUpdateResponsePacket response) {
+        if (response.status() == PathMarkerUpdateStatus.OK) {
+            markerList.patchSavedServerRow();
+            markerList.refresh(false);
+            return;
+        }
+
+        SaveErrorPopup popup = new SaveErrorPopup(
+                Component.translatable("ardapaths.client.marker.configuration.screens.marker.save.failed"),
+                this,
+                markerList::requestChapterMarkers
+        );
+        Client.mc().setScreen(popup);
     }
 
     /**

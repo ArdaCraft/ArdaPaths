@@ -3,7 +3,6 @@ package space.ajcool.ardapaths.core.consumers;
 import com.duom.ardamaps.api.ArdaMapsApi;
 import com.duom.ardamaps.api.ArdaMapsApiEntrypoint;
 import com.duom.ardamaps.api.waypoints.ApiWaypoint;
-import com.duom.ardamaps.core.Client;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
@@ -11,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.integration.WaypointProvider;
 import space.ajcool.ardapaths.core.integration.Waypoints;
 
@@ -52,6 +52,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
      *
      * @param target the position of the next trail node
      */
+    @SuppressWarnings("resource")
     @Override
     public void setNextTrailNode(Vec3 target) {
 
@@ -84,6 +85,7 @@ public class ArdaMapsConsumer implements ArdaMapsApiEntrypoint, WaypointProvider
      * @param target the target to display
      * @return true if a waypoint should be shown, false otherwise
      */
+    @SuppressWarnings("resource")
     private boolean shouldShowWaypoint(Vec3 target) {
 
         if (!ArdaPathsClient.CONFIG.showTrailWaypoints()) return false;

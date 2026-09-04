@@ -3,7 +3,9 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -50,7 +52,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * Constructs the handler and its request and response channels.
      */
     public ChapterPathMarkersHandler() {
-        super(ChapterPathMarkersPacket.CHANNEL, ChapterPathMarkersPacket::read, ChapterPathMarkersResponsePacket.CHANNEL, ChapterPathMarkersResponsePacket::read);
+        super(ChapterPathMarkersPacket.TYPE, ChapterPathMarkersPacket::read, ChapterPathMarkersResponsePacket.TYPE, ChapterPathMarkersResponsePacket::read);
     }
 
     /**
@@ -75,7 +77,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             return CompletableFuture.completedFuture(response(ChapterMarkersStatus.INVALID_DATA, List.of()));
         }
 
-        return resolveAnchor(server, player, packet)
+        return resolveAnchor(server, packet)
                 .thenCompose(anchor -> searchOnWorker(server, packet, anchor));
     }
 
@@ -83,33 +85,38 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * Resolves the configured chapter-start anchor using warp first, then coordinates.
      *
      * @param server server that owns the destination world
-     * @param player player whose world provides coordinate fallback context
      * @param packet marker-list request
      * @return future optional anchor
      */
-    @SuppressWarnings("resource")
-    private CompletableFuture<Optional<Anchor>> resolveAnchor(MinecraftServer server, ServerPlayer player, ChapterPathMarkersPacket packet) {
+    private CompletableFuture<Optional<Anchor>> resolveAnchor(MinecraftServer server, ChapterPathMarkersPacket packet) {
         Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(packet.pathId(), packet.chapterId());
-        ResourceKey<Level> fallbackWorldKey = player.serverLevel().dimension();
         if (startWarp.isPresent() && Warps.isAvailable()) {
             return Warps.resolveWarp(server, startWarp.get()).thenApply(warp -> warp
                     .map(location -> new Anchor(location.worldKey(), location.position()))
-                    .or(() -> coordinateAnchor(fallbackWorldKey, packet)));
+                    .or(() -> coordinateAnchor(packet)));
         }
 
-        return CompletableFuture.completedFuture(coordinateAnchor(fallbackWorldKey, packet));
+        return CompletableFuture.completedFuture(coordinateAnchor(packet));
     }
 
     /**
-     * Resolves the coordinate fallback anchor in the player's current world.
+     * Resolves the coordinate fallback anchor in its configured world.
      *
-     * @param worldKey world that owns coordinate chapter starts
      * @param packet marker-list request
      * @return optional coordinate anchor
      */
-    private Optional<Anchor> coordinateAnchor(ResourceKey<Level> worldKey, ChapterPathMarkersPacket packet) {
+    private Optional<Anchor> coordinateAnchor(ChapterPathMarkersPacket packet) {
+
         BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(packet.pathId(), packet.chapterId());
+
         if (start == null) return Optional.empty();
+
+        String dimensionId = ArdaPaths.CONFIG.getChapterStartDimension(packet.pathId(), packet.chapterId());
+
+        if (dimensionId == null) return Optional.empty();
+
+        ResourceKey<Level> worldKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(dimensionId));
+
         return Optional.of(new Anchor(worldKey, start));
     }
 
@@ -197,11 +204,11 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
     /**
      * Finds the nearest marker flagged as a chapter start within the configured radius.
      *
-     * @param resolver marker resolver with per-request cache
-     * @param anchor   configured chapter-start anchor
-     * @param pathId   path identifier
+     * @param resolver  marker resolver with per-request cache
+     * @param anchor    configured chapter-start anchor
+     * @param pathId    path identifier
      * @param chapterId chapter identifier
-     * @param gate     gate for server-thread-only work
+     * @param gate      gate for server-thread-only work
      * @return nearest chapter-start marker, or empty when absent
      */
     private Optional<ResolvedMarker> findNearestChapterStart(MarkerResolver resolver, BlockPos anchor, String pathId, String chapterId, BackupJobRunner.ServerGate gate) {
@@ -402,6 +409,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param position configured anchor position
      */
     private record Anchor(ResourceKey<Level> worldKey, BlockPos position) {
+
     }
 
     /**
@@ -411,6 +419,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param data   chapter data for the requested path and chapter
      */
     private record ChapterMarkerCandidate(ResolvedMarker marker, PathMarkerBlockEntity.ChapterNbtData data) {
+
     }
 
     /**
@@ -422,5 +431,6 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param danglingEnd last marker of the walk when probing may continue, or null otherwise
      */
     private record ChainSegment(List<ChapterMarkerEntry> rows, BlockPos danglingEnd) {
+
     }
 }
