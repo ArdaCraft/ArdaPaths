@@ -61,9 +61,14 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    jvmArgs "-Dnet.bytebuddy.experimental=true"
 }
 
 loom {
+    mixin {
+        useLegacyMixinAp = false
+    }
+
     accessWidenerPath = file("src/main/resources/arda-path.accesswidener")
 
     runs {

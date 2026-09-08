@@ -84,6 +84,8 @@ public class ProximityRenderer {
      */
     private static void updateVisualMessageStack(GuiGraphics context) {
 
+        if (InterfaceVisibility.isInterfaceHidden()) return;
+
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;
 

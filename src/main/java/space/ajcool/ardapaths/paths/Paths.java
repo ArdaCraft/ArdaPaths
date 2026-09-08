@@ -102,6 +102,16 @@ public class Paths {
     }
 
     /**
+     * Sets whether vanilla interface elements should be hidden while holding the Pathfinder.
+     *
+     * @param hide whether the interface should be hidden
+     */
+    public static void hideInterface(final boolean hide) {
+        config.setHideInterface(hide);
+        configManager.save();
+    }
+
+    /**
      * Sets whether trail markers may dynamically change time and weather and persists the preference.
      *
      * @param use whether dynamic environmental effects should be enabled

@@ -33,6 +33,7 @@ import space.ajcool.ardapaths.paths.movement.AutoWalker;
 import space.ajcool.ardapaths.paths.movement.FocusController;
 import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
 import space.ajcool.ardapaths.paths.rendering.FocusPromptRenderer;
+import space.ajcool.ardapaths.paths.rendering.InterfaceVisibility;
 import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
 import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
 
@@ -106,6 +107,7 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         HudRenderCallback.EVENT.register(ProximityRenderer::render);
         HudRenderCallback.EVENT.register(FocusPromptRenderer::render);
+        WorldRenderEvents.BEFORE_BLOCK_OUTLINE.register((context, hitResult) -> !InterfaceVisibility.isInterfaceHidden());
         WorldRenderEvents.START.register(context ->
         {
             FocusController.renderCameraFrame();
