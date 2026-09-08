@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -14,6 +15,7 @@ import net.minecraft.client.color.item.ItemTintSources;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.lwjgl.glfw.GLFW;
 import space.ajcool.ardapaths.core.ModConstants;
@@ -31,10 +33,7 @@ import space.ajcool.ardapaths.mc.particles.ModParticles;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.paths.movement.AutoWalker;
 import space.ajcool.ardapaths.paths.movement.FocusController;
-import space.ajcool.ardapaths.paths.rendering.EnvironmentController;
-import space.ajcool.ardapaths.paths.rendering.FocusPromptRenderer;
-import space.ajcool.ardapaths.paths.rendering.ProximityRenderer;
-import space.ajcool.ardapaths.paths.rendering.TrailRenderer;
+import space.ajcool.ardapaths.paths.rendering.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -111,6 +110,19 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         HudElementRegistry.addLast(ModConstants.modId("proximity"), ProximityRenderer::render);
         HudElementRegistry.addLast(ModConstants.modId("focus_prompt"), FocusPromptRenderer::render);
+        hideWhileInterfaceHidden(VanillaHudElements.HOTBAR);
+        hideWhileInterfaceHidden(VanillaHudElements.HELD_ITEM_TOOLTIP);
+        hideWhileInterfaceHidden(VanillaHudElements.CROSSHAIR);
+        hideWhileInterfaceHidden(VanillaHudElements.CHAT);
+        hideWhileInterfaceHidden(VanillaHudElements.ARMOR_BAR);
+        hideWhileInterfaceHidden(VanillaHudElements.HEALTH_BAR);
+        hideWhileInterfaceHidden(VanillaHudElements.FOOD_BAR);
+        hideWhileInterfaceHidden(VanillaHudElements.AIR_BAR);
+        hideWhileInterfaceHidden(VanillaHudElements.MOUNT_HEALTH);
+        hideWhileInterfaceHidden(VanillaHudElements.EXPERIENCE_LEVEL);
+        hideWhileInterfaceHidden(VanillaHudElements.INFO_BAR);
+        hideWhileInterfaceHidden(VanillaHudElements.MOB_EFFECTS);
+        LevelRenderEvents.BEFORE_BLOCK_OUTLINE.register((_, _) -> !InterfaceVisibility.isInterfaceHidden());
         LevelRenderEvents.END_EXTRACTION.register(context ->
         {
             FocusController.renderCameraFrame();
@@ -122,13 +134,13 @@ public class ArdaPathsClient implements ClientModInitializer {
 
         ClientTickEvents.START_CLIENT_TICK.register(AutoWalker::tick);
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        ClientPlayConnectionEvents.JOIN.register((_, _, client) ->
         {
             CONFIG_MANAGER.updatePathData();
             PermissionHelper.hasEditPermission(client.player);
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+        ClientPlayConnectionEvents.DISCONNECT.register((_, _) ->
         {
             RespondablePacketHandler.clearAllResponseConsumers();
             PermissionHelper.resetClientCache();
@@ -155,7 +167,7 @@ public class ArdaPathsClient implements ClientModInitializer {
             }
         });
 
-        ClientTickEvents.END_CLIENT_TICK.register(client ->
+        ClientTickEvents.END_CLIENT_TICK.register(_ ->
         {
             while (AUTO_WALK_KEY.consumeClick()) {
                 AutoWalker.toggle();
@@ -208,5 +220,18 @@ public class ArdaPathsClient implements ClientModInitializer {
      */
     private void registerPathfinderTintSource() {
         ItemTintSources.ID_MAPPER.put(ModConstants.modId("selected_path"), SelectedPathTintSource.MAP_CODEC);
+    }
+
+    /**
+     * Wraps a vanilla HUD element so it is skipped while the Pathfinder interface is hidden.
+     *
+     * @param element the vanilla HUD element identifier to wrap
+     */
+    private static void hideWhileInterfaceHidden(Identifier element) {
+        HudElementRegistry.replaceElement(element, original -> (extractor, delta) -> {
+            if (!InterfaceVisibility.isInterfaceHidden()) {
+                original.extractRenderState(extractor, delta);
+            }
+        });
     }
 }

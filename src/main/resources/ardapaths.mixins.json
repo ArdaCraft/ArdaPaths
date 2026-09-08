@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "space.ajcool.ardapaths.mixin.client",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ItemInHandRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

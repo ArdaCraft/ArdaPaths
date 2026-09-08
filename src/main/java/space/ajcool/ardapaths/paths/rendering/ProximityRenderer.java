@@ -83,6 +83,7 @@ public class ProximityRenderer {
      * @param context the drawing context for rendering
      */
     private static void updateVisualMessageStack(GuiGraphicsExtractor context) {
+        if (InterfaceVisibility.isInterfaceHidden()) return;
 
         var count = (INSTANCE.currentDisplayedMessage != null && !INSTANCE.currentDisplayedMessage.isFinished()) ? 1 : 0;
         count += (INSTANCE.currentDisplayedTitle != null && !INSTANCE.currentDisplayedTitle.isFinished()) ? 1 : 0;

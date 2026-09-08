@@ -49,17 +49,19 @@ dependencies {
     compileOnly(files("libs/HuskHomes-Fabric-${project.huskhomes_version}+mc.26.1.2.jar"))
     compileOnly(files("libs/HuskHomes-Common-${project.huskhomes_version}.jar"))
 
-    localRuntime("net.litetex.mcm:dev-auth-neo:${devauth_version}")
-
     // Testing
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
-    testImplementation "org.mockito:mockito-core:5.12.0"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.3"
+    testImplementation "org.junit.jupiter:junit-jupiter:${project.junit_version}"
+    testImplementation "org.mockito:mockito-core:${project.mockito_version}"
+    // Pinned ahead of Mockito's transitive 1.17.7: 1.18.x is the line that
+    // reads Java 25 class files without -Dnet.bytebuddy.experimental.
+    testImplementation "net.bytebuddy:byte-buddy:${project.bytebuddy_version}"
+    testImplementation "net.bytebuddy:byte-buddy-agent:${project.bytebuddy_version}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${project.junit_platform_version}"
 }
 
 test {
     useJUnitPlatform()
-    jvmArgs '-Dnet.bytebuddy.experimental=true'
+    jvmArgs '-Djoml.nounsafe=true', '-Xshare:off'
 }
 
 processResources {
@@ -88,14 +90,16 @@ def devRuntimeMods = [
 ]
 
 loom {
+    mixin {
+        useLegacyMixinAp = false
+    }
+
     accessWidenerPath = file("src/main/resources/arda-path.accesswidener")
 
     runs {
         client {
             client()
             getRunDirectory().set(layout.projectDirectory.dir(clientRunDir))
-            getSystemProperties().put("devauth.enabled", "1")
-            getSystemProperties().put("devauth.account", "main")
         }
 
         server {
