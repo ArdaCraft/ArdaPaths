@@ -35,6 +35,7 @@ class ConfigGsonShapeTest {
                   "chapter_titles": true,
                   "trail_waypoints": true,
                   "dynamic_environment": true,
+                  "hide_interface": true,
                   "proximity_text_speed_multiplier": 1.5,
                   "auto_walk_speed_factor": 0.75,
                   "chapter_title_display_speed": 2500.0,
@@ -48,10 +49,15 @@ class ConfigGsonShapeTest {
         assertTrue(config.showChapterTitles());
         assertTrue(config.showTrailWaypoints());
         assertTrue(config.useDynamicEnvironment());
+        assertTrue(config.hideInterface());
         assertEquals(1.5D, config.getProximityTextSpeedMultiplier());
         assertEquals(0.75D, config.getAutoWalkSpeedFactor());
         assertEquals(2500.0F, config.getChapterTitleDisplaySpeed());
         assertTrue(config.getClientPaths().isEmpty());
+
+        JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
+        assertTrue(json.has("hide_interface"));
+        assertFalse(json.has("hideInterface"));
     }
 
     /**

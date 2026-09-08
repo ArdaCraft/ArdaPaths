@@ -57,6 +57,13 @@ public class ClientConfig {
     private boolean dynamicEnvironment;
 
     /**
+     * Whether vanilla interface elements should be hidden while holding the Pathfinder.
+     */
+    @Setter
+    @SerializedName("hide_interface")
+    private boolean hideInterface;
+
+    /**
      * Speed multiplier for proximity message animation speed (0.0-1.0+).
      */
     @Setter
@@ -109,6 +116,13 @@ public class ClientConfig {
      */
     public boolean useDynamicEnvironment() {
         return dynamicEnvironment;
+    }
+
+    /**
+     * @return True if vanilla interface elements should be hidden while holding the Pathfinder, false otherwise
+     */
+    public boolean hideInterface() {
+        return hideInterface;
     }
 
     /**

@@ -29,6 +29,10 @@
     ]
   },
   "mixins": [
+    {
+      "config": "ardapaths.mixins.json",
+      "environment": "client"
+    }
   ],
   "accessWidener": "arda-path.accesswidener",
   "depends": {

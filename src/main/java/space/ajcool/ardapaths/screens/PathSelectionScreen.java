@@ -75,8 +75,11 @@ public class PathSelectionScreen extends ArdaPathsScreen
 
     /**  Whether the client allows followed trail markers to change time and weather.*/
     private boolean useDynamicEnvironment;
-    /** Multiplier applied to proximity message display speed. */
 
+    /** Whether vanilla interface elements are hidden while holding the Pathfinder. */
+    private boolean hideInterface;
+
+    /** Multiplier applied to proximity message display speed. */
     private final double proximityTextSpeedMultiplier;
     /** Client preference controlling auto-walk speed relative to vanilla walking. */
     private final double autoWalkSpeedFactor;
@@ -102,6 +105,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
         this.showTrailWaypoints = ArdaPathsClient.CONFIG.showTrailWaypoints();
         this.showChapterTitles = ArdaPathsClient.CONFIG.showChapterTitles();
         this.useDynamicEnvironment = ArdaPathsClient.CONFIG.useDynamicEnvironment();
+        this.hideInterface = ArdaPathsClient.CONFIG.hideInterface();
         this.proximityTextSpeedMultiplier = ArdaPathsClient.CONFIG.getProximityTextSpeedMultiplier();
         this.autoWalkSpeedFactor = ArdaPathsClient.CONFIG.getAutoWalkSpeedFactor();
         this.titleDisplaySpeed = ArdaPathsClient.CONFIG.getChapterTitleDisplaySpeed();
@@ -155,6 +159,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
             this.addRenderableWidget(initializeDynamicEnvironmentToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         }
 
+        this.addRenderableWidget(initializeHideInterfaceToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         this.addRenderableWidget(initializeJournalButton(center - (UI_ELEMENT_WIDTH / 2),y + uiElementVerticalGap));
 
         ScreenLayout.centerVertically(this);
@@ -441,6 +446,34 @@ public class PathSelectionScreen extends ArdaPathsScreen
         dynamicEnvironmentToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.dynamic_environment_tooltip")));
 
         return dynamicEnvironmentToggle;
+    }
+
+    /**
+     * Creates the toggle used to hide vanilla interface elements while holding the Pathfinder.
+     *
+     * @param x      the left edge of the checkbox row
+     * @param y      the checkbox y coordinate
+     * @return the configured hide-interface toggle
+     */
+    private @NotNull CheckboxWidget initializeHideInterfaceToggle(int x, int y) {
+
+        CheckboxWidget hideInterfaceToggle = CheckboxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(UI_ELEMENT_WIDTH * 2 +COLUMNS_SPACING)
+                .setHeight(UI_ELEMENT_HEIGHT)
+                .setText(Component.translatable("ardapaths.client.configuration.screens.hide_interface"))
+                .setChecked(hideInterface)
+                .setEnabled(true)
+                .setOnChange(checked -> {
+                    hideInterface = checked;
+                    Paths.hideInterface(hideInterface);
+                })
+                .build();
+
+        hideInterfaceToggle.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.hide_interface_tooltip")));
+
+        return hideInterfaceToggle;
     }
 
     /**

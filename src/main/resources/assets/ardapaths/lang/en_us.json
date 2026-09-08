@@ -34,6 +34,8 @@
   "ardapaths.client.configuration.screens.trail_waypoints": "Show Trail Waypoints",
   "ardapaths.client.configuration.screens.dynamic_environment": "Dynamic environmental effects",
   "ardapaths.client.configuration.screens.dynamic_environment_tooltip": "Allows the Pathfinder to dynamically change time and weather",
+  "ardapaths.client.configuration.screens.hide_interface": "Hide Interface",
+  "ardapaths.client.configuration.screens.hide_interface_tooltip": "Hides the hotbar, chat, crosshair, block outline and held items while the Pathfinder is held",
   "ardapaths.client.configuration.screens.trail_waypoints.tooltip": "Display a waypoint marker at the location of the next trail node",
   "ardapaths.client.configuration.screens.chapter_titles_tooltip": "Display chapter titles while traveling the selected path",
   "ardapaths.client.journal.screen.title": "Journal",
