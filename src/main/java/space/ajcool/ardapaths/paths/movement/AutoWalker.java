@@ -117,6 +117,7 @@ public class AutoWalker {
         activePathId = "";
         activeChapterId = "";
         ObstacleNavigator.reset();
+        FlightFollower.reset();
         CAMERA.clear();
         stopHorizontalVelocity(Client.player());
     }
@@ -185,6 +186,7 @@ public class AutoWalker {
 
         AutoWalkTrail.Cursor cursor = new AutoWalkTrail.Cursor(segmentIndex, segmentProgress);
         Vec3 projected = trail.pointAt(segmentIndex, segmentProgress);
+        FlightFollower.update(player, projected.y);
         Vec3 current = player.position();
         Vec3 steeringTarget = trail.steeringTarget(cursor, movement);
         double deltaX = steeringTarget.x - current.x;
@@ -197,7 +199,9 @@ public class AutoWalker {
         Vec3 steer = ObstacleNavigator.horizontalDirection(player, projected, directionX, directionZ);
         directionX = steer.x;
         directionZ = steer.z;
-        double velocityY = ObstacleNavigator.verticalVelocity(player, directionX, directionZ, player.getDeltaMovement().y);
+        double velocityY = FlightFollower.isFlying(player)
+                ? FlightFollower.verticalVelocity(player, projected.y)
+                : ObstacleNavigator.verticalVelocity(player, directionX, directionZ, player.getDeltaMovement().y);
 
         player.setDeltaMovement(directionX * movement, velocityY, directionZ * movement);
         CAMERA.setTarget(projected, steeringTarget);
@@ -244,6 +248,7 @@ public class AutoWalker {
         activeChapterId = chapterId;
         active = true;
         ObstacleNavigator.reset();
+        FlightFollower.reset();
         CAMERA.reset(Client.player());
         logEngaged(pathId, chapterId, nextTrail.nodes());
         return true;
