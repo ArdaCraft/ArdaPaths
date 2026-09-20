@@ -3,6 +3,7 @@ package space.ajcool.ardapaths.screens.marker;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import space.ajcool.ardapaths.core.data.GiveItemAction;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WarpTarget;
@@ -14,6 +15,12 @@ import space.ajcool.ardapaths.screens.widgets.TextValidator;
  * Validators and parsing helpers for marker-edit form fields.
  */
 public final class MarkerFields {
+
+    /** Lowest activation range that the marker editor slider can select. */
+    private static final int MIN_ACTIVATION_RANGE = 0;
+
+    /** Highest activation range that the marker editor slider can select. */
+    private static final int MAX_ACTIVATION_RANGE = 100;
 
     /**
      * Prevents construction of the static marker-field helper.
@@ -83,6 +90,26 @@ public final class MarkerFields {
         } catch (TextValidationError e) {
             return fallbackValue;
         }
+    }
+
+    /**
+     * Converts a normalized slider position to a marker activation range.
+     *
+     * @param sliderValue slider position, normally from zero to one
+     * @return activation range represented by the slider position
+     */
+    public static int sliderToActivationRange(double sliderValue) {
+        return Mth.floor(Mth.clampedLerp(sliderValue, MIN_ACTIVATION_RANGE, MAX_ACTIVATION_RANGE));
+    }
+
+    /**
+     * Converts a stored marker activation range to a normalized slider position.
+     *
+     * @param range marker activation range to display
+     * @return slider position clamped to the visible track
+     */
+    public static double activationRangeToSlider(int range) {
+        return Mth.clamp((double) range / MAX_ACTIVATION_RANGE, 0.0, 1.0);
     }
 
     /**

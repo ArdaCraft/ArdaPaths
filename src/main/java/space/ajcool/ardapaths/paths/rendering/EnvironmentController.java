@@ -396,11 +396,15 @@ public final class EnvironmentController {
             }
 
             TimeNode endNode = timeNodes.get(startNode.nextPos());
-            if (endNode == null || endNode.timeOfDay() == TimeOfDay.UNSET || !TimeOfDay.isComputed(endNode.transitionRange())) {
+            if (endNode == null) {
                 continue;
             }
 
-            SegmentProjection projection = projectOntoSegment(playerPos, entry.getKey(), startNode.nextPos());
+            TimeSourceRules.SegmentProjection projection = TimeSourceRules.projectOntoSegment(playerPos, entry.getKey(), startNode.nextPos());
+            if (!TimeSourceRules.isComputedSegmentEligible(endNode.timeOfDay(), endNode.transitionRange(), projection.progress())) {
+                continue;
+            }
+
             if (nearest == null || projection.distanceSquared() < nearest.distanceSquared()) {
                 nearest = new TimeCandidate(
                         new TimeSource(TimeSourceType.COMPUTED, entry.getKey(), startNode.nextPos(), startNode, endNode),
@@ -424,7 +428,7 @@ public final class EnvironmentController {
             TimeNode node = entry.getValue();
             double distanceSquared = node.nextPos() == null
                     ? environmentDistanceSquared(playerPos, entry.getKey())
-                    : projectOntoSegment(playerPos, entry.getKey(), node.nextPos()).distanceSquared();
+                    : TimeSourceRules.projectOntoSegment(playerPos, entry.getKey(), node.nextPos()).distanceSquared();
             nearest = Math.min(nearest, distanceSquared);
         }
 
@@ -492,7 +496,7 @@ public final class EnvironmentController {
 
         ensureAppliedTime();
         int targetTime = Math.floorMod(endNode.timeOfDay(), DAY_TICKS);
-        double progress = projectOntoSegment(playerPos, source.markerPos(), source.nextPos()).progress();
+        double progress = TimeSourceRules.projectOntoSegment(playerPos, source.markerPos(), source.nextPos()).progress();
         if (startNode.timeOfDay() == TimeOfDay.UNSET) {
             if (capturedSegmentStartTime == null) {
                 capturedSegmentStartTime = (int) Math.round(appliedTime);
@@ -555,29 +559,6 @@ public final class EnvironmentController {
                 : Math.floorMod(world.getOverworldClockTime(), DAY_TICKS);
         desiredTime = appliedTime;
         hasAppliedTime = true;
-    }
-
-    /**
-     * Projects a player position onto a marker-to-marker segment.
-     *
-     * @param playerPos precise player position
-     * @param startPos  segment start marker position
-     * @param endPos    segment end marker position
-     * @return clamped projection progress and squared distance to the segment
-     */
-    private static SegmentProjection projectOntoSegment(Vec3 playerPos, BlockPos startPos, BlockPos endPos) {
-        Vec3 start = Vec3.atCenterOf(startPos);
-        Vec3 end = Vec3.atCenterOf(endPos);
-        Vec3 segment = end.subtract(start);
-        double lengthSquared = segment.lengthSqr();
-        if (lengthSquared <= 0.0D) {
-            double distanceSquared = playerPos.distanceToSqr(start);
-            return new SegmentProjection(0.0D, distanceSquared);
-        }
-
-        double progress = Mth.clamp(playerPos.subtract(start).dot(segment) / lengthSquared, 0.0D, 1.0D);
-        Vec3 projected = start.add(segment.scale(progress));
-        return new SegmentProjection(progress, playerPos.distanceToSqr(projected));
     }
 
     /**
@@ -700,16 +681,6 @@ public final class EnvironmentController {
      */
     private record TimeSource(TimeSourceType type, BlockPos markerPos, BlockPos nextPos, TimeNode startNode,
                               TimeNode endNode) {
-
-    }
-
-    /**
-     * Projected player position on a marker segment.
-     *
-     * @param progress        clamped progress from start to end
-     * @param distanceSquared squared distance from the player to the projected point
-     */
-    private record SegmentProjection(double progress, double distanceSquared) {
 
     }
 

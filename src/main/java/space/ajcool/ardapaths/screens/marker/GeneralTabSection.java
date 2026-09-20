@@ -5,7 +5,6 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.BitPacker;
 import space.ajcool.ardapaths.screens.MarkerEditScreen;
@@ -166,7 +165,7 @@ public class GeneralTabSection implements MarkerEditorTab {
                 width,
                 20,
                 CommonComponents.EMPTY,
-                state.getActivationRange() / 100.0
+                MarkerFields.activationRangeToSlider(state.getActivationRange())
         ) {
             {
                 this.updateMessage();
@@ -185,7 +184,7 @@ public class GeneralTabSection implements MarkerEditorTab {
              */
             @Override
             protected void applyValue() {
-                state.setActivationRange(Mth.floor(Mth.clampedLerp(0.0, 100.0, this.value)));
+                state.setActivationRange(MarkerFields.sliderToActivationRange(this.value));
             }
         });
     }
