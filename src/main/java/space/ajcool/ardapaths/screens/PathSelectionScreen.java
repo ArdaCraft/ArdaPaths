@@ -27,7 +27,6 @@ import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -192,7 +191,8 @@ public class PathSelectionScreen extends ArdaPathsScreen {
                     ArdaPathsClient.lastVisitedTrailNodeData = null;
 
                     selectedPathId = path.getId();
-                    selectedChapterId = path.getChapterIds().getFirst();
+                    ChapterData firstVisibleChapter = path.getFirstVisibleChapter();
+                    selectedChapterId = firstVisibleChapter == null ? "default" : firstVisibleChapter.getId();
 
                     Paths.setSelectedPath(selectedPathId);
                     Paths.gotoChapter(selectedChapterId, false);
@@ -216,8 +216,7 @@ public class PathSelectionScreen extends ArdaPathsScreen {
      */
     private @NotNull DropdownWidget<ChapterData> initializeChapterSelectionDropDown(int center, int y, PathData currentPath, ChapterData currentChapter) {
 
-        List<ChapterData> chapterData = currentPath != null ? new ArrayList<>(currentPath.getChapters()) : new ArrayList<>();
-        chapterData.sort(Comparator.comparingInt(ChapterData::getIndex));
+        List<ChapterData> chapterData = currentPath != null ? new ArrayList<>(currentPath.getVisibleChapters()) : new ArrayList<>();
 
         return DropdownWidget.<ChapterData>create()
                 .setPosition(center, y)

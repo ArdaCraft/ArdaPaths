@@ -32,7 +32,9 @@ public class ArdaPathsCommand {
         dispatcher.register(literal("ardapaths")
                 .requires(source -> Permissions.check(source, ArdaPaths.MOD_EDIT_PERMISSION, PermissionLevel.GAMEMASTERS))
                 .then(literal("backup")
-                        .executes(ArdaPathsCommand::backup))
+                        .executes(context -> backup(context, false))
+                        .then(literal("full")
+                                .executes(context -> backup(context, true))))
                 .then(literal("restore")
                         .executes(context -> restore(context, null, false))
                         .then(literal("hard")
@@ -51,17 +53,18 @@ public class ArdaPathsCommand {
      * Runs a backup command.
      *
      * @param context command context
+     * @param full    whether the scan cache should be ignored
      * @return command result
      */
-    private static int backup(CommandContext<CommandSourceStack> context) {
-        BackupJobRunner.JobStartResult result = BACKUP_RUNNER.tryStartBackup(context.getSource());
+    private static int backup(CommandContext<CommandSourceStack> context, boolean full) {
+        BackupJobRunner.JobStartResult result = BACKUP_RUNNER.tryStartBackup(context.getSource(), full);
 
         if (!result.started()) {
             context.getSource().sendSuccess(() -> Component.literal("An ArdaPaths job is already in progress: " + result.snapshot().format()), false);
             return 0;
         }
 
-        context.getSource().sendSuccess(() -> Component.literal("ArdaPaths backup started; progress in server log."), false);
+        context.getSource().sendSuccess(() -> Component.literal("ArdaPaths backup started" + (full ? " with full scan" : "") + "; progress in server log."), false);
         return 1;
     }
 

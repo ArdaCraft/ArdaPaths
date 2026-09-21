@@ -493,7 +493,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     private MarkerListEntry toEntry(MarkerRow row) {
         if (row.isNotice()) {
-            return MarkerListEntry.notice(row.noticeText());
+            return MarkerListEntry.notice(row.noticeText(), row.noticeTooltipLines(), row.noticeColor());
         }
 
         return new MarkerListEntry(
@@ -538,7 +538,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @return true when the row has configured time data
      */
     private boolean hasTimeData(MarkerRow row) {
-        return row.timeOfDay() != ChapterNbtData.UNSET;
+        return row.timeOfDay() != TimeOfDay.UNSET;
     }
 
     /**
@@ -804,10 +804,12 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @param focused          whether this marker is currently being edited
      * @param selected         whether this marker is in the current multi-selection
      * @param noticeText       inert notice label, or null for marker rows
+     * @param noticeTooltipLines inert notice tooltip lines
+     * @param noticeColor        color for notice text
      */
-    public record MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData,
+    public record MarkerRow(BlockPos pos, long timeOfDay, int weather, String proximityMessage, boolean hasMiscData,
                             boolean focused,
-                            boolean selected, Component noticeText) {
+                            boolean selected, Component noticeText, List<Component> noticeTooltipLines, int noticeColor) {
 
         /**
          * Creates a marker row with no notice label.
@@ -820,8 +822,8 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
          * @param focused          whether this marker is currently being edited
          * @param selected         whether this marker is in the current multi-selection
          */
-        public MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused, boolean selected) {
-            this(pos, timeOfDay, weather, proximityMessage, hasMiscData, focused, selected, null);
+        public MarkerRow(BlockPos pos, long timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused, boolean selected) {
+            this(pos, timeOfDay, weather, proximityMessage, hasMiscData, focused, selected, null, List.of(), 0xFFFF5555);
         }
 
         /**
@@ -834,13 +836,50 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
         }
 
         /**
+         * Creates an inert separator where a marker chain continues in another dimension.
+         *
+         * @param dimensionId destination dimension identifier
+         * @return dimension-break row data
+         */
+        public static MarkerRow dimensionBreak(String dimensionId) {
+            return notice(
+                    Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.dimension_break", dimensionId),
+                    List.of(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.dimension_break.tooltip", dimensionId)),
+                    0xFFFFAA00
+            );
+        }
+
+        /**
          * Creates an inert notice row.
          *
          * @param text notice label to render
          * @return notice row data
          */
         public static MarkerRow notice(Component text) {
-            return new MarkerRow(BlockPos.ZERO, ChapterNbtData.UNSET, ChapterNbtData.UNSET, "", false, false, false, text);
+            return notice(text, List.of());
+        }
+
+        /**
+         * Creates an inert notice row with a tooltip.
+         *
+         * @param text         notice label to render
+         * @param tooltipLines lines shown while hovering the notice
+         * @return notice row data
+         */
+        public static MarkerRow notice(Component text, List<Component> tooltipLines) {
+            return notice(text, tooltipLines, 0xFFFF5555);
+        }
+
+        /**
+         * Creates an inert notice row with a tooltip and custom color.
+         *
+         * @param text         notice label to render
+         * @param tooltipLines lines shown while hovering the notice
+         * @param color        notice text color
+         * @return notice row data
+         */
+        public static MarkerRow notice(Component text, List<Component> tooltipLines, int color) {
+            return new MarkerRow(BlockPos.ZERO, TimeOfDay.UNSET, ChapterNbtData.UNSET, "", false, false, false, text, tooltipLines, color);
         }
 
         /**

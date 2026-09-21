@@ -14,6 +14,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WeatherTypes;
 import space.ajcool.ardapaths.core.integration.DaylightCycles;
@@ -47,11 +48,6 @@ public final class EnvironmentController {
     private static final double INFLUENCE_RANGE = 32.0D;
 
     /**
-     * Number of ticks in Minecraft's repeating day cycle.
-     */
-    private static final int DAY_TICKS = 24000;
-
-    /**
      * Time constant for frame-rate-independent daylight smoothing.
      */
     private static final double SMOOTHING_SECONDS = 0.25D;
@@ -79,17 +75,12 @@ public final class EnvironmentController {
     /**
      * Marker-entry time captured for one-way radial interpolation.
      */
-    private static Integer capturedRadialStartTime;
+    private static Long capturedRadialStartTime;
 
     /**
      * Highest transition progress reached for the controlling radial source, so approach progress is never given back.
      */
     private static double reachedRadialProgress;
-
-    /**
-     * Segment start time captured for computed segments whose start marker has no authored time.
-     */
-    private static Integer capturedSegmentStartTime;
 
     /**
      * Daytime tick value the frame smoother is approaching.
@@ -207,7 +198,7 @@ public final class EnvironmentController {
                 data.getTimeOfDay(),
                 nextPos,
                 data.getActivationRange(),
-                data.getTimeTransitionRange()));
+                data.getTimeActivation()));
     }
 
     /**
@@ -269,18 +260,22 @@ public final class EnvironmentController {
             return;
         }
 
+        if (controllingSource == null && Double.compare(appliedTime, desiredTime) == 0) {
+            return;
+        }
+
         LocalPlayer player = Client.player();
         if (player != null && controllingSource != null) {
             desiredTime = desiredTimeFor(controllingSource, player.getPosition(tickDelta));
         }
 
         double frameSeconds = frameDeltaSeconds(System.nanoTime());
-        double arc = shortestArc(appliedTime, desiredTime);
-        double nextTime = Math.abs(arc) < 1.0D
-                ? desiredTime
-                : appliedTime + (arc * (1.0D - Math.exp(-frameSeconds / SMOOTHING_SECONDS)));
+        rebaseAppliedTimeToDesiredDay();
+        double delta = desiredTime - appliedTime;
 
-        appliedTime = normalizeTime(nextTime);
+        appliedTime = Math.abs(delta) < 1.0D
+                ? desiredTime
+                : appliedTime + (delta * (1.0D - Math.exp(-frameSeconds / SMOOTHING_SECONDS)));
         DaylightCycles.setClientTime(Math.round(appliedTime));
     }
 
@@ -314,22 +309,28 @@ public final class EnvironmentController {
      * @param playerPos precise player position
      */
     private static void selectTimeSource(Vec3 playerPos) {
-        if (timeNodes.isEmpty() || influenceDistanceSquared(playerPos) > Mth.square(INFLUENCE_RANGE)) {
+        if (timeNodes.isEmpty()) {
+            releaseControl();
+            return;
+        }
+
+        double trailDistanceSquared = influenceDistanceSquared(playerPos);
+        if (trailDistanceSquared > Mth.square(INFLUENCE_RANGE)) {
             releaseControl();
             return;
         }
 
         TimeCandidate radial = nearestRadialCandidate(playerPos);
-        TimeCandidate computed = nearestComputedCandidate(playerPos);
+        TimeCandidate segment = nearestSegmentCandidate(playerPos, trailDistanceSquared);
+        TimeCandidate arrival = nearestArrivalCandidate(playerPos);
         TimeSource selected = radial == null
-                ? computed == null ? null : computed.source()
+                ? segment == null ? arrival == null ? null : arrival.source() : segment.source()
                 : radial.source();
 
         if (selected == null) {
             controllingSource = null;
             capturedRadialStartTime = null;
             reachedRadialProgress = 0.0D;
-            capturedSegmentStartTime = null;
             return;
         }
 
@@ -339,7 +340,6 @@ public final class EnvironmentController {
             controllingSource = selected;
             capturedRadialStartTime = null;
             reachedRadialProgress = 0.0D;
-            capturedSegmentStartTime = null;
         }
 
         desiredTime = desiredTimeFor(selected, playerPos);
@@ -365,12 +365,12 @@ public final class EnvironmentController {
 
         for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
             TimeNode node = entry.getValue();
-            if (node.timeOfDay() == TimeOfDay.UNSET || TimeOfDay.isComputed(node.transitionRange())) {
+            if (node.timeOfDay() == TimeOfDay.UNSET || node.timeActivation() != TimeActivation.MARKER_RANGE) {
                 continue;
             }
 
             double distanceSquared = environmentDistanceSquared(playerPos, entry.getKey());
-            double outerRadius = node.activationRange() + Math.max(TimeOfDay.DEFAULT_TRANSITION_RANGE, node.transitionRange());
+            double outerRadius = TimeSourceRules.arrivalRange(node.activationRange());
             if (distanceSquared <= Mth.square(outerRadius)
                     && (nearest == null || distanceSquared < nearest.distanceSquared())) {
                 nearest = new TimeCandidate(new TimeSource(TimeSourceType.RADIAL, entry.getKey(), null, node, null), distanceSquared);
@@ -381,12 +381,13 @@ public final class EnvironmentController {
     }
 
     /**
-     * Finds the closest computed segment whose destination marker requests computed interpolation.
+     * Finds the interpolating source for the trail segment the player is currently walking.
      *
-     * @param playerPos precise player position
-     * @return nearest computed candidate, or null when none is available
+     * @param playerPos            precise player position
+     * @param trailDistanceSquared squared distance from the player to the nearest collected trail element
+     * @return nearest segment candidate between two timed markers whose end is computed, or null when none is available
      */
-    private static TimeCandidate nearestComputedCandidate(Vec3 playerPos) {
+    private static TimeCandidate nearestSegmentCandidate(Vec3 playerPos, double trailDistanceSquared) {
         TimeCandidate nearest = null;
 
         for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
@@ -401,7 +402,16 @@ public final class EnvironmentController {
             }
 
             TimeSourceRules.SegmentProjection projection = TimeSourceRules.projectOntoSegment(playerPos, entry.getKey(), startNode.nextPos());
-            if (!TimeSourceRules.isComputedSegmentEligible(endNode.timeOfDay(), endNode.transitionRange(), projection.progress())) {
+            if (!TimeSourceRules.isComputedSegmentActive(
+                    startNode.timeOfDay(),
+                    endNode.timeOfDay(),
+                    endNode.timeActivation(),
+                    projection.overshoot(),
+                    TimeSourceRules.arrivalRange(startNode.activationRange()),
+                    TimeSourceRules.arrivalRange(endNode.activationRange()))) {
+                continue;
+            }
+            if (!TimeSourceRules.isNearestTrailElement(projection.distanceSquared(), trailDistanceSquared)) {
                 continue;
             }
 
@@ -409,6 +419,32 @@ public final class EnvironmentController {
                 nearest = new TimeCandidate(
                         new TimeSource(TimeSourceType.COMPUTED, entry.getKey(), startNode.nextPos(), startNode, endNode),
                         projection.distanceSquared());
+            }
+        }
+
+        return nearest;
+    }
+
+    /**
+     * Finds the flat source for a timed computed marker whose arrival radius contains the player.
+     *
+     * @param playerPos precise player position
+     * @return nearest arrival candidate covering chain edges where no segment can interpolate, or null when none contains the player
+     */
+    private static TimeCandidate nearestArrivalCandidate(Vec3 playerPos) {
+        TimeCandidate nearest = null;
+
+        for (Map.Entry<BlockPos, TimeNode> entry : timeNodes.entrySet()) {
+            TimeNode node = entry.getValue();
+            if (node.timeOfDay() == TimeOfDay.UNSET || node.timeActivation() != TimeActivation.COMPUTED) {
+                continue;
+            }
+
+            double distanceSquared = environmentDistanceSquared(playerPos, entry.getKey());
+            double arrivalRange = TimeSourceRules.arrivalRange(node.activationRange());
+            if (distanceSquared <= Mth.square(arrivalRange)
+                    && (nearest == null || distanceSquared < nearest.distanceSquared())) {
+                nearest = new TimeCandidate(new TimeSource(TimeSourceType.ARRIVAL, entry.getKey(), null, node, null), distanceSquared);
             }
         }
 
@@ -440,13 +476,29 @@ public final class EnvironmentController {
      *
      * @param source    selected control source
      * @param playerPos precise player position
-     * @return desired daytime ticks for the source
+     * @return desired absolute ticks for the source
      */
-    private static int desiredTimeFor(TimeSource source, Vec3 playerPos) {
+    private static long desiredTimeFor(TimeSource source, Vec3 playerPos) {
         return switch (source.type()) {
             case RADIAL -> radialDesiredTime(source, playerPos);
             case COMPUTED -> computedDesiredTime(source, playerPos);
+            case ARRIVAL -> arrivalDesiredTime(source);
         };
+    }
+
+    /**
+     * Computes a marker-arrival source's direct target time.
+     *
+     * @param source marker source
+     * @return marker-authored absolute ticks, or the current applied time if unset
+     */
+    private static long arrivalDesiredTime(TimeSource source) {
+        TimeNode node = source.startNode();
+        if (node == null || node.timeOfDay() == TimeOfDay.UNSET) {
+            return Math.round(appliedTime);
+        }
+
+        return node.timeOfDay();
     }
 
     /**
@@ -454,28 +506,23 @@ public final class EnvironmentController {
      *
      * @param source    radial source
      * @param playerPos precise player position
-     * @return desired daytime ticks for the radial source
+     * @return desired absolute ticks for the radial source
      */
-    private static int radialDesiredTime(TimeSource source, Vec3 playerPos) {
+    private static long radialDesiredTime(TimeSource source, Vec3 playerPos) {
         TimeNode node = source.startNode();
         if (node == null || node.timeOfDay() == TimeOfDay.UNSET) {
-            return (int) Math.round(appliedTime);
+            return Math.round(appliedTime);
         }
 
         ensureAppliedTime();
-        int targetTime = Math.floorMod(node.timeOfDay(), DAY_TICKS);
-        int transitionRange = Math.max(TimeOfDay.DEFAULT_TRANSITION_RANGE, node.transitionRange());
-        if (transitionRange == 0) {
-            return targetTime;
-        }
-
+        long targetTime = node.timeOfDay();
         if (capturedRadialStartTime == null) {
-            capturedRadialStartTime = (int) Math.round(appliedTime);
+            capturedRadialStartTime = Math.round(appliedTime);
         }
 
-        double outerRadius = node.activationRange() + transitionRange;
+        double outerRadius = TimeSourceRules.arrivalRange(node.activationRange());
         double distance = Math.sqrt(environmentDistanceSquared(playerPos, source.markerPos()));
-        double progress = Mth.clamp((outerRadius - distance) / transitionRange, 0.0D, 1.0D);
+        double progress = Mth.clamp((outerRadius - distance) / outerRadius, 0.0D, 1.0D);
         reachedRadialProgress = Math.max(reachedRadialProgress, progress);
         return interpolatedTime(capturedRadialStartTime, targetTime, reachedRadialProgress);
     }
@@ -485,29 +532,18 @@ public final class EnvironmentController {
      *
      * @param source    computed source
      * @param playerPos precise player position
-     * @return desired daytime ticks for the computed source
+     * @return desired absolute ticks for the computed source
      */
-    private static int computedDesiredTime(TimeSource source, Vec3 playerPos) {
+    private static long computedDesiredTime(TimeSource source, Vec3 playerPos) {
         TimeNode startNode = source.startNode();
         TimeNode endNode = source.endNode();
-        if (startNode == null || endNode == null || endNode.timeOfDay() == TimeOfDay.UNSET) {
-            return (int) Math.round(appliedTime);
+        if (startNode == null || endNode == null || startNode.timeOfDay() == TimeOfDay.UNSET || endNode.timeOfDay() == TimeOfDay.UNSET) {
+            return Math.round(appliedTime);
         }
 
         ensureAppliedTime();
-        int targetTime = Math.floorMod(endNode.timeOfDay(), DAY_TICKS);
         double progress = TimeSourceRules.projectOntoSegment(playerPos, source.markerPos(), source.nextPos()).progress();
-        if (startNode.timeOfDay() == TimeOfDay.UNSET) {
-            if (capturedSegmentStartTime == null) {
-                capturedSegmentStartTime = (int) Math.round(appliedTime);
-            }
-
-            return interpolatedTime(capturedSegmentStartTime, targetTime, progress);
-        }
-
-        int startTime = Math.floorMod(startNode.timeOfDay(), DAY_TICKS);
-        int delta = Math.floorMod(targetTime - startTime, DAY_TICKS);
-        return Math.floorMod(startTime + (int) Math.round(delta * progress), DAY_TICKS);
+        return TimeSourceRules.segmentTime(startNode.timeOfDay(), endNode.timeOfDay(), progress);
     }
 
     /**
@@ -519,9 +555,9 @@ public final class EnvironmentController {
             return;
         }
 
-        DaylightCycles.captureUserState();
-        DaylightCycles.enableClientTimeControl();
         seedAppliedTime();
+        DaylightCycles.captureUserState();
+        DaylightCycles.enableClientTimeControl(Math.round(appliedTime));
         controlActive = true;
     }
 
@@ -532,7 +568,6 @@ public final class EnvironmentController {
         controllingSource = null;
         capturedRadialStartTime = null;
         reachedRadialProgress = 0.0D;
-        capturedSegmentStartTime = null;
         desiredTime = 0.0D;
         appliedTime = 0.0D;
         hasAppliedTime = false;
@@ -556,23 +591,31 @@ public final class EnvironmentController {
         ClientLevel world = Client.world();
         appliedTime = world == null
                 ? 0.0D
-                : Math.floorMod(world.getOverworldClockTime(), DAY_TICKS);
+                : TimeOfDay.fromDayTime(ArdaPathsClient.CONFIG.getBaselineDate(), world.getOverworldClockTime());
         desiredTime = appliedTime;
         hasAppliedTime = true;
     }
 
     /**
-     * Computes shortest-path interpolation across Minecraft's wrapping day cycle.
+     * Interpolates along the signed absolute timeline.
      *
-     * @param startTicks  starting daytime ticks
-     * @param targetTicks target daytime ticks
+     * @param startTicks  starting absolute ticks
+     * @param targetTicks target absolute ticks
      * @param progress    interpolation progress in the range {@code [0, 1]}
-     * @return interpolated daytime ticks
+     * @return interpolated absolute ticks
      */
-    private static int interpolatedTime(int startTicks, int targetTicks, double progress) {
-        int delta = shortestArc(startTicks, targetTicks);
+    private static long interpolatedTime(long startTicks, long targetTicks, double progress) {
+        return startTicks + Math.round((targetTicks - startTicks) * Mth.clamp(progress, 0.0D, 1.0D));
+    }
 
-        return Math.floorMod(startTicks + (int) Math.round(delta * progress), DAY_TICKS);
+    /**
+     * Snaps the applied value onto the desired day before smoothing within that day.
+     */
+    private static void rebaseAppliedTimeToDesiredDay() {
+        double delta = desiredTime - appliedTime;
+        if (Math.abs(delta) > TimeOfDay.DAY_TICKS / 2.0D) {
+            appliedTime += TimeOfDay.DAY_TICKS * Math.round(delta / TimeOfDay.DAY_TICKS);
+        }
     }
 
     /**
@@ -593,58 +636,23 @@ public final class EnvironmentController {
     }
 
     /**
-     * Computes the signed shortest arc between two integer daytime values.
-     *
-     * @param startTicks  starting daytime ticks
-     * @param targetTicks target daytime ticks
-     * @return signed shortest arc across the wrapping day cycle
-     */
-    private static int shortestArc(int startTicks, int targetTicks) {
-        return Math.floorMod(targetTicks - startTicks + (DAY_TICKS + (DAY_TICKS / 2)), DAY_TICKS) - (DAY_TICKS / 2);
-    }
-
-    /**
-     * Computes the signed shortest arc between two floating-point daytime values.
-     *
-     * @param startTicks  starting daytime ticks
-     * @param targetTicks target daytime ticks
-     * @return signed shortest arc across the wrapping day cycle
-     */
-    private static double shortestArc(double startTicks, double targetTicks) {
-        double delta = targetTicks - startTicks;
-        delta = ((delta + (DAY_TICKS * 1.5D)) % DAY_TICKS) - (DAY_TICKS / 2.0D);
-
-        return delta;
-    }
-
-    /**
-     * Normalizes a floating-point daytime value into Minecraft's repeating day range.
-     *
-     * @param ticks daytime ticks to normalize
-     * @return normalized daytime ticks
-     */
-    private static double normalizeTime(double ticks) {
-        double normalized = ticks % DAY_TICKS;
-        if (normalized < 0.0D) {
-            normalized += DAY_TICKS;
-        }
-
-        return normalized;
-    }
-
-    /**
-     * Time interpolation modes supported by marker transition ranges.
+     * Time source modes supported by marker-authored time.
      */
     private enum TimeSourceType {
         /**
-         * Marker-centered interpolation over a fixed numeric transition range.
+         * Marker-centered interpolation over the marker activation range.
          */
         RADIAL,
 
         /**
          * Segment interpolation computed from the player's projected position along the trail.
          */
-        COMPUTED
+        COMPUTED,
+
+        /**
+         * Direct application while inside a computed marker's arrival band.
+         */
+        ARRIVAL
     }
 
     /**
@@ -661,12 +669,12 @@ public final class EnvironmentController {
     /**
      * Time data contributed by one trail marker during a client tick.
      *
-     * @param timeOfDay       marker-authored daytime ticks, or {@link TimeOfDay#UNSET}
+     * @param timeOfDay       marker-authored absolute ticks, or {@link TimeOfDay#UNSET}
      * @param nextPos         absolute position of the next marker in the trail, or null when none is configured
      * @param activationRange marker activation radius for radial time control
-     * @param transitionRange numeric radial transition range or computed-mode sentinel
+     * @param timeActivation  activation mode used for marker-authored time
      */
-    private record TimeNode(int timeOfDay, BlockPos nextPos, int activationRange, int transitionRange) {
+    private record TimeNode(long timeOfDay, BlockPos nextPos, int activationRange, TimeActivation timeActivation) {
 
     }
 

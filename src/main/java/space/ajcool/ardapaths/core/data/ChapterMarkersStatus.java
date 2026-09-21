@@ -27,5 +27,10 @@ public enum ChapterMarkersStatus {
     /**
      * The request referenced missing or invalid path, chapter, world, or marker data.
      */
-    INVALID_DATA
+    INVALID_DATA,
+
+    /**
+     * A warp is configured but cannot be resolved into a usable chapter start.
+     */
+    UNRESOLVABLE_CHAPTER_START
 }

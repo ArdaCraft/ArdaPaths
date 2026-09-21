@@ -1,15 +1,17 @@
 package space.ajcool.ardapaths.screens.marker;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WeatherTypes;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 import space.ajcool.ardapaths.screens.MarkerEditScreen;
 import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
-import space.ajcool.ardapaths.screens.widgets.TabBarWidget;
+import space.ajcool.ardapaths.screens.widgets.PreviousTimeSuggestion;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.List;
@@ -21,30 +23,32 @@ import java.util.function.Supplier;
  */
 public class TimeWeatherTabSection implements MarkerEditorTab {
 
-    /** Horizontal gutter between side-by-side time inputs. */
-    private static final int INPUT_GUTTER = 2 * TabBarWidget.CONTENT_PADDING;
-
     /** Supplies feedback from the most recent time-spread or bulk-clear request. */
     private final Supplier<Component> feedbackSupplier;
 
     /** Supplies whether the current feedback represents an error state. */
     private final BooleanSupplier feedbackErrorSupplier;
 
-    /** Input box used to configure the marker's optional time-of-day setting. */
+    /** Supplies the nearest previous configured marker time, or null when none exists. */
+    private final Supplier<Long> previousTimeSupplier;
+
+    /** Input box used to configure the marker's optional date-time setting. */
     private InputBoxWidget timeOfDayInput;
 
-    /** Input box used to configure the marker's time transition range. */
-    private InputBoxWidget timeTransitionRangeInput;
+    /** Helper that controls the previous-time suggestion button. */
+    private PreviousTimeSuggestion previousTimeSuggestion;
 
     /**
      * Creates a time and weather tab section.
      *
      * @param feedbackSupplier      supplier for response feedback text
      * @param feedbackErrorSupplier supplier for response feedback severity
+     * @param previousTimeSupplier  supplier for the previous configured marker time
      */
-    public TimeWeatherTabSection(Supplier<Component> feedbackSupplier, BooleanSupplier feedbackErrorSupplier) {
+    public TimeWeatherTabSection(Supplier<Component> feedbackSupplier, BooleanSupplier feedbackErrorSupplier, Supplier<Long> previousTimeSupplier) {
         this.feedbackSupplier = feedbackSupplier;
         this.feedbackErrorSupplier = feedbackErrorSupplier;
+        this.previousTimeSupplier = previousTimeSupplier;
     }
 
     /**
@@ -91,7 +95,7 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
     }
 
     /**
-     * Creates and adds the time-of-day input and transition range selector.
+     * Creates and adds the date-time input and transition range selector.
      *
      * @param screen marker edit screen that owns the widgets
      * @param x      the input x coordinate
@@ -102,44 +106,54 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
     @SuppressWarnings("resource")
     private void buildTimeOfDaySelector(MarkerEditScreen screen, int x, int y, int width, MarkerFormState state) {
         var font = Client.mc().font;
-        int inputWidth = (width - INPUT_GUTTER) / 2;
-        int rightColumnX = x + width - inputWidth;
         Component label = Component.translatable("ardapaths.client.marker.configuration.screens.current_time_of_day");
         screen.add(new TextWidget(x, y - 17, font.width(label), 17, label));
+        Component placeholder = Component.translatable("ardapaths.client.marker.configuration.screens.date_time_placeholder");
         timeOfDayInput = screen.add(InputBoxWidget.create()
                 .setX(x)
                 .setY(y)
-                .setWidth(inputWidth)
+                .setWidth(width)
                 .setHeight(20)
                 .setEnabled(true)
-                .setPlaceholder(Component.translatable("ardapaths.client.marker.configuration.screens.user_current"))
+                .setPlaceholder(placeholder)
                 .setValidator(MarkerFields::validateCurrentTimeOfDay)
                 .build()
         );
+        timeOfDayInput.setTooltip(Tooltip.create(placeholder));
         timeOfDayInput.setValueListener(ignored -> timeOfDayInput.validateText());
         timeOfDayInput.setValue(TimeOfDay.format(state.getTimeOfDay()));
+        previousTimeSuggestion = PreviousTimeSuggestion.create(timeOfDayInput, previousTimeSupplier, x, y + 22, width, 20, screen::add);
 
         Component rangeLabel = Component.translatable("ardapaths.client.marker.configuration.screens.time_transition_range");
-        screen.add(new TextWidget(rightColumnX, y - 19, font.width(rangeLabel), 17, rangeLabel));
-        timeTransitionRangeInput = screen.add(InputBoxWidget.create()
-                .setX(rightColumnX)
-                .setY(y)
-                .setWidth(inputWidth)
-                .setHeight(20)
-                .setEnabled(true)
-                .setPlaceholder(Component.translatable("ardapaths.client.marker.configuration.screens.time_transition_range_placeholder"))
-                .setValidator(MarkerFields::validateTimeTransitionRange)
+        DropdownWidget<TimeActivation> timeActivationDropdown = screen.add(DropdownWidget.<TimeActivation>create()
+                .setPosition(x, y + 46)
+                .setSize(width, 20)
+                .setTitle(rangeLabel)
+                .setOptionDisplay(item -> timeActivationLabel(item, state.getActivationRange()))
+                .setOptions(List.of(TimeActivation.COMPUTED, TimeActivation.MARKER_RANGE))
+                .setSelected(state.getTimeActivation())
+                .setOnSelect(state::setTimeActivation)
                 .build()
         );
-        timeTransitionRangeInput.setValue(TimeOfDay.formatTransitionRange(state.getTimeTransitionRange()));
-        timeTransitionRangeInput.setValueListener(ignored -> timeTransitionRangeInput.validateText());
-        timeTransitionRangeInput.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.time_transition_range_tooltip")));
+        timeActivationDropdown.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.marker.configuration.screens.time_transition_range_tooltip")));
 
         Component feedback = feedbackSupplier.get();
         if (feedback != null) {
             Component formattedFeedback = feedback.copy().withStyle(feedbackErrorSupplier.getAsBoolean() ? ChatFormatting.RED : ChatFormatting.GRAY);
-            screen.add(new TextWidget(x, y + 30, width, 17, formattedFeedback));
+            screen.add(new TextWidget(x, y + 74, width, 17, formattedFeedback));
         }
+    }
+
+    /**
+     * Updates the previous-time suggestion button visibility and label.
+     */
+    @Override
+    public void tick() {
+        if (previousTimeSuggestion == null) {
+            return;
+        }
+
+        previousTimeSuggestion.tick();
     }
 
     /**
@@ -150,7 +164,6 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
     @Override
     public void commitTo(MarkerFormState state) {
         state.setTimeOfDay(MarkerFields.parseTimeOfDayOrFallback(timeOfDayInput, state.getTimeOfDay()));
-        state.setTimeTransitionRange(MarkerFields.parseTransitionRangeOrFallback(timeTransitionRangeInput, state.getTimeTransitionRange()));
     }
 
     /**
@@ -160,9 +173,21 @@ public class TimeWeatherTabSection implements MarkerEditorTab {
      */
     @Override
     public boolean validate() {
-        boolean valid = true;
-        valid &= timeOfDayInput == null || timeOfDayInput.validateText();
-        valid &= timeTransitionRangeInput == null || timeTransitionRangeInput.validateText();
-        return valid;
+        return timeOfDayInput == null || timeOfDayInput.validateText();
+    }
+
+    /**
+     * Builds the display label for a time activation dropdown option.
+     *
+     * @param activation      option being rendered
+     * @param activationRange current marker activation range
+     * @return localized option label
+     */
+    private Component timeActivationLabel(TimeActivation activation, int activationRange) {
+        if (activation == TimeActivation.COMPUTED) {
+            return Component.translatable("ardapaths.client.marker.configuration.screens.time_activation.computed");
+        }
+
+        return Component.translatable("ardapaths.client.marker.configuration.screens.time_activation.marker_range", activationRange);
     }
 }

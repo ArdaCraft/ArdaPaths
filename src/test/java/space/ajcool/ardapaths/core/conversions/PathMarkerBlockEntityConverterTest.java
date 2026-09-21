@@ -36,8 +36,8 @@ class PathMarkerBlockEntityConverterTest {
         ArdaPaths.CONFIG = GSON.fromJson("""
                 {
                   "paths": [
-                    {"id":"frodo","name":"Frodo","chapters":{"default":{"id":"default","name":"Default","date":"0","index":0}}},
-                    {"id":"aragorn","name":"Aragorn","chapters":{"default":{"id":"default","name":"Default","date":"0","index":0}}}
+                    {"id":"frodo","name":"Frodo","chapters":{"default":{"id":"default","name":"Default","index":0}}},
+                    {"id":"aragorn","name":"Aragorn","chapters":{"default":{"id":"default","name":"Default","index":0}}}
                   ]
                 }
                 """, ServerConfig.class);
@@ -100,7 +100,7 @@ class PathMarkerBlockEntityConverterTest {
         ArdaPaths.CONFIG = GSON.fromJson("""
                 {
                   "paths": [
-                    {"id":"frodo","name":"Frodo","chapters":{"default":{"id":"default","name":"Default","date":"0","index":0}}}
+                    {"id":"frodo","name":"Frodo","chapters":{"default":{"id":"default","name":"Default","index":0}}}
                   ]
                 }
                 """, ServerConfig.class);
@@ -131,13 +131,15 @@ class PathMarkerBlockEntityConverterTest {
     @SuppressWarnings({"DataFlowIssue", "ExtractMethodRecommender"})
     @Test
     void applyNbtKeepsKnownPathDataWhenAnotherPathKeyIsUnknown() throws ReflectiveOperationException {
-        ArdaPathsClient.CONFIG = GSON.fromJson("""
+        String configJson = """
                 {
                   "paths": [
-                    {"id":"frodo","name":"Frodo","chapters":{"shire":{"id":"shire","name":"Shire","date":"0","index":0}}}
+                    {"id":"frodo","name":"Frodo","chapters":{"shire":{"id":"shire","name":"Shire","index":0}}}
                   ]
                 }
-                """, ClientConfig.class);
+                """;
+        ArdaPathsClient.CONFIG = GSON.fromJson(configJson, ClientConfig.class);
+        ArdaPathsClient.CONFIG.setPaths(GSON.fromJson(configJson, ServerConfig.class).getPaths());
 
         CompoundTag paths = new CompoundTag();
         CompoundTag knownPath = new CompoundTag();
@@ -205,7 +207,7 @@ class PathMarkerBlockEntityConverterTest {
             chapter.putBoolean("display_chapter_title_on_trail", true);
             chapter.putBoolean("display_above_blocks", false);
             chapter.putInt("weather", 2);
-            chapter.putInt("time_of_day", 18000);
+            chapter.putLong("time_of_day", 18000L);
             chapter.putInt("time_transition_range", 32);
             chapter.putString("auto_teleport_target", "moria-gate");
             chapter.putString("give_item", "minecraft:bread");
@@ -219,6 +221,7 @@ class PathMarkerBlockEntityConverterTest {
                 marker.applyNbt(paths);
             }
 
+            chapter.remove("time_transition_range");
             assertEquals(paths, NbtEncodeable.getCompound(marker.toNbt(new CompoundTag()), "paths"));
         } finally {
             MarkerTestSupport.clearConfigs();

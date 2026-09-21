@@ -42,10 +42,11 @@ class PacketRoundTripTest {
         assertRoundTrip(new ChapterPathMarkersResponsePacket(
                 ChapterMarkersStatus.OK_WITH_BREAK,
                 List.of(
-                        new ChapterMarkerEntry(123L, 6000, 2, "At the gate", true, false, false),
+                        new ChapterMarkerEntry(123L, "minecraft:overworld", 5_910_000L, 2, "At the gate", true, false, false, false),
                         ChapterMarkerEntry.breakEntry()
                 )
         ), ChapterPathMarkersResponsePacket::read);
+        assertRoundTrip(new DimensionListResponsePacket(List.of("minecraft:overworld", "minecraft:the_nether")), DimensionListResponsePacket::read);
         assertRoundTrip(new MarkerBulkClearResponsePacket(TimeSpreadStatus.OK, 4), MarkerBulkClearResponsePacket::read);
         assertRoundTrip(new MarkerTimeSpreadResponsePacket(TimeSpreadStatus.CHAIN_BROKEN, 2, new BlockPos(7, 8, 9)), MarkerTimeSpreadResponsePacket::read);
         assertRoundTrip(new MarkerTimeSpreadResponsePacket(TimeSpreadStatus.OK, 3, null), MarkerTimeSpreadResponsePacket::read);
@@ -59,11 +60,11 @@ class PacketRoundTripTest {
         assertRoundTrip(new ChapterPlayerTeleportPacket("frodo", "shire"), ChapterPlayerTeleportPacket::read);
         assertRoundTrip(new ChapterStartRemovePacket("frodo", "shire", new BlockPos(1, 2, 3)), ChapterStartRemovePacket::read);
         assertRoundTrip(new ChapterStartUpdatePacket("frodo", "shire", new BlockPos(1, 2, 3)), ChapterStartUpdatePacket::read);
-        assertRoundTrip(new ChapterUpdatePacket("frodo", "shire", "The Shire", "12 Forelithe", 1, "bag-end"), ChapterUpdatePacket::read);
+        assertRoundTrip(new ChapterUpdatePacket("frodo", "shire", "The Shire", 1, "bag-end"), ChapterUpdatePacket::read);
         assertRoundTrip(new MarkerActionTriggerPacket(new BlockPos(-1, 70, 12), "frodo", "shire"), MarkerActionTriggerPacket::read);
         assertRoundTrip(new MarkerBulkClearPacket(List.of(1L, 2L, 3L), "frodo", "shire", true, false), MarkerBulkClearPacket::read);
-        assertRoundTrip(new MarkerTimeSpreadPacket(1L, 2L, 1000, 13000, "frodo", "shire", false), MarkerTimeSpreadPacket::read);
-        assertRoundTrip(new PathDataUpdatePacket("frodo", "Frodo's Path", 0x112233, 0x445566, 0x778899), PathDataUpdatePacket::read);
+        assertRoundTrip(new MarkerTimeSpreadPacket(1L, 2L, 5_910_000L, 6_061_000L, "frodo", "shire", false), MarkerTimeSpreadPacket::read);
+        assertRoundTrip(new PathDataUpdatePacket("frodo", "Frodo's Path", 0x112233, 0x445566, 0x778899, true), PathDataUpdatePacket::read);
         assertRoundTrip(new PathMarkerLinksUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerLinksUpdatePacket::read);
         assertRoundTrip(new PathMarkerRemoteDataPacket(987654321L), PathMarkerRemoteDataPacket::read);
         assertRoundTrip(new PathMarkerUpdatePacket(new BlockPos(10, 20, 30), markerNbt), PathMarkerUpdatePacket::read);
@@ -104,6 +105,7 @@ class PacketRoundTripTest {
 
         assertRespondableRoundTrip(new ArdaPathsPermissionCheckResponsePacket(true), ArdaPathsPermissionCheckResponsePacket::read);
         assertRespondableRoundTrip(new ChapterPathMarkersResponsePacket(ChapterMarkersStatus.OK, List.of()), ChapterPathMarkersResponsePacket::read);
+        assertRespondableRoundTrip(new DimensionListResponsePacket(List.of("minecraft:overworld")), DimensionListResponsePacket::read);
         assertRespondableRoundTrip(new MarkerBulkClearResponsePacket(TimeSpreadStatus.OK, 1), MarkerBulkClearResponsePacket::read);
         assertRespondableRoundTrip(new MarkerTimeSpreadResponsePacket(TimeSpreadStatus.OK, 1, new BlockPos(1, 2, 3)), MarkerTimeSpreadResponsePacket::read);
         assertRespondableRoundTrip(new PathDataResponsePacket("{\"paths\":[]}"), PathDataResponsePacket::read);
@@ -112,7 +114,7 @@ class PacketRoundTripTest {
         assertRespondableRoundTrip(new EmptyPacket(), EmptyPacket::read);
         assertRespondableRoundTrip(new ChapterPathMarkersPacket("frodo", "shire", 123L), ChapterPathMarkersPacket::read);
         assertRespondableRoundTrip(new MarkerBulkClearPacket(List.of(1L, 2L), "frodo", "shire", true, false), MarkerBulkClearPacket::read);
-        assertRespondableRoundTrip(new MarkerTimeSpreadPacket(1L, 2L, 1000, 12000, "frodo", "shire", false), MarkerTimeSpreadPacket::read);
+        assertRespondableRoundTrip(new MarkerTimeSpreadPacket(1L, 2L, 5_910_000L, 6_061_000L, "frodo", "shire", false), MarkerTimeSpreadPacket::read);
         assertRespondableRoundTrip(new PathMarkerRemoteDataPacket(5L), PathMarkerRemoteDataPacket::read);
         assertRespondableRoundTrip(new PathMarkerUpdatePacket(new BlockPos(4, 5, 6), markerNbt), PathMarkerUpdatePacket::read);
     }

@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.backup.dto.PathNodeDto;
 import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.Map;
@@ -38,8 +39,8 @@ class MarkerNbtRoundTripTest {
         original.setDisplayChapterTitleOnTrail(true);
         original.setDisplayAboveBlocks(false);
         original.setWeather(2);
-        original.setTimeOfDay(6000);
-        original.setTimeTransitionRange(24);
+        original.setTimeOfDay(5_910_000L);
+        original.setTimeActivation(TimeActivation.COMPUTED);
         original.setAutoTeleportTarget("bag-end");
         original.setGiveItem("minecraft:bread");
         original.setPackedMessageData(BitPacker.packFive(7, 120, 9, 3, 11));

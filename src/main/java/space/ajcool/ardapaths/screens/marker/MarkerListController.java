@@ -7,9 +7,12 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
 import space.ajcool.ardapaths.core.data.ChapterMarkersStatus;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.client.ChapterPathMarkersResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPathMarkersPacket;
@@ -45,6 +48,9 @@ public class MarkerListController {
     /** Callback that confirms a bulk clear action. */
     private final BiConsumer<Boolean, Boolean> confirmBulkClear;
 
+    /** Callback that confirms unlinking selected markers from the default chapter. */
+    private final Runnable confirmBulkUnlinkDefault;
+
     /** Callback that opens the time interpolation popup. */
     private final Runnable openInterpolation;
 
@@ -69,8 +75,8 @@ public class MarkerListController {
     /** Whether the marker navigation column has completed its first build for this screen. */
     private boolean markerListInitialised;
 
-    /** Whether the server reported that the selected chapter has no chapter-start marker. */
-    private boolean missingChapterStart;
+    /** Last status returned by the server marker-list request. */
+    private ChapterMarkersStatus markerStatus = ChapterMarkersStatus.INVALID_DATA;
 
     /** Whether a server marker-list request is waiting for its response. */
     private boolean chapterMarkersRequestInFlight;
@@ -99,6 +105,7 @@ public class MarkerListController {
      * @param openMarker        callback that opens a marker for editing
      * @param teleport          callback that teleports to a marker
      * @param confirmBulkClear  callback that confirms a bulk clear action
+     * @param confirmBulkUnlinkDefault callback that confirms a default-chapter unlink action
      * @param openInterpolation callback that opens time interpolation
      */
     public MarkerListController(PathMarkerBlockEntity marker, String pathId, String chapterId, Collection<BlockPos> initialSelection,
@@ -106,6 +113,7 @@ public class MarkerListController {
                                 BiConsumer<BlockPos, Collection<BlockPos>> openMarker,
                                 Consumer<BlockPos> teleport,
                                 BiConsumer<Boolean, Boolean> confirmBulkClear,
+                                Runnable confirmBulkUnlinkDefault,
                                 Runnable openInterpolation) {
         this.marker = marker;
         this.pathId = pathId;
@@ -115,6 +123,7 @@ public class MarkerListController {
         this.openMarker = openMarker;
         this.teleport = teleport;
         this.confirmBulkClear = confirmBulkClear;
+        this.confirmBulkUnlinkDefault = confirmBulkUnlinkDefault;
         this.openInterpolation = openInterpolation;
         selectedMarkers = initialSelection == null || initialSelection.isEmpty()
                 ? new ArrayList<>(List.of(marker.getBlockPos().immutable()))
@@ -133,7 +142,7 @@ public class MarkerListController {
         this.chapterId = chapterId;
         serverMarkers = List.of();
         serverListActive = false;
-        missingChapterStart = false;
+        markerStatus = ChapterMarkersStatus.INVALID_DATA;
         markerListInitialised = false;
         pendingMarkerListScrollAmount = null;
     }
@@ -221,10 +230,10 @@ public class MarkerListController {
         List<MarkerListPanelWidget.MarkerRow> rows = serverListActive
                 ? currentServerMarkerRows()
                 : currentLocalMarkerRows();
-        if (missingChapterStart) {
+        Optional<MarkerListPanelWidget.MarkerRow> notice = statusNotice();
+        if (notice.isPresent()) {
             rows = new ArrayList<>(rows);
-            rows.addFirst(MarkerListPanelWidget.MarkerRow.notice(Component.translatable(
-                    "ardapaths.client.marker.configuration.screens.chapter_markers.missing_chapter_start")));
+            rows.addFirst(notice.get());
         }
         markerListPanel.setRows(rows, scrollToSelected);
         trimSelectionToDisplayedMarkers();
@@ -271,6 +280,9 @@ public class MarkerListController {
      */
     private MarkerListPanelWidget.MarkerRow serverMarkerRow(ChapterMarkerEntry entry) {
         if (entry.chainBreak()) {
+            if (entry.dimensionBreak()) {
+                return MarkerListPanelWidget.MarkerRow.dimensionBreak(entry.dimensionId());
+            }
             return MarkerListPanelWidget.MarkerRow.chainBreak();
         }
 
@@ -433,8 +445,18 @@ public class MarkerListController {
         serverMarkers = serverMarkers.stream()
                 .map(entry -> entry.chainBreak() || entry.packedPos() != packedMarkerPos
                         ? entry
-                        : ChapterMarkerEntry.marker(packedMarkerPos, rowData))
+                        : ChapterMarkerEntry.marker(packedMarkerPos, currentDimensionId(), rowData))
                 .toList();
+    }
+
+    /**
+     * Resolves the current client dimension identifier for locally patched marker rows.
+     *
+     * @return current dimension identifier, or an empty string when no client level is active
+     */
+    @SuppressWarnings("resource")
+    private String currentDimensionId() {
+        return Client.mc().level == null ? "" : Client.mc().level.dimension().identifier().toString();
     }
 
     /**
@@ -475,12 +497,13 @@ public class MarkerListController {
         }
 
         List<ChapterMarkerEntry> incomingMarkers = List.copyOf(response.markers());
-        boolean incomingServerListActive = response.status() != ChapterMarkersStatus.NO_CHAPTER_START && !incomingMarkers.isEmpty();
-        boolean incomingMissingChapterStart = response.status() == ChapterMarkersStatus.NO_CHAPTER_START;
-        boolean missingChapterStartChanged = incomingMissingChapterStart != missingChapterStart;
+        boolean incomingServerListActive = response.status() != ChapterMarkersStatus.NO_CHAPTER_START
+                && response.status() != ChapterMarkersStatus.UNRESOLVABLE_CHAPTER_START
+                && !incomingMarkers.isEmpty();
+        boolean statusChanged = response.status() != markerStatus;
         boolean alreadyShowingServerRows = markerListInitialised && serverListActive;
-        missingChapterStart = incomingMissingChapterStart;
-        if (incomingMarkers.equals(serverMarkers) && incomingServerListActive == serverListActive && !missingChapterStartChanged) {
+        markerStatus = response.status();
+        if (incomingMarkers.equals(serverMarkers) && incomingServerListActive == serverListActive && !statusChanged) {
             return;
         }
 
@@ -496,9 +519,43 @@ public class MarkerListController {
     private void useLocalMarkerList() {
         serverMarkers = List.of();
         serverListActive = false;
-        missingChapterStart = false;
+        markerStatus = ChapterMarkersStatus.INVALID_DATA;
         if (markerListPanel != null) markerListPanel.setServerListActive(false);
         refresh(true);
+    }
+
+    /**
+     * Creates the current server-status notice row, when one should be shown.
+     *
+     * @return notice row data, or empty when no notice is needed
+     */
+    private Optional<MarkerListPanelWidget.MarkerRow> statusNotice() {
+        if (markerStatus == ChapterMarkersStatus.NO_CHAPTER_START) {
+            return Optional.of(MarkerListPanelWidget.MarkerRow.notice(Component.translatable(
+                    "ardapaths.client.marker.configuration.screens.chapter_markers.missing_chapter_start")));
+        }
+
+        if (markerStatus == ChapterMarkersStatus.UNRESOLVABLE_CHAPTER_START) {
+            return Optional.of(MarkerListPanelWidget.MarkerRow.notice(
+                    Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.unresolvable_chapter_start"),
+                    List.of(Component.translatable(
+                            "ardapaths.client.marker.configuration.screens.chapter_markers.unresolvable_chapter_start_tooltip",
+                            chapterWarp()))
+            ));
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Reads the selected chapter's warp from the client mirror for tooltip display.
+     *
+     * @return configured warp name, or an empty string
+     */
+    private String chapterWarp() {
+        PathData path = ArdaPathsClient.CONFIG.getPath(pathId);
+        ChapterData chapter = path == null ? null : path.getChapter(chapterId);
+        return chapter == null ? "" : chapter.getWarp();
     }
 
     /**
@@ -553,6 +610,12 @@ public class MarkerListController {
                         Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.clear_weather.tooltip"),
                         hasSelection,
                         () -> confirmBulkClear.accept(false, true)
+                ),
+                new ContextMenuWidget.Item(
+                        Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.unlink_default"),
+                        Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.unlink_default.tooltip"),
+                        hasSelection,
+                        confirmBulkUnlinkDefault
                 ),
                 new ContextMenuWidget.Item(
                         Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.interpolate_time"),

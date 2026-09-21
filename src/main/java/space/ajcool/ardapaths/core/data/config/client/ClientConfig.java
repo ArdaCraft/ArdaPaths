@@ -3,14 +3,18 @@ package space.ajcool.ardapaths.core.data.config.client;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import space.ajcool.ardapaths.core.Client;
+import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.paths.movement.AutoWalker;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedMessage;
 import space.ajcool.ardapaths.paths.rendering.objects.AnimatedTitle;
+import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +25,7 @@ import java.util.Map;
  * Mirrors the server configuration and adds per-player settings for rendering and display.
  * Serialized to JSON in config.json.
  */
+@Slf4j(topic = "ardapaths")
 public class ClientConfig {
 
     /**
@@ -68,6 +73,14 @@ public class ClientConfig {
     private boolean dynamicEnvironment;
 
     /**
+     * Date used to anchor the current world time before any marker sets time explicitly.
+     */
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
+    @SerializedName("baseline_date")
+    private String baselineDate = "04/09/3006 12:00";
+
+    /**
      * Whether vanilla interface elements should be hidden while holding the Pathfinder.
      */
     @Setter
@@ -103,19 +116,17 @@ public class ClientConfig {
     @SerializedName("chapter_title_display_speed")
     private Float chapterTitleDisplaySpeed;
 
-    /**
-     * List of paths serialized to JSON (mirror of server config).
-     */
-    @Getter
-    @Setter
-    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
-    @SuppressWarnings("unused")
-    @SerializedName("paths")
-    private List<PathData> clientPaths = new ArrayList<>();
+    /** Default path used before a server or world-specific selection has been written. */
+    private static final String DEFAULT_PATH_ID = "frodo";
+
+    /** Default chapter used before a server or world-specific selection has been written. */
+    private static final String DEFAULT_CHAPTER_ID = "default";
 
     /**
      * Transient list of paths loaded from the server, used during runtime.
      */
+    @Getter
+    @Setter
     private transient List<PathData> paths = new ArrayList<>();
 
     /**
@@ -137,6 +148,18 @@ public class ClientConfig {
      */
     public boolean useDynamicEnvironment() {
         return dynamicEnvironment;
+    }
+
+    /**
+     * @return the configured baseline date, or the default when the config value is invalid
+     */
+    public LocalDate getBaselineDate() {
+        try {
+            return TimeOfDay.date(TimeOfDay.parse(baselineDate));
+        } catch (TextValidationError exception) {
+            log.warn("[ArdaPaths] Invalid baseline_date '{}'; using {}", baselineDate, TimeOfDay.DEFAULT_BASELINE_DATE);
+            return TimeOfDay.DEFAULT_BASELINE_DATE;
+        }
     }
 
     /**
@@ -195,8 +218,7 @@ public class ClientConfig {
      * @return The selected path for the given identifier, or an empty string if no path is selected
      */
     public String getSelectedPathId(String identifier) {
-        if (!selectedPaths.containsKey(identifier)) return "frodo";
-        return selectedPaths.get(identifier).getPathId();
+        return getOrCreateSelection(identifier).getPathId();
     }
 
     /**
@@ -232,26 +254,6 @@ public class ClientConfig {
     }
 
     /**
-     * @return The list of available paths
-     */
-    public List<PathData> getPaths() {
-        return Client.isInSinglePlayer() ? this.clientPaths : this.paths;
-    }
-
-    /**
-     * Sets the list of paths available on this server.
-     *
-     * @param paths The new list of paths
-     */
-    public void setPaths(List<PathData> paths) {
-        if (Client.isInSinglePlayer()) {
-            this.clientPaths = paths;
-        } else {
-            this.paths = paths;
-        }
-    }
-
-    /**
      * Sets the selected path for the current identifier.
      *
      * @param path The selected path ID
@@ -269,10 +271,7 @@ public class ClientConfig {
      */
     public void setSelectedPath(String identifier, String path) {
         if (identifier.isEmpty()) return;
-        if (!selectedPaths.containsKey(identifier)) {
-            selectedPaths.put(identifier, new SelectedPathData());
-        }
-        selectedPaths.get(identifier).setPathId(path);
+        getOrCreateSelection(identifier).setPathId(path);
     }
 
     /**
@@ -288,8 +287,7 @@ public class ClientConfig {
      * @return The chapter ID for the given identifier, or an empty string if no chapter is selected
      */
     public String getCurrentChapterId(String identifier) {
-        if (!selectedPaths.containsKey(identifier)) return "default";
-        return selectedPaths.get(identifier).getChapterId();
+        return getOrCreateSelection(identifier).getChapterId();
     }
 
     /**
@@ -330,10 +328,24 @@ public class ClientConfig {
      */
     public void setCurrentChapter(String identifier, String chapter) {
         if (identifier.isEmpty()) return;
-        if (!selectedPaths.containsKey(identifier)) {
-            selectedPaths.put(identifier, new SelectedPathData());
+        getOrCreateSelection(identifier).setChapterId(chapter);
+    }
+
+    /**
+     * Gets the persisted selection for an identifier, creating one with effective defaults if missing.
+     *
+     * @param identifier The identifier, usually a server address or the player UUID
+     * @return the stored or newly seeded selected path data
+     */
+    private SelectedPathData getOrCreateSelection(String identifier) {
+        SelectedPathData selection = selectedPaths.get(identifier);
+        if (selection == null) {
+            selection = new SelectedPathData();
+            selection.setPathId(DEFAULT_PATH_ID);
+            selection.setChapterId(DEFAULT_CHAPTER_ID);
+            selectedPaths.put(identifier, selection);
         }
-        selectedPaths.get(identifier).setChapterId(chapter);
+        return selection;
     }
 
 }

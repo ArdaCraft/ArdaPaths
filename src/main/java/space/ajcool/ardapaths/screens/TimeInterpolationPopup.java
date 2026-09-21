@@ -8,10 +8,13 @@ import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.data.MarkerId;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
+import space.ajcool.ardapaths.screens.widgets.PreviousTimeSuggestion;
 import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 import space.ajcool.ardapaths.screens.widgets.TextWidget;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Modal screen for choosing the endpoint markers and times used by server-side interpolation.
@@ -21,7 +24,7 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     /**
      * Width of text input controls.
      */
-    private static final int INPUT_WIDTH = 135;
+    private static final int INPUT_WIDTH = 150;
 
     /**
      * Height of text input controls.
@@ -49,6 +52,11 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     private final Consumer<Endpoints> onConfirm;
 
     /**
+     * Lookup for the nearest previous configured marker time before a marker position.
+     */
+    private final Function<BlockPos, Long> previousTimeLookup;
+
+    /**
      * Input for the start marker ID.
      */
     private InputBoxWidget startMarkerInput;
@@ -69,18 +77,34 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     private InputBoxWidget endTimeInput;
 
     /**
+     * Suggestion button helper for the start time input.
+     */
+    private PreviousTimeSuggestion startTimeSuggestion;
+
+    /**
+     * Suggestion button helper for the end time input.
+     */
+    private PreviousTimeSuggestion endTimeSuggestion;
+
+    /**
      * Creates a time interpolation popup.
      *
-     * @param parentScreen screen returned to after closing
-     * @param startMarker  initially selected first marker
-     * @param endMarker    initially selected last marker
-     * @param onConfirm    callback for validated endpoint values
+     * @param parentScreen       screen returned to after closing
+     * @param startMarker        initially selected first marker
+     * @param endMarker          initially selected last marker
+     * @param previousTimeLookup lookup for the previous configured time before a marker
+     * @param onConfirm          callback for validated endpoint values
      */
-    public TimeInterpolationPopup(Screen parentScreen, BlockPos startMarker, BlockPos endMarker, Consumer<Endpoints> onConfirm) {
+    public TimeInterpolationPopup(Screen parentScreen,
+                                  BlockPos startMarker,
+                                  BlockPos endMarker,
+                                  Function<BlockPos, Long> previousTimeLookup,
+                                  Consumer<Endpoints> onConfirm) {
         super(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.title"));
         this.parentScreen = parentScreen;
         this.startMarker = startMarker;
         this.endMarker = endMarker;
+        this.previousTimeLookup = previousTimeLookup;
         this.onConfirm = onConfirm;
     }
 
@@ -91,18 +115,36 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     protected void init() {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        int left = centerX - 140;
+        int left = centerX - 155;
 
         startMarkerInput = buildMarkerInput(left, centerY - 35, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_marker"), MarkerId.format(startMarker));
-        endMarkerInput = buildMarkerInput(left + 145, centerY - 35, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_marker"), MarkerId.format(endMarker));
+        endMarkerInput = buildMarkerInput(left + 160, centerY - 35, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_marker"), MarkerId.format(endMarker));
         startTimeInput = buildTimeInput(left, centerY + 10, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.start_time"));
-        endTimeInput = buildTimeInput(left + 145, centerY + 10, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_time"));
+        endTimeInput = buildTimeInput(left + 160, centerY + 10, Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.end_time"));
+        startTimeSuggestion = PreviousTimeSuggestion.create(
+                startTimeInput,
+                suggestionFor(startMarkerInput),
+                left,
+                centerY + 32,
+                INPUT_WIDTH,
+                20,
+                this::addRenderableWidget
+        );
+        endTimeSuggestion = PreviousTimeSuggestion.create(
+                endTimeInput,
+                suggestionFor(endMarkerInput),
+                left + 160,
+                centerY + 32,
+                INPUT_WIDTH,
+                20,
+                this::addRenderableWidget
+        );
 
         this.addRenderableWidget(Button.builder(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.ok"), ignored -> confirm())
-                .bounds(centerX - 60, centerY + 45, 50, 20)
+                .bounds(centerX - 60, centerY + 60, 50, 20)
                 .build());
         this.addRenderableWidget(Button.builder(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.cancel"), ignored -> onClose())
-                .bounds(centerX + 10, centerY + 45, 60, 20)
+                .bounds(centerX + 10, centerY + 60, 60, 20)
                 .build());
     }
 
@@ -146,9 +188,39 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
                 .setWidth(INPUT_WIDTH)
                 .setHeight(INPUT_HEIGHT)
                 .setEnabled(true)
-                .setPlaceholder(Component.literal("hh:mm"))
+                .setPlaceholder(Component.translatable("ardapaths.client.marker.configuration.screens.date_time_placeholder"))
                 .setValidator(this::validateRequiredTime)
                 .build());
+    }
+
+    /**
+     * Creates a live previous-time supplier for the marker ID typed in an input.
+     *
+     * @param markerInput marker ID input that anchors the previous-time lookup
+     * @return supplier for the current previous configured time
+     */
+    private Supplier<Long> suggestionFor(InputBoxWidget markerInput) {
+        return () -> {
+            try {
+                return previousTimeLookup.apply(BlockPos.of(MarkerId.parse(markerInput.getValue())));
+            } catch (TextValidationError ignored) {
+                return null;
+            }
+        };
+    }
+
+    /**
+     * Updates popup helpers that need per-tick focus state.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (startTimeSuggestion != null) {
+            startTimeSuggestion.tick();
+        }
+        if (endTimeSuggestion != null) {
+            endTimeSuggestion.tick();
+        }
     }
 
     /**
@@ -183,13 +255,13 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
     }
 
     /**
-     * Validates a required time-of-day value.
+     * Validates a required date-time value.
      *
      * @param text input text
      * @throws TextValidationError when the value is blank or malformed
      */
     private void validateRequiredTime(String text) throws TextValidationError {
-        int parsed = TimeOfDay.parse(text);
+        long parsed = TimeOfDay.parse(text);
         if (parsed == TimeOfDay.UNSET) {
             throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.time_interpolation.time_required").getString());
         }
@@ -213,10 +285,10 @@ public class TimeInterpolationPopup extends ArdaPathsScreen {
      *
      * @param startPacked packed start marker position
      * @param endPacked   packed end marker position
-     * @param startTime   start time in daytime ticks
-     * @param endTime     end time in daytime ticks
+     * @param startTime   start time in absolute ticks
+     * @param endTime     end time in absolute ticks
      */
-    public record Endpoints(long startPacked, long endPacked, int startTime, int endTime) {
+    public record Endpoints(long startPacked, long endPacked, long startTime, long endTime) {
 
     }
 }

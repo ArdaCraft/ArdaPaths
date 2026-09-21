@@ -19,6 +19,9 @@ import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
+import space.ajcool.ardapaths.core.integration.WarpLocation;
+import space.ajcool.ardapaths.core.integration.Warps;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
@@ -37,6 +40,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -50,11 +55,17 @@ public class BackupManager {
     /** Current portable backup schema version. */
     private static final int SCHEMA_VERSION = 2;
 
+    /** Oldest portable backup schema this version can restore. */
+    private static final int MIN_RESTORABLE_SCHEMA_VERSION = 1;
+
     /** Number of historical zip backups to keep. */
     private static final int MAX_BACKUP_ZIPS = 5;
 
     /** Pretty Gson used for stable human-readable export files. */
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    /** Maximum time to wait for one optional warp resolution during backup self-heal. */
+    private static final long WARP_RESOLVE_TIMEOUT_SECONDS = 3L;
 
     /** Data directory containing the latest portable backup. */
     private static final Path DATA_DIR = Path.of("./config/arda-paths/data");
@@ -92,21 +103,23 @@ public class BackupManager {
     /**
      * Scans and writes the current full ArdaPaths data export with explicit threading control.
      *
-     * @param server   server whose config and worlds are exported
-     * @param reporter progress reporter for long-running phases
-     * @param gate     gate for server-thread-only work
+     * @param server    server whose config and worlds are exported
+     * @param reporter  progress reporter for long-running phases
+     * @param gate      gate for server-thread-only work
+     * @param forceFull whether the marker scan cache should be ignored
      * @return backup result suitable for command feedback
      * @throws IOException when files cannot be read or written
      */
-    public BackupResult runBackup(MinecraftServer server, ProgressReporter reporter, BackupJobRunner.ServerGate gate) throws IOException {
+    public BackupResult runBackup(MinecraftServer server, ProgressReporter reporter, BackupJobRunner.ServerGate gate, boolean forceFull) throws IOException {
         reporter.phase("saving");
         gate.run(() -> {
             ArdaPaths.CONFIG_MANAGER.flush();
             server.saveEverything(true, true, true);
         });
 
-        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate);
+        MarkerScanner.ScanResult scanResult = markerScanner.scan(server, reporter, gate, forceFull);
         List<ScannedMarkerData> markers = scanResult.markers();
+        resolveMissingChapterStarts(markers, server, gate);
         reporter.phase("serializing");
         BackupSnapshot snapshot = createSnapshot(markers);
         Optional<ManifestDto> currentManifest = readManifest(DATA_DIR);
@@ -127,6 +140,109 @@ public class BackupManager {
         rotateBackupZips();
 
         return new BackupResult(true, zipName != null, snapshot.stats(), zipName, scanResult.skippedDimensions());
+    }
+
+    /**
+     * Resolves chapter-start coordinates for warp-backed chapters before the snapshot is serialized.
+     *
+     * @param markers scanned marker data
+     * @param server  server whose config is being exported
+     * @param gate    gate for server-thread-only config writes
+     */
+    private void resolveMissingChapterStarts(List<ScannedMarkerData> markers, MinecraftServer server, BackupJobRunner.ServerGate gate) {
+        boolean changed = false;
+        for (PathData path : sortedPaths()) {
+            for (ChapterData chapter : path.getChapters()) {
+                if (chapter.getCoordinates() != null || chapter.getWarp().isBlank()) continue;
+
+                List<ScannedMarkerData> candidates = chapterStartCandidates(markers, path.getId(), chapter.getId());
+                if (candidates.isEmpty()) continue;
+
+                Optional<WarpLocation> warpLocation = resolveBackupWarp(server, chapter.getWarp());
+                Optional<ScannedMarkerData> selected = chooseChapterStartCandidate(candidates, warpLocation.orElse(null));
+                if (selected.isEmpty()) continue;
+
+                if (warpLocation.isEmpty() && candidates.size() > 1) {
+                    log.warn("Multiple chapter-start markers found for {}:{} without a resolved warp; choosing {}", path.getId(), chapter.getId(), selected.get().position());
+                }
+
+                ScannedMarkerData marker = selected.get();
+                gate.run(() -> {
+                    ArdaPaths.CONFIG.setChapterStart(path.getId(), chapter.getId(), PositionData.fromBlockPos(marker.position()), marker.dimensionId());
+                    ArdaPaths.CONFIG_MANAGER.save();
+                });
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            gate.run(() -> PacketRegistry.syncPathDataToClients(server));
+        }
+    }
+
+    /**
+     * Filters scanned markers to markers flagged as start for one path chapter.
+     *
+     * @param markers   scanned markers
+     * @param pathId    path identifier
+     * @param chapterId chapter identifier
+     * @return matching chapter-start marker candidates
+     */
+    private List<ScannedMarkerData> chapterStartCandidates(List<ScannedMarkerData> markers, String pathId, String chapterId) {
+        return markers.stream()
+                .filter(marker -> {
+                    Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = marker.pathData().get(pathId);
+                    PathMarkerBlockEntity.ChapterNbtData data = chapters == null ? null : chapters.get(chapterId);
+                    return data != null && data.isChapterStart();
+                })
+                .toList();
+    }
+
+    /**
+     * Resolves a backup warp with a short timeout.
+     *
+     * @param server active server
+     * @param warp   warp name to resolve
+     * @return resolved warp location, or empty when unavailable
+     */
+    private Optional<WarpLocation> resolveBackupWarp(MinecraftServer server, String warp) {
+        if (!Warps.isAvailable()) return Optional.empty();
+
+        try {
+            return Warps.resolveWarp(server, warp).get(WARP_RESOLVE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (TimeoutException exception) {
+            log.warn("Timed out resolving chapter start warp '{}' during backup", warp);
+            return Optional.empty();
+        } catch (Exception exception) {
+            log.warn("Failed to resolve chapter start warp '{}' during backup", warp, exception);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Picks the backup candidate for a missing chapter-start coordinate.
+     *
+     * @param candidates scanned chapter-start marker candidates
+     * @param warp       resolved warp location, or null when unresolved
+     * @return selected candidate, or empty when none are available
+     */
+    static Optional<ScannedMarkerData> chooseChapterStartCandidate(List<ScannedMarkerData> candidates, @Nullable WarpLocation warp) {
+        if (candidates.isEmpty()) return Optional.empty();
+
+        if (warp != null) {
+            String warpDimension = warp.worldKey().identifier().toString();
+            return candidates.stream()
+                    .filter(candidate -> candidate.dimensionId().equals(warpDimension))
+                    .min(Comparator
+                            .comparingDouble((ScannedMarkerData marker) -> marker.position().distSqr(warp.position()))
+                            .thenComparingLong(marker -> marker.position().asLong()));
+        }
+
+        return candidates.stream()
+                .min(Comparator.comparingLong(marker -> marker.position().asLong()));
     }
 
     /**
@@ -290,6 +406,7 @@ public class BackupManager {
                 pathData.getId(),
                 pathData.getName(),
                 new PathColorDto(toRgb(pathData.getPrimaryColor()), toRgb(pathData.getSecondaryColor()), toRgb(pathData.getTertiaryColor())),
+                pathData.isHideDefault(),
                 chapters,
                 diagnostics
         );
@@ -399,7 +516,6 @@ public class BackupManager {
         return new PathChapterDto(
                 chapter.getId(),
                 chapter.getName(),
-                chapter.getDate(),
                 chapter.getIndex(),
                 chapter.getWarp(),
                 chapter.getCoordinates(),
@@ -513,9 +629,11 @@ public class BackupManager {
                 chapterNbtData.isDisplayAboveBlocks(),
                 chapterNbtData.getWeather(),
                 chapterNbtData.getTimeOfDay(),
-                chapterNbtData.getTimeTransitionRange(),
+                chapterNbtData.getTimeActivation().toNbtValue(),
                 chapterNbtData.getAutoTeleportTarget(),
                 WarpTarget.formatCoordinates(chapterNbtData.getLookAt()),
+                chapterNbtData.getTargetMarkerDimension(),
+                WarpTarget.formatCoordinates(chapterNbtData.getTargetMarker()),
                 chapterNbtData.getGiveItem(),
                 chapterNbtData.getProximityMessage(),
                 chapterNbtData.getActivationRange(),
@@ -687,7 +805,7 @@ public class BackupManager {
      * @throws IOException when a hash is missing or mismatched
      */
     private void verifyManifest(Path directory, ManifestDto manifest) throws IOException {
-        if (manifest.schemaVersion() != SCHEMA_VERSION) {
+        if (manifest.schemaVersion() < MIN_RESTORABLE_SCHEMA_VERSION || manifest.schemaVersion() > SCHEMA_VERSION) {
             throw new IOException("Unsupported ArdaPaths backup schema version: " + manifest.schemaVersion());
         }
 
@@ -719,10 +837,11 @@ public class BackupManager {
                     .setName(pathFile.name())
                     .setPrimaryColor(fromRgb(pathFile.colors().primary()))
                     .setSecondaryColor(fromRgb(pathFile.colors().secondary()))
-                    .setTertiaryColor(fromRgb(pathFile.colors().tertiary()));
+                    .setTertiaryColor(fromRgb(pathFile.colors().tertiary()))
+                    .setHideDefault(pathFile.hideDefault());
 
             for (PathChapterDto chapterFile : pathFile.chapters()) {
-                ChapterData chapter = new ChapterData(chapterFile.id(), chapterFile.name(), chapterFile.date(), chapterFile.index(), chapterFile.warp());
+                ChapterData chapter = new ChapterData(chapterFile.id(), chapterFile.name(), chapterFile.index(), chapterFile.warp());
                 chapter.setCoordinates(chapterFile.coordinates());
                 chapter.setDimension(chapterFile.dimension());
                 pathData.setChapter(chapter);

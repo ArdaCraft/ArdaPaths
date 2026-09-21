@@ -10,7 +10,6 @@ import java.util.List;
  *
  * @param id          chapter identifier
  * @param name        chapter display name
- * @param date        chapter in-game date
  * @param index       chapter order index
  * @param warp        chapter warp destination
  * @param coordinates coordinate chapter start fallback, or null when unset
@@ -20,7 +19,6 @@ import java.util.List;
 public record PathChapterDto(
         @SerializedName("id") String id,
         @SerializedName("name") String name,
-        @SerializedName("date") String date,
         @SerializedName("index") int index,
         @SerializedName("warp") String warp,
         @SerializedName("coordinates") PositionData coordinates,

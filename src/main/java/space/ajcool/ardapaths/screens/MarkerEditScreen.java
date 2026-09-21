@@ -24,9 +24,11 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.*;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerBulkClearResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerTimeSpreadResponsePacket;
+import space.ajcool.ardapaths.core.networking.packets.client.MarkerUnlinkDefaultResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerRemoteDataResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerUpdateResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.*;
@@ -107,6 +109,9 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     /** Hash of the form state to detect if the user has made changes. */
     private int formHash;
 
+    /** Path/chapter keys already submitted for non-destructive chapter-start self-heal. */
+    private final Set<String> chapterStartSelfHealSent = new HashSet<>();
+
     /**
      * Initializes a marker edit screen with the given marker.
      *
@@ -140,7 +145,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
         selectedChapterId = ArdaPathsClient.CONFIG.getCurrentChapterId();
         tabs = List.of(
                 new GeneralTabSection(),
-                new TimeWeatherTabSection(() -> timeSpreadFeedback, () -> timeSpreadFeedbackError),
+                new TimeWeatherTabSection(() -> timeSpreadFeedback, () -> timeSpreadFeedbackError, this::previousMarkerTime),
                 new MiscTabSection()
         );
         this.linkTracker = new MarkerLinkTracker(marker, originalPathAndChapterData);
@@ -154,6 +159,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 this::switchToMarker,
                 this::teleportToMarker,
                 this::confirmBulkClear,
+                this::confirmBulkUnlinkDefault,
                 this::openTimeInterpolationPopup
         );
 
@@ -193,6 +199,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
 
         if (reloadFromMarker) {
             state.loadFrom(data);
+            selfHealChapterStartIfUnset();
         }
 
         MarkerEditLayout layout = MarkerEditLayout.of(this.width, this.height);
@@ -229,6 +236,87 @@ public class MarkerEditScreen extends ArdaPathsScreen {
      */
     private void commitInputsToFields() {
         tabs.get(activeTab).commitTo(state);
+    }
+
+    /**
+     * Finds the nearest previous marker in chapter order with configured date-time data.
+     *
+     * @return previous configured time, or null when none exists
+     */
+    private Long previousMarkerTime() {
+        return previousMarkerTime(MARKER.getBlockPos());
+    }
+
+    /**
+     * Finds the nearest previous marker before an anchor in chapter order with configured date-time data.
+     *
+     * @param anchor marker position that anchors the backward search
+     * @return previous configured time, or null when none exists
+     */
+    public Long previousMarkerTime(BlockPos anchor) {
+        return markerList.serverListActive()
+                ? previousServerMarkerTime(anchor)
+                : previousLocalMarkerTime(anchor);
+    }
+
+    /**
+     * Finds a previous configured marker time from the active server marker list.
+     *
+     * @param anchor marker position that anchors the backward search
+     * @return previous configured time, or null when none exists
+     */
+    private Long previousServerMarkerTime(BlockPos anchor) {
+        List<ChapterMarkerEntry> markers = markerList.serverMarkers();
+        int currentIndex = -1;
+        long currentPos = anchor.asLong();
+        for (int index = 0; index < markers.size(); index++) {
+            ChapterMarkerEntry marker = markers.get(index);
+            if (!marker.chainBreak() && marker.packedPos() == currentPos) {
+                currentIndex = index;
+                break;
+            }
+        }
+        if (currentIndex < 0) {
+            return null;
+        }
+
+        for (int index = currentIndex - 1; index >= 0; index--) {
+            ChapterMarkerEntry marker = markers.get(index);
+            if (!marker.chainBreak() && marker.timeOfDay() != TimeOfDay.UNSET) {
+                return marker.timeOfDay();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Finds a previous configured marker time from the loaded local marker chain.
+     *
+     * @param anchor marker position that anchors the backward search
+     * @return previous configured time, or null when none exists
+     */
+    private Long previousLocalMarkerTime(BlockPos anchor) {
+        List<PathMarkerBlockEntity> markers = ChapterMarkerChain.orderedLocalMarkers(MARKER, selectedPathId, selectedChapterId);
+        int currentIndex = -1;
+        for (int index = 0; index < markers.size(); index++) {
+            if (markers.get(index).getBlockPos().equals(anchor)) {
+                currentIndex = index;
+                break;
+            }
+        }
+        if (currentIndex < 0) {
+            return null;
+        }
+
+        for (int index = currentIndex - 1; index >= 0; index--) {
+            PathMarkerBlockEntity.ChapterNbtData data = ChapterMarkerChain.selectedChapterData(markers.get(index), selectedPathId, selectedChapterId);
+            if (data.getTimeOfDay() != TimeOfDay.UNSET) {
+                return data.getTimeOfDay();
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -355,6 +443,35 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     }
 
     /**
+     * Confirms a bulk unlink operation with the player.
+     */
+    private void confirmBulkUnlinkDefault() {
+        markerList.closeContextMenu();
+        PathData path = ArdaPathsClient.CONFIG.getPath(selectedPathId);
+        String pathName = path == null ? selectedPathId : path.getName();
+        Component message = Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.unlink_default.confirm", pathName);
+        this.minecraft.setScreen(new ConfirmationPopup(message, this::startBulkUnlinkDefault, () -> {
+        }, this));
+    }
+
+    /**
+     * Sends a confirmed default-chapter unlink request to the server.
+     */
+    private void startBulkUnlinkDefault() {
+        List<Long> packedPositions = markerList.selectedMarkers().stream().map(BlockPos::asLong).toList();
+        timeSpreadFeedback = null;
+        this.minecraft.setScreen(new BusyPopup(
+                Component.translatable("ardapaths.client.marker.configuration.screens.marker.unlink_default.busy"),
+                this,
+                this::onUnlinkDefaultTimeout
+        ));
+        PacketRegistry.MARKER_UNLINK_DEFAULT.send(
+                new MarkerUnlinkDefaultPacket(packedPositions, selectedPathId),
+                this::onUnlinkDefaultResponse
+        );
+    }
+
+    /**
      * Opens the interpolation endpoint popup for the current marker range.
      */
     private void openTimeInterpolationPopup() {
@@ -365,6 +482,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 this,
                 selectedMarkers.getFirst(),
                 selectedMarkers.getLast(),
+                this::previousMarkerTime,
                 this::startTimeInterpolation
         ));
     }
@@ -720,7 +838,7 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     private void buildEditChaptersButton(int x, int y) {
         this.addRenderableWidget(Button.builder(
                         Component.translatable("ardapaths.client.marker.configuration.screens.edit_chapters"),
-                        _ -> this.minecraft.setScreen(new ChapterEditScreen(this)))
+                        _ -> this.minecraft.setScreen(new ChapterEditScreen(this, selectedPathId, selectedChapterId)))
                 .bounds(x, y, 100, 20)
                 .build());
     }
@@ -741,6 +859,35 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 .setChecked(state.isChapterStart())
                 .setEnabled(true)
                 .setOnChange(checked -> {
+                    if (checked && requiresChapterStartReplacement()) {
+                        state.setChapterStart(false);
+                        if (displayChapterTitleOnTrail != null) {
+                            displayChapterTitleOnTrail.setEnabled(false);
+                        }
+                        this.minecraft.setScreen(new ConfirmationPopup(
+                                Component.translatable(
+                                        "ardapaths.client.marker.configuration.screens.chapter_start_replace_popup",
+                                        MARKER.getBlockPos().getX(),
+                                        MARKER.getBlockPos().getY(),
+                                        MARKER.getBlockPos().getZ()),
+                                () -> {
+                                    state.setChapterStart(true);
+                                    if (displayChapterTitleOnTrail != null) {
+                                        displayChapterTitleOnTrail.setEnabled(true);
+                                    }
+                                    this.minecraft.setScreen(this);
+                                    this.rebuildWidgets();
+                                },
+                                () -> {
+                                    state.setChapterStart(false);
+                                    this.minecraft.setScreen(this);
+                                    this.rebuildWidgets();
+                                },
+                                this
+                        ));
+                        return;
+                    }
+
                     state.setChapterStart(checked);
                     if (displayChapterTitleOnTrail != null) {
                         displayChapterTitleOnTrail.setEnabled(state.isChapterStart());
@@ -748,6 +895,45 @@ public class MarkerEditScreen extends ArdaPathsScreen {
                 })
                 .build()
         );
+    }
+
+    /**
+     * Checks whether marking this marker as chapter start would replace configured coordinates.
+     *
+     * @return true when a different chapter-start coordinate is already configured
+     */
+    private boolean requiresChapterStartReplacement() {
+        ChapterData chapter = selectedChapter();
+        PositionData coordinates = chapter == null ? null : chapter.getCoordinates();
+        return coordinates != null && !coordinates.toBlockPos().equals(MARKER.getBlockPos());
+    }
+
+    /**
+     * Sends a guarded chapter-start update when marker NBT is ahead of client config.
+     */
+    private void selfHealChapterStartIfUnset() {
+        if (!state.isChapterStart() || selectedPathId == null || selectedChapterId == null || selectedPathId.isEmpty() || selectedChapterId.isEmpty()) {
+            return;
+        }
+
+        ChapterData chapter = selectedChapter();
+        if (chapter == null || chapter.getCoordinates() != null) return;
+
+        String key = selectedPathId + ":" + selectedChapterId;
+        if (!chapterStartSelfHealSent.add(key)) return;
+
+        ChapterStartUpdatePacket packet = new ChapterStartUpdatePacket(selectedPathId, selectedChapterId, MARKER.getBlockPos(), true);
+        PacketRegistry.CHAPTER_START_UPDATE.send(packet);
+    }
+
+    /**
+     * Reads the selected chapter from the client path mirror.
+     *
+     * @return selected chapter, or null when unavailable
+     */
+    private ChapterData selectedChapter() {
+        PathData path = ArdaPathsClient.CONFIG.getPath(selectedPathId);
+        return path == null ? null : path.getChapter(selectedChapterId);
     }
 
     /**
@@ -1050,6 +1236,15 @@ public class MarkerEditScreen extends ArdaPathsScreen {
     }
 
     /**
+     * Handles the timeout path for a default-chapter unlink request whose response callback expired.
+     */
+    private void onUnlinkDefaultTimeout() {
+        timeSpreadFeedback = Component.translatable("ardapaths.client.marker.configuration.screens.marker.unlink_default.timeout");
+        timeSpreadFeedbackError = true;
+        reloadFromMarker = false;
+    }
+
+    /**
      * Handles the server response for a marker time-spread request.
      *
      * @param response server response packet
@@ -1092,6 +1287,35 @@ public class MarkerEditScreen extends ArdaPathsScreen {
             }
 
             timeSpreadFeedback = MarkerFeedbackText.bulkClearStatusText(response);
+            timeSpreadFeedbackError = response.status() != TimeSpreadStatus.OK;
+            if (minecraftClient.screen instanceof BusyPopup) {
+                minecraftClient.setScreen(this);
+            }
+
+            if (response.status() == TimeSpreadStatus.OK) {
+                markerList.requestChapterMarkers();
+                reloadFromMarker = markerList.selectedMarkers().contains(MARKER.getBlockPos());
+            } else {
+                reloadFromMarker = false;
+            }
+            rebuildWidgets();
+        });
+    }
+
+    /**
+     * Handles the server response for a marker default-chapter unlink request.
+     *
+     * @param response server response packet
+     */
+    @SuppressWarnings("resource")
+    private void onUnlinkDefaultResponse(MarkerUnlinkDefaultResponsePacket response) {
+        var minecraftClient = Client.mc();
+        minecraftClient.execute(() -> {
+            if (minecraftClient.level == null) {
+                return;
+            }
+
+            timeSpreadFeedback = MarkerFeedbackText.unlinkDefaultStatusText(response);
             timeSpreadFeedbackError = response.status() != TimeSpreadStatus.OK;
             if (minecraftClient.screen instanceof BusyPopup) {
                 minecraftClient.setScreen(this);

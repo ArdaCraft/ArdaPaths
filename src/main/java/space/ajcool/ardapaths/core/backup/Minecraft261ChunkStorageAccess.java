@@ -2,13 +2,19 @@ package space.ajcool.ardapaths.core.backup;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.visitors.CollectFields;
 import net.minecraft.nbt.visitors.FieldSelector;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelResource;
 
+import java.io.DataInput;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +46,19 @@ public class Minecraft261ChunkStorageAccess implements ChunkStorageAccess {
         CollectFields collector = new CollectFields(BLOCK_ENTITIES_QUERY);
         return world.getChunkSource().chunkScanner().scanChunk(chunkPos, collector)
                 .thenApply(ignored -> collector.getResult() instanceof CompoundTag root ? Optional.of(root) : Optional.empty());
+    }
+
+    @Override
+    public Optional<CompoundTag> parseBlockEntities(DataInput input) throws IOException {
+        CollectFields collector = new CollectFields(BLOCK_ENTITIES_QUERY);
+        NbtIo.parse(input, collector, NbtAccounter.unlimitedHeap());
+        return collector.getResult() instanceof CompoundTag root ? Optional.of(root) : Optional.empty();
+    }
+
+    @Override
+    public InputStream decompress(int compressionType, InputStream raw) throws IOException {
+        RegionFileVersion version = RegionFileVersion.fromId(compressionType);
+        return version == null || compressionType == 127 ? null : version.wrap(raw);
     }
 
     @Override

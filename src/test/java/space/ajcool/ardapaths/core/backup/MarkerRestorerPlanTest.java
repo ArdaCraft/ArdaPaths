@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.backup.dto.*;
+import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
@@ -62,7 +63,7 @@ class MarkerRestorerPlanTest {
      * @return path file DTO
      */
     private static PathFileDto path(String id, PathChapterDto... chapters) {
-        return new PathFileDto(id, id, null, List.of(chapters), new PathDiagnosticsDto(List.of(), List.of(), List.of(), Map.of()));
+        return new PathFileDto(id, id, null, false, List.of(chapters), new PathDiagnosticsDto(List.of(), List.of(), List.of(), Map.of()));
     }
 
     /**
@@ -73,7 +74,7 @@ class MarkerRestorerPlanTest {
      * @return path chapter DTO
      */
     private static PathChapterDto chapter(String id, List<PathNodeDto> nodes) {
-        return new PathChapterDto(id, id, "0", 0, "", null, null, nodes);
+        return new PathChapterDto(id, id, 0, "", null, null, nodes);
     }
 
     /**
@@ -123,8 +124,10 @@ class MarkerRestorerPlanTest {
                 false,
                 true,
                 PathMarkerBlockEntity.ChapterNbtData.UNSET,
-                PathMarkerBlockEntity.ChapterNbtData.UNSET,
+                TimeOfDay.UNSET,
                 null,
+                "",
+                "",
                 "",
                 "",
                 "",

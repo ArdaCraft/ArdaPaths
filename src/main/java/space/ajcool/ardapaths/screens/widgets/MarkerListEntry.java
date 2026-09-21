@@ -14,7 +14,6 @@ import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity.ChapterNbtData;
 import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.List;
@@ -51,7 +50,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     private final BlockPos pos;
 
     /** Configured marker time for the selected path, or unset when no time is configured. */
-    private final int timeOfDay;
+    private final long timeOfDay;
 
     /** Whether the marker has weather data for the selected path. */
     private final boolean hasWeatherData;
@@ -95,6 +94,9 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     @SuppressWarnings("unused")
     private final boolean notice;
 
+    /** Text color used when this row is a notice. */
+    private final int noticeColor;
+
     /**
      * Creates a row for a loaded local marker.
      *
@@ -111,7 +113,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
      * @param onRangeSelect       callback for Shift-clicks
      * @param onContextMenu       callback for right-clicks
      */
-    public MarkerListEntry(BlockPos pos, int timeOfDay, boolean hasWeatherData, boolean hasProximityMessage, boolean hasMiscData, boolean focused, boolean selected,
+    public MarkerListEntry(BlockPos pos, long timeOfDay, boolean hasWeatherData, boolean hasProximityMessage, boolean hasMiscData, boolean focused, boolean selected,
                            List<Component> tooltipLines, Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
                            Consumer<BlockPos> onRangeSelect, BiConsumer<BlockPos, ContextMenuAnchor> onContextMenu) {
         this.pos = pos;
@@ -128,38 +130,44 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         this.onContextMenu = onContextMenu;
         this.coordinateText = Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
         this.notice = false;
+        this.noticeColor = 0xFFFF5555;
     }
 
     /**
      * Creates an inert notice row.
      *
-     * @param text notice text to render
+     * @param text         notice text to render
+     * @param tooltipLines notice tooltip lines
+     * @param color        notice text color
      */
-    private MarkerListEntry(Component text) {
+    private MarkerListEntry(Component text, List<Component> tooltipLines, int color) {
         this.pos = BlockPos.ZERO;
-        this.timeOfDay = ChapterNbtData.UNSET;
+        this.timeOfDay = TimeOfDay.UNSET;
         this.hasWeatherData = false;
         this.hasProximityMessage = false;
         this.hasMiscData = false;
         this.focused = false;
         this.selected = false;
-        this.tooltipLines = List.of();
+        this.tooltipLines = List.copyOf(tooltipLines);
         this.onSelect = null;
         this.onTeleport = null;
         this.onRangeSelect = null;
         this.onContextMenu = null;
         this.coordinateText = text;
         this.notice = true;
+        this.noticeColor = color;
     }
 
     /**
-     * Creates a row for an inert notice label.
+     * Creates a row for an inert notice label with a tooltip and custom color.
      *
-     * @param text notice text to render
+     * @param text         notice text to render
+     * @param tooltipLines lines shown while hovering the notice
+     * @param color        notice text color
      * @return notice marker list row
      */
-    public static MarkerListEntry notice(Component text) {
-        return new MarkerListEntry(text);
+    public static MarkerListEntry notice(Component text, List<Component> tooltipLines, int color) {
+        return new MarkerListEntry(text, tooltipLines, color);
     }
 
     /**
@@ -182,7 +190,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         if (notice) {
             int textWidth = textRenderer.width(coordinateText);
             int textY = y + (entryHeight - textRenderer.lineHeight) / 2;
-            context.text(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, 0xFFFF5555);
+            context.text(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, noticeColor);
             return;
         }
 
@@ -235,7 +243,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
      * @return true when a marker time should be indicated
      */
     private boolean hasTimeData() {
-        return timeOfDay != ChapterNbtData.UNSET;
+        return timeOfDay != TimeOfDay.UNSET;
     }
 
     /**

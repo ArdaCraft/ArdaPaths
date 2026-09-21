@@ -48,6 +48,16 @@ public record EmptyPacket(UUID requestId,
     public static final CustomPacketPayload.Type<EmptyPacket> WIELD_PATHFINDER_TYPE = new CustomPacketPayload.Type<>(WIELD_PATHFINDER_CHANNEL);
 
     /**
+     * Network channel used for server dimension list requests.
+     */
+    public static final Identifier DIMENSION_LIST_REQUEST_CHANNEL = ModConstants.modId("dimension_list_request");
+
+    /**
+     * Payload type used for server dimension list requests.
+     */
+    public static final CustomPacketPayload.Type<EmptyPacket> DIMENSION_LIST_REQUEST_TYPE = new CustomPacketPayload.Type<>(DIMENSION_LIST_REQUEST_CHANNEL);
+
+    /**
      * Creates an empty packet before request correlation is assigned.
      */
     public EmptyPacket() {

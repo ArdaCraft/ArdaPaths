@@ -39,8 +39,7 @@ class ConfigGsonShapeTest {
                   "hide_interface": true,
                   "proximity_text_speed_multiplier": 1.5,
                   "auto_walk_speed_factor": 0.75,
-                  "chapter_title_display_speed": 2500.0,
-                  "paths": []
+                  "chapter_title_display_speed": 2500.0
                 }
                 """, ClientConfig.class);
 
@@ -54,11 +53,24 @@ class ConfigGsonShapeTest {
         assertEquals(1.5D, config.getProximityTextSpeedMultiplier());
         assertEquals(0.75D, config.getAutoWalkSpeedFactor());
         assertEquals(2500.0F, config.getChapterTitleDisplaySpeed());
-        assertTrue(config.getClientPaths().isEmpty());
 
         JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
         assertTrue(json.has("hide_interface"));
         assertFalse(json.has("hideInterface"));
+        assertFalse(json.has("paths"));
+    }
+
+    /**
+     * Verifies setting a chapter for a fresh identifier keeps the effective default path.
+     */
+    @Test
+    void currentChapterSetterSeedsDefaultPathForFreshIdentifier() {
+        ClientConfig config = new ClientConfig();
+
+        config.setCurrentChapter("server.example", "shire");
+
+        assertEquals("frodo", config.getSelectedPathId("server.example"));
+        assertEquals("shire", config.getCurrentChapterId("server.example"));
     }
 
     /**
@@ -115,13 +127,16 @@ class ConfigGsonShapeTest {
         ChapterData chapter = path.getChapter("shire");
         assertNotNull(chapter);
         assertEquals("The Shire", chapter.getName());
-        assertEquals("12 Forelithe", chapter.getDate());
         assertEquals(1, chapter.getIndex());
         assertEquals("bag-end", chapter.getWarp());
         assertEquals(new PositionData(1, 2, 3), chapter.getCoordinates());
         assertEquals("minecraft:the_nether", chapter.getDimension());
         JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
         assertFalse(json.has("chapter_starts"));
+        JsonObject chapterJson = json.getAsJsonArray("paths").get(0).getAsJsonObject()
+                .getAsJsonObject("chapters")
+                .getAsJsonObject("shire");
+        assertFalse(chapterJson.has("date"));
     }
 
     /**

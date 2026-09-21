@@ -8,6 +8,7 @@ import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.Json;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.EmptyPacket;
@@ -75,8 +76,11 @@ public class ClientConfigManager extends ConfigManager<ClientConfig> {
     public void onPathData(List<PathData> paths) {
         this.config.setPaths(paths);
 
-        if (this.config.getSelectedPathId().isEmpty() && !paths.isEmpty()) {
-            this.config.setSelectedPath(paths.getFirst().getId());
+        if (this.config.getSelectedPath() == null && !paths.isEmpty()) {
+            PathData path = paths.getFirst();
+            ChapterData chapter = path.getFirstVisibleChapter();
+            this.config.setSelectedPath(path.getId());
+            this.config.setCurrentChapter(chapter == null ? "default" : chapter.getId());
         }
 
         this.save();

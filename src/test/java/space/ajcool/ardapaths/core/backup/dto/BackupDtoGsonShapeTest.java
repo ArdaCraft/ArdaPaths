@@ -51,7 +51,8 @@ class BackupDtoGsonShapeTest {
                 "frodo",
                 "Frodo's Path",
                 new PathColorDto(new int[]{255, 215, 0}, new int[]{230, 194, 0}, new int[]{255, 227, 77}),
-                List.of(new PathChapterDto("shire", "The Shire", "12 Forelithe", 1, "bag-end", new PositionData(1, 2, 3), "minecraft:overworld", List.of())),
+                true,
+                List.of(new PathChapterDto("shire", "The Shire", 1, "bag-end", new PositionData(1, 2, 3), "minecraft:overworld", List.of())),
                 new PathDiagnosticsDto(List.of(1L), List.of(2L), List.of(List.of(3L, 4L)), Map.of("shire", List.of(5L)))
         );
 
@@ -59,9 +60,11 @@ class BackupDtoGsonShapeTest {
 
         assertEquals("frodo", json.get("id").getAsString());
         assertTrue(json.has("colors"));
+        assertTrue(json.get("hideDefault").getAsBoolean());
         JsonObject chapter = json.getAsJsonArray("chapters").get(0).getAsJsonObject();
         assertEquals(1, chapter.getAsJsonObject("coordinates").get("x").getAsInt());
         assertEquals("minecraft:overworld", chapter.get("dimension").getAsString());
+        assertFalse(chapter.has("date"));
         assertFalse(chapter.has("start_pos"));
         assertTrue(json.getAsJsonObject("diagnostics").has("dangling_next"));
         assertTrue(json.getAsJsonObject("diagnostics").has("multi_root"));
@@ -81,10 +84,12 @@ class BackupDtoGsonShapeTest {
                 true,
                 false,
                 1,
-                6000,
-                12,
+                5_910_000L,
+                0,
                 "bag-end",
                 "1 2 3",
+                "multiworld:moria_big",
+                "4 5 6",
                 "minecraft:bread",
                 "Hello",
                 8,
@@ -97,12 +102,15 @@ class BackupDtoGsonShapeTest {
         assertTrue(json.get("chapter_start").getAsBoolean());
         assertTrue(json.get("title_on_trail").getAsBoolean());
         assertFalse(json.get("display_above_blocks").getAsBoolean());
-        assertEquals(12, json.get("time_transition_range").getAsInt());
+        assertEquals(0, json.get("time_transition_range").getAsInt());
         assertEquals("bag-end", json.get("auto_teleport_target").getAsString());
+        assertEquals("multiworld:moria_big", json.get("target_marker_dimension").getAsString());
+        assertEquals("4 5 6", json.get("target_marker").getAsString());
         assertEquals("minecraft:bread", json.get("give_item").getAsString());
         assertEquals(123L, json.getAsJsonObject("anim").get("packed").getAsLong());
         assertFalse(json.has("chapterStart"));
         assertFalse(json.has("autoTeleportTarget"));
+        assertFalse(json.has("targetMarkerDimension"));
     }
 
     /**

@@ -148,6 +148,11 @@ public class Paths {
     public static void updateChapter(String pathId, ChapterData chapter) {
         PathData path = config.getPath(pathId);
         if (path != null) {
+            ChapterData existingChapter = path.getChapter(chapter.getId());
+            if (chapter.getCoordinates() == null && existingChapter != null) {
+                chapter.setCoordinates(existingChapter.getCoordinates());
+                chapter.setDimension(existingChapter.getDimension());
+            }
             path.setChapter(chapter);
             configManager.save();
             ChapterUpdatePacket packet = new ChapterUpdatePacket(pathId, chapter);

@@ -10,6 +10,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import space.ajcool.ardapaths.core.backup.ChunkStorageAccess;
 import space.ajcool.ardapaths.core.backup.Minecraft261ChunkStorageAccess;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
@@ -137,17 +138,17 @@ public class MarkerResolver {
          * Applies computed time fields to this marker's selected chapter data.
          *
          * @param timeOfDay           computed marker time
-         * @param timeTransitionRange computed transition range
+         * @param timeActivation computed time activation mode
          * @param pathId              path identifier
          * @param chapterId           chapter identifier
          */
-        public void apply(int timeOfDay, int timeTransitionRange, String pathId, String chapterId) {
+        public void apply(long timeOfDay, TimeActivation timeActivation, String pathId, String chapterId) {
             Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = liveMarker.getPathData();
             Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = pathData.computeIfAbsent(pathId, ignored -> new HashMap<>());
             PathMarkerBlockEntity.ChapterNbtData data = chapters.computeIfAbsent(chapterId, PathMarkerBlockEntity.ChapterNbtData::empty);
 
             data.setTimeOfDay(timeOfDay);
-            data.setTimeTransitionRange(timeTransitionRange);
+            data.setTimeActivation(timeActivation);
             liveMarker.markUpdated();
         }
 
@@ -166,14 +167,36 @@ public class MarkerResolver {
             }
 
             if (time) {
-                data.setTimeOfDay(PathMarkerBlockEntity.ChapterNbtData.UNSET);
-                data.setTimeTransitionRange(TimeOfDay.DEFAULT_TRANSITION_RANGE);
+                data.setTimeOfDay(TimeOfDay.UNSET);
+                data.setTimeActivation(TimeActivation.MARKER_RANGE);
             }
 
             if (weather) {
                 data.setWeather(PathMarkerBlockEntity.ChapterNbtData.UNSET);
             }
             liveMarker.markUpdated();
+        }
+
+        /**
+         * Removes an existing chapter entry without modifying any other path or chapter data.
+         *
+         * @param pathId    path identifier
+         * @param chapterId chapter identifier
+         * @return true when a chapter entry was removed
+         */
+        public boolean removeFromChapter(String pathId, String chapterId) {
+            Map<String, Map<String, PathMarkerBlockEntity.ChapterNbtData>> pathData = liveMarker.getPathData();
+            Map<String, PathMarkerBlockEntity.ChapterNbtData> chapters = pathData.get(pathId);
+            if (chapters == null || !chapters.containsKey(chapterId)) {
+                return false;
+            }
+
+            chapters.remove(chapterId);
+            if (chapters.isEmpty()) {
+                pathData.remove(pathId);
+            }
+            liveMarker.markUpdated();
+            return true;
         }
 
         /**

@@ -7,21 +7,21 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.jspecify.annotations.NonNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
+import space.ajcool.ardapaths.core.data.WarpTarget;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.server.PathDataUpdatePacket;
 import space.ajcool.ardapaths.paths.Paths;
 import space.ajcool.ardapaths.screens.layout.ScreenLayout;
-import space.ajcool.ardapaths.screens.widgets.DropdownWidget;
-import space.ajcool.ardapaths.screens.widgets.InputBoxWidget;
-import space.ajcool.ardapaths.screens.widgets.TextValidationError;
-import space.ajcool.ardapaths.screens.widgets.TextWidget;
+import space.ajcool.ardapaths.screens.widgets.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,6 +40,12 @@ public class ChapterEditScreen extends ArdaPathsScreen {
     /** Whether this screen is creating a new chapter */
     private boolean creatingNew;
 
+    /** Path selected inside this editor, independent from the player's followed path. */
+    private String editingPathId;
+
+    /** Chapter selected by the opener and applied once after the editor widgets are built. */
+    private String initialChapterId;
+
     /** Dropdown widget for selecting chapters */
     private DropdownWidget<ChapterData> chapterDropdown;
 
@@ -49,14 +55,23 @@ public class ChapterEditScreen extends ArdaPathsScreen {
     /** Input widget for chapter name */
     private InputBoxWidget nameInput;
 
-    /** Input widget for chapter date */
-    private InputBoxWidget dateInput;
-
     /** Input widget for chapter index */
     private InputBoxWidget indexInput;
 
     /** Input widget for chapter warp location */
     private InputBoxWidget warpInput;
+
+    /** Input widget for chapter-start X coordinate. */
+    private InputBoxWidget coordXInput;
+
+    /** Input widget for chapter-start Y coordinate. */
+    private InputBoxWidget coordYInput;
+
+    /** Input widget for chapter-start Z coordinate. */
+    private InputBoxWidget coordZInput;
+
+    /** Suggestion-backed input for the chapter-start dimension identifier. */
+    private SuggestionInputWidget dimensionInput;
 
     /** Input widget for primary path color */
     private InputBoxWidget pathColorPrimary;
@@ -73,10 +88,19 @@ public class ChapterEditScreen extends ArdaPathsScreen {
     /** Dropdown widget for selecting paths */
     private DropdownWidget<PathData> pathDropdown;
 
-    protected ChapterEditScreen(Screen parent) {
+    /**
+     * Creates a chapter editor seeded with the marker editor's current selection.
+     *
+     * @param parent    parent screen to return to
+     * @param pathId    path to select when the editor opens
+     * @param chapterId chapter to select when the editor opens
+     */
+    protected ChapterEditScreen(Screen parent, String pathId, String chapterId) {
         super(Component.translatable("ardapaths.client.chapter.configuration.screens.chapter_edit_title"));
         this.parent = parent;
         this.creatingNew = false;
+        this.editingPathId = pathId;
+        this.initialChapterId = chapterId;
     }
 
     @Override
@@ -93,7 +117,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 .build()
         );
 
-        PathData selectedPath = ArdaPathsClient.CONFIG.getSelectedPath();
+        PathData selectedPath = editingPathId == null ? ArdaPathsClient.CONFIG.getSelectedPath() : ArdaPathsClient.CONFIG.getPath(editingPathId);
         pathDropdown = this.addRenderableWidget(DropdownWidget.<PathData>create()
                 .setPosition(centerX - 140, y += 40)
                 .setSize(280, 20)
@@ -138,8 +162,25 @@ public class ChapterEditScreen extends ArdaPathsScreen {
         applyColorChangesButton.active = hasPathColorChanges();
         addRenderableWidget(applyColorChangesButton);
 
-        List<ChapterData> chapters = selectedPath != null ? new ArrayList<>(selectedPath.getChapters()) : new ArrayList<>();
-        chapters.sort(Comparator.comparingInt(ChapterData::getIndex));
+        this.addCheckboxRow(CheckboxRow.create()
+                .setX(centerX - 140)
+                .setY(y += 30)
+                .setWidth(280)
+                .setHeight(20)
+                .setText(Component.translatable("ardapaths.client.chapter.configuration.screens.hide_default_chapter"))
+                .setChecked(pathDropdown.getSelected() != null && pathDropdown.getSelected().isHideDefault())
+                .setEnabled(pathDropdown.getSelected() != null)
+                .setTooltip(Component.translatable("ardapaths.client.chapter.configuration.screens.hide_default_chapter_tooltip"))
+                .setOnChange(hidden -> {
+                    PathData path = pathDropdown.getSelected();
+                    if (path == null) return;
+
+                    path.setHideDefault(hidden);
+                    sendPathDataUpdate(path);
+                })
+                .build());
+
+        List<ChapterData> chapters = sortedChapters(selectedPath);
 
         chapterDropdown = this.addRenderableWidget(DropdownWidget.<ChapterData>create()
                 .setPosition(centerX - 140, y += 35)
@@ -156,9 +197,10 @@ public class ChapterEditScreen extends ArdaPathsScreen {
         );
         int addButtonY = y;
 
+        addRowLabel(y += 40, "ardapaths.client.chapter.configuration.screens.label.id");
         idInput = this.addRenderableWidget(InputBoxWidget.create()
                 .setX(centerX - 75)
-                .setY(y += 40)
+                .setY(y)
                 .setWidth(150)
                 .setHeight(20)
                 .setEnabled(true)
@@ -184,9 +226,10 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 .build()
         );
 
+        addRowLabel(y += 30, "ardapaths.client.chapter.configuration.screens.label.name");
         nameInput = this.addRenderableWidget(InputBoxWidget.create()
                 .setX(centerX - 75)
-                .setY(y += 30)
+                .setY(y)
                 .setWidth(150)
                 .setHeight(20)
                 .setEnabled(true)
@@ -194,19 +237,10 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 .build()
         );
 
-        dateInput = this.addRenderableWidget(InputBoxWidget.create()
-                .setX(centerX - 75)
-                .setY(y += 30)
-                .setWidth(150)
-                .setHeight(20)
-                .setEnabled(true)
-                .setPlaceholder(Component.translatable("ardapaths.client.chapter.configuration.screens.date"))
-                .build()
-        );
-
+        addRowLabel(y += 30, "ardapaths.client.chapter.configuration.screens.label.index");
         indexInput = this.addRenderableWidget(InputBoxWidget.create()
                 .setX(centerX - 75)
-                .setY(y += 30)
+                .setY(y)
                 .setWidth(150)
                 .setHeight(20)
                 .setEnabled(true)
@@ -222,15 +256,40 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 .build()
         );
 
+        addRowLabel(y += 30, "ardapaths.client.chapter.configuration.screens.label.warp");
         warpInput = this.addRenderableWidget(InputBoxWidget.create()
                 .setX(centerX - 75)
-                .setY(y += 30)
+                .setY(y)
                 .setWidth(150)
                 .setHeight(20)
                 .setEnabled(true)
                 .setPlaceholder(Component.translatable("ardapaths.client.chapter.configuration.screens.warp_location"))
+                .setValidator(text ->
+                {
+                    if (WarpTarget.isCoordinates(text)) {
+                        throw new TextValidationError(Component.translatable("ardapaths.client.chapter.configuration.screens.warp_is_coordinates").getString());
+                    }
+                })
                 .build()
         );
+
+        addRowLabel(y += 30, "ardapaths.client.chapter.configuration.screens.coordinates");
+        coordXInput = this.addRenderableWidget(buildCoordinateInput(centerX - 75, y, "ardapaths.client.chapter.configuration.screens.coordinate_x"));
+        coordYInput = this.addRenderableWidget(buildCoordinateInput(centerX - 23, y, "ardapaths.client.chapter.configuration.screens.coordinate_y"));
+        coordZInput = this.addRenderableWidget(buildCoordinateInput(centerX + 29, y, "ardapaths.client.chapter.configuration.screens.coordinate_z"));
+
+        addRowLabel(y += 30, "ardapaths.client.chapter.configuration.screens.dimension");
+        dimensionInput = this.addRenderableWidget(new SuggestionInputWidget(
+                centerX - 75,
+                y,
+                150,
+                20,
+                Component.literal("namespace:path"),
+                DimensionSuggestions.localOptions(),
+                2,
+                true
+        ));
+        DimensionSuggestions.requestServerDimensions(dimensionInput, () -> Minecraft.getInstance().screen == this);
 
         this.addRenderableWidget(Button.builder(
                         Component.literal("＋"),
@@ -270,7 +329,8 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                         Component.translatable("ardapaths.generic.save"),
                         _ ->
                         {
-                            if (!idInput.validateText() || !nameInput.validateText() || !dateInput.validateText() || !indexInput.validateText())
+                            if (!idInput.validateText() || !nameInput.validateText() || !indexInput.validateText()
+                                    || !warpInput.validateText() || !validateCoordinates() || !validateDimensionSelection())
                                 return;
 
                             PathData path = pathDropdown.getSelected();
@@ -279,17 +339,26 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                             ChapterData chapter = new ChapterData(
                                     idInput.getValue(),
                                     nameInput.getValue(),
-                                    dateInput.getValue(),
                                     Integer.parseInt(indexInput.getValue()),
                                     warpInput.getValue()
                             );
+                            BlockPos coordinates = coordinateValue();
+                            if (coordinates != null) {
+                                chapter.setCoordinates(PositionData.fromBlockPos(coordinates));
+                                String dimension = dimensionInput.getValue().trim();
+                                chapter.setDimension(dimension.isBlank() ? null : dimension);
+                            }
                             Paths.updateChapter(path.getId(), chapter);
 
                             saveColorsToPath();
 
-                            chapterDropdown.setOptions(path.getChapters());
-                            resetFields();
-                            creatingNew = false;
+                            List<ChapterData> refreshedChapters = sortedChapters(path);
+                            ChapterData savedChapter = findChapter(refreshedChapters, chapter.getId());
+                            chapterDropdown.setOptions(refreshedChapters);
+                            chapterDropdown.setSelected(savedChapter);
+                            if (savedChapter != null) {
+                                loadChapter(savedChapter);
+                            }
                         })
                 .pos(centerX + 2, y)
                 .size(150, 20)
@@ -299,24 +368,125 @@ public class ChapterEditScreen extends ArdaPathsScreen {
         pathDropdown.setOnSelect(path ->
         {
             if (path == null) return;
-            chapterDropdown.setOptions(path.getChapters());
-            boolean isCreatingNew = creatingNew;
-            resetFields();
-            creatingNew = isCreatingNew;
+            editingPathId = path.getId();
+            this.rebuildWidgets();
         });
 
         chapterDropdown.setOnSelect(chapter ->
         {
             if (chapter == null) return;
-            idInput.disable();
-            idInput.setValue(chapter.getId());
-            nameInput.setValue(chapter.getName());
-            dateInput.setValue(chapter.getDate());
-            indexInput.setValue(String.valueOf(chapter.getIndex()));
-            warpInput.setValue(chapter.getWarp());
+            loadChapter(chapter);
         });
 
+        selectInitialChapter(chapters);
         ScreenLayout.centerVertically(this);
+    }
+
+    /**
+     * Adds a left-hand label for a form row.
+     *
+     * @param y   vertical position for the label
+     * @param key translation key to display
+     */
+    private void addRowLabel(int y, String key) {
+        int centerX = this.width / 2;
+        this.addRenderableWidget(TextWidget.create()
+                .setX(centerX - 140)
+                .setY(y)
+                .setWidth(60)
+                .setHeight(20)
+                .setMessage(Component.translatable(key))
+                .build()
+        );
+    }
+
+    /**
+     * Applies the opener-selected chapter after widgets have been constructed.
+     *
+     * @param chapters sorted chapter list currently displayed by the dropdown
+     */
+    private void selectInitialChapter(List<ChapterData> chapters) {
+        if (initialChapterId == null || initialChapterId.isBlank()) return;
+
+        ChapterData initialChapter = chapters.stream()
+                .filter(chapter -> chapter.getId().equals(initialChapterId))
+                .findFirst()
+                .orElse(null);
+
+        if (initialChapter != null) {
+            chapterDropdown.setSelected(initialChapter);
+            loadChapter(initialChapter);
+        }
+        initialChapterId = null;
+    }
+
+    /**
+     * Loads an existing chapter into the form.
+     *
+     * @param chapter chapter to edit
+     */
+    private void loadChapter(ChapterData chapter) {
+        creatingNew = false;
+        idInput.disable();
+        idInput.setValue(chapter.getId());
+        nameInput.setValue(chapter.getName());
+        indexInput.setValue(String.valueOf(chapter.getIndex()));
+        warpInput.setValue(chapter.getWarp());
+        setCoordinateFields(chapter.getCoordinates(), chapter.getCoordinates() != null ? chapter.getDimension() : "");
+    }
+
+    /**
+     * Creates a mutable chapter list sorted for the editor dropdown.
+     *
+     * @param path path whose chapters should be listed, or null for an empty list
+     * @return mutable chapter list sorted by index and then ID
+     */
+    private List<ChapterData> sortedChapters(PathData path) {
+        List<ChapterData> chapters = path != null ? new ArrayList<>(path.getChapters()) : new ArrayList<>();
+        chapters.sort(Comparator.comparingInt(ChapterData::getIndex).thenComparing(ChapterData::getId));
+        return chapters;
+    }
+
+    /**
+     * Finds a chapter in an option list by identifier so dropdown selection uses the listed instance.
+     *
+     * @param chapters chapter options to search
+     * @param id       chapter identifier to match
+     * @return matching chapter, or null when it is absent
+     */
+    private ChapterData findChapter(List<ChapterData> chapters, String id) {
+        return chapters.stream()
+                .filter(chapter -> chapter.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Creates one integer coordinate input.
+     *
+     * @param x           input x coordinate
+     * @param y           input y coordinate
+     * @param placeholder placeholder translation key
+     * @return coordinate input widget
+     */
+    private InputBoxWidget buildCoordinateInput(int x, int y, String placeholder) {
+        return InputBoxWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(46)
+                .setHeight(20)
+                .setEnabled(true)
+                .setPlaceholder(Component.translatable(placeholder))
+                .setValidator(text ->
+                {
+                    if (text == null || text.isBlank()) return;
+                    try {
+                        Integer.parseInt(text);
+                    } catch (NumberFormatException e) {
+                        throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.integer").getString());
+                    }
+                })
+                .build();
     }
 
     private InputBoxWidget buildColorInputBox(int x, int y, Color textColor, String placeholder) {
@@ -364,14 +534,24 @@ public class ChapterEditScreen extends ArdaPathsScreen {
             pathDropdown.getSelected().setSecondaryColor(inputSecondaryColor);
             pathDropdown.getSelected().setTertiaryColor(inputTertiaryColor);
 
-            PathDataUpdatePacket pathDataUpdatePacket = new PathDataUpdatePacket(pathDropdown.getSelected().getId(),
-                    pathDropdown.getSelected().getName(),
-                    inputPrimaryColor.asHex(),
-                    inputSecondaryColor.asHex(),
-                    inputTertiaryColor.asHex());
-
-            PacketRegistry.PATH_DATA_UPDATE_REQUEST.send(pathDataUpdatePacket);
+            sendPathDataUpdate(pathDropdown.getSelected());
         }
+    }
+
+    /**
+     * Sends the current path metadata to the server.
+     *
+     * @param path path metadata to persist
+     */
+    private void sendPathDataUpdate(PathData path) {
+        PathDataUpdatePacket pathDataUpdatePacket = new PathDataUpdatePacket(path.getId(),
+                path.getName(),
+                path.getPrimaryColor().asHex(),
+                path.getSecondaryColor().asHex(),
+                path.getTertiaryColor().asHex(),
+                path.isHideDefault());
+
+        PacketRegistry.PATH_DATA_UPDATE_REQUEST.send(pathDataUpdatePacket);
     }
 
     private boolean hasPathColorChanges() {
@@ -399,9 +579,113 @@ public class ChapterEditScreen extends ArdaPathsScreen {
         idInput.enable();
         idInput.reset();
         nameInput.reset();
-        dateInput.reset();
         indexInput.reset();
         warpInput.reset();
+        coordXInput.reset();
+        coordYInput.reset();
+        coordZInput.reset();
+        dimensionInput.reset();
+    }
+
+    /**
+     * Validates that coordinate fields are either all empty or all filled with integers.
+     *
+     * @return true when coordinate inputs are valid
+     */
+    private boolean validateCoordinates() {
+        boolean validIntegers = coordXInput.validateText() && coordYInput.validateText() && coordZInput.validateText();
+        if (!validIntegers) return false;
+
+        boolean x = !coordXInput.getValue().isBlank();
+        boolean y = !coordYInput.getValue().isBlank();
+        boolean z = !coordZInput.getValue().isBlank();
+        if (x == y && y == z) return true;
+
+        coordXInput.setFocused(false);
+        coordYInput.setFocused(false);
+        coordZInput.setFocused(false);
+        return false;
+    }
+
+    /**
+     * Validates the dimension row against the coordinate row.
+     *
+     * @return true when coordinates and dimension are valid together
+     */
+    private boolean validateDimensionSelection() {
+        boolean hasCoordinates = coordinateValueTextFilled();
+        boolean validDimension = dimensionInput.validateText();
+        if (!validDimension) return false;
+
+        boolean hasDimension = !dimensionInput.getValue().isBlank();
+        if (hasCoordinates && !hasDimension) {
+            sendErrorMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.dimension_required"));
+            return false;
+        }
+
+        if (!hasCoordinates && hasDimension) {
+            sendErrorMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.coordinates_required_for_dimension"));
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Checks whether every coordinate field contains text.
+     *
+     * @return true when all coordinates are present
+     */
+    private boolean coordinateValueTextFilled() {
+        return !coordXInput.getValue().isBlank() && !coordYInput.getValue().isBlank() && !coordZInput.getValue().isBlank();
+    }
+
+    /**
+     * Reads explicit chapter coordinates from the fields.
+     *
+     * @return block position, or null when the fields are empty
+     */
+    private BlockPos coordinateValue() {
+        if (coordXInput.getValue().isBlank() && coordYInput.getValue().isBlank() && coordZInput.getValue().isBlank()) {
+            return null;
+        }
+
+        return new BlockPos(
+                Integer.parseInt(coordXInput.getValue()),
+                Integer.parseInt(coordYInput.getValue()),
+                Integer.parseInt(coordZInput.getValue())
+        );
+    }
+
+    /**
+     * Fills the coordinate inputs from chapter data.
+     *
+     * @param coordinates coordinates to display, or null to clear the row
+     * @param dimension   dimension to display when coordinates are present
+     */
+    private void setCoordinateFields(PositionData coordinates, String dimension) {
+        if (coordinates == null) {
+            coordXInput.reset();
+            coordYInput.reset();
+            coordZInput.reset();
+            dimensionInput.reset();
+            return;
+        }
+
+        BlockPos pos = coordinates.toBlockPos();
+        coordXInput.setValue(String.valueOf(pos.getX()));
+        coordYInput.setValue(String.valueOf(pos.getY()));
+        coordZInput.setValue(String.valueOf(pos.getZ()));
+        dimensionInput.reset(dimension == null ? "" : dimension);
+    }
+
+    /**
+     * Sends a red validation message to the local player.
+     *
+     * @param message message to send
+     */
+    private void sendErrorMessage(Component message) {
+        var player = Minecraft.getInstance().player;
+        if (player != null) player.sendSystemMessage(Component.empty().append(message.copy().withStyle(ChatFormatting.RED)));
     }
 
     private void deleteChapter() {
@@ -415,10 +699,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
         if (chapter.getName().equalsIgnoreCase("default")) {
             log.warn("Attempted to delete default chapter, action blocked.");
 
-            var message = Component.empty().append(Component.translatable("ardapaths.client.chapter.configuration.screens.error.delete_default_chapter").withStyle(ChatFormatting.RED));
-            var player = Minecraft.getInstance().player;
-
-            if (player != null) player.sendSystemMessage(message);
+            sendErrorMessage(Component.translatable("ardapaths.client.chapter.configuration.screens.error.delete_default_chapter"));
 
             return;
         }
@@ -429,6 +710,7 @@ public class ChapterEditScreen extends ArdaPathsScreen {
                 () -> {
 
                     Paths.deleteChapter(path.getId(), chapter);
+                    chapterDropdown.setOptions(sortedChapters(path));
                     resetFields();
                 },
                 // Popup closed / decline

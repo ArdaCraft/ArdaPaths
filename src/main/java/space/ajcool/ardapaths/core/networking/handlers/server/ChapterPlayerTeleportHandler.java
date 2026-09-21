@@ -35,20 +35,16 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
     public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPlayerTeleportPacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
+        final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
+        final String dimensionId = ArdaPaths.CONFIG.getChapterStartDimension(pathId, chapterId);
+
+        if (start != null) {
+            teleportToCoordinates(server, player, start, dimensionId);
+            return;
+        }
 
         final Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(pathId, chapterId);
         final Runnable fallback = () -> {
-            final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
-            final String dimensionId = ArdaPaths.CONFIG.getChapterStartDimension(pathId, chapterId);
-
-            if (start != null) {
-                ServerLevel destinationLevel = resolveDestinationLevel(server, dimensionId);
-                if (destinationLevel == null) {
-                    log.warn("Cannot teleport player {} to chapter start in unloaded dimension {}", player.getStringUUID(), dimensionId);
-                    return;
-                }
-                player.teleportTo(destinationLevel, start.getX() + 0.5, start.getY(), start.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
-            }
         };
 
         if (startWarp.isPresent() && Warps.isAvailable()) {
@@ -57,6 +53,23 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
         } else {
             fallback.run();
         }
+    }
+
+    /**
+     * Teleports a player to configured chapter-start coordinates.
+     *
+     * @param server      active server
+     * @param player      player to teleport
+     * @param start       target block position
+     * @param dimensionId target dimension identifier
+     */
+    private void teleportToCoordinates(MinecraftServer server, ServerPlayer player, BlockPos start, String dimensionId) {
+        ServerLevel destinationLevel = resolveDestinationLevel(server, dimensionId);
+        if (destinationLevel == null) {
+            log.warn("Cannot teleport player {} to chapter start in unloaded dimension {}", player.getStringUUID(), dimensionId);
+            return;
+        }
+        player.teleportTo(destinationLevel, start.getX() + 0.5, start.getY(), start.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
     }
 
     /**

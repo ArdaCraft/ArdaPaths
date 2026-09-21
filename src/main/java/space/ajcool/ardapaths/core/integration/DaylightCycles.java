@@ -10,6 +10,7 @@ import space.ajcool.ardapaths.core.Client;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.Objects;
 
 /**
@@ -41,9 +42,9 @@ public final class DaylightCycles {
     private static final String STATIC_TIME_CLASS = "jugglestruggle.timechangerstruggle.daynight.type.StaticTime";
 
     /**
-     * Maximum time between reasserting client time ownership when the target has not changed.
+     * Fully qualified class name for DaylightChangerStruggle's date formatting utility.
      */
-    private static final long CONTROL_REASSERT_NANOS = 1_000_000_000L;
+    private static final String DAYLIGHT_UTILS_CLASS = "jugglestruggle.timechangerstruggle.util.DaylightUtils";
 
     /**
      * Cached availability state for the optional daylight changer mod.
@@ -66,9 +67,19 @@ public final class DaylightCycles {
     private static volatile boolean invocationWarningLogged;
 
     /**
+     * Tracks whether a date-readout override failure has already been logged.
+     */
+    private static volatile boolean dateFormatWarningLogged;
+
+    /**
      * User daylight-cycle settings captured before ArdaPaths takes control.
      */
     private static volatile UserTimeState capturedUserState;
+
+    /**
+     * DaylightChangerStruggle date formatter captured before ArdaPaths installs its year override.
+     */
+    private static volatile SimpleDateFormat capturedDateFormat;
 
     /**
      * Last absolute tick value sent to DaylightChangerStruggle.
@@ -76,19 +87,19 @@ public final class DaylightCycles {
     private static volatile long lastSentTicks = Long.MIN_VALUE;
 
     /**
-     * Day-aligned absolute tick base preserved while ArdaPaths controls the client clock.
+     * Minimum tick value known to be safe for DaylightChangerStruggle static time.
      */
-    private static volatile long baseDayTicks = Long.MIN_VALUE;
+    private static final long MIN_SAFE_TICKS = 0L;
 
     /**
-     * Last monotonic timestamp when ArdaPaths reasserted client time control.
+     * Eight-day moon-cycle span used to shift negative dates without changing moon phase.
      */
-    private static volatile long lastAssertNanos;
+    private static final long MOON_PHASE_TICKS = 8L * 24000L;
 
     /**
-     * Sets the client-controlled time of day through DaylightChangerStruggle.
+     * Sets the client-controlled time of day through DaylightChangerStruggle when the displayed time changes.
      *
-     * @param ticks daytime ticks to display on the client
+     * @param ticks absolute ticks to display on the client
      */
     public static void setClientTime(long ticks) {
 
@@ -101,14 +112,9 @@ public final class DaylightCycles {
             return;
 
         try {
-            long dayTime = Math.floorMod(ticks, 24000L);
-            long absoluteTicks = resolveAbsoluteTicks(dayTime);
-            if (absoluteTicks == Long.MIN_VALUE)
-                return;
+            long absoluteTicks = safeClientTicks(DaylightDates.toProviderTicks(ticks));
 
-            long now = System.nanoTime();
-
-            if (absoluteTicks == lastSentTicks && now - lastAssertNanos < CONTROL_REASSERT_NANOS)
+            if (absoluteTicks == lastSentTicks)
                 return;
 
             Object cycle = getStaticCycle(access);
@@ -118,7 +124,6 @@ public final class DaylightCycles {
 
             access.worldTime().setBoolean(null, false);
             lastSentTicks = absoluteTicks;
-            lastAssertNanos = now;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             logInvocationFailure(exception);
         }
@@ -140,35 +145,6 @@ public final class DaylightCycles {
         }
 
         return currentAvailability;
-    }
-
-    /**
-     * Resolves a client-visible daytime tick into a continuous absolute world tick.
-     *
-     * @param dayTime normalized daytime tick to display
-     * @return absolute world tick preserving day continuity, or {@link Long#MIN_VALUE} when unavailable
-     */
-    private static long resolveAbsoluteTicks(long dayTime) {
-
-        long currentBase = baseDay();
-        if (currentBase == Long.MIN_VALUE)
-            return Long.MIN_VALUE;
-
-        long candidate = currentBase + dayTime;
-
-        if (lastSentTicks == Long.MIN_VALUE)
-            return candidate;
-
-        long delta = candidate - lastSentTicks;
-        if (delta < -12000L) {
-            baseDayTicks = currentBase + 24000L;
-            candidate = baseDayTicks + dayTime;
-        } else if (delta > 12000L) {
-            baseDayTicks = currentBase - 24000L;
-            candidate = baseDayTicks + dayTime;
-        }
-
-        return candidate;
     }
 
     /**
@@ -212,6 +188,7 @@ public final class DaylightCycles {
             reflectionAccess = null;
             cachedStaticCycle = null;
             capturedUserState = null;
+            capturedDateFormat = null;
             resetSendGate();
             if (invocationWarningLogged) {
                 return;
@@ -241,6 +218,7 @@ public final class DaylightCycles {
             Method isCycleTypeCurrentCycle = tcsClient.getMethod("isCycleTypeCurrentCycle", String.class);
             Class<?> staticTime = Class.forName(STATIC_TIME_CLASS);
             Field timeSet = staticTime.getField("timeSet");
+            Field dateFormat = resolveDateFormatField();
 
             reflectionAccess = new ReflectionAccess(
                     worldTime,
@@ -249,7 +227,8 @@ public final class DaylightCycles {
                     getTimeChangerKey,
                     isCycleTypeCurrentCycle,
                     staticTime,
-                    timeSet
+                    timeSet,
+                    dateFormat
             );
             return true;
         } catch (ReflectiveOperationException | LinkageError exception) {
@@ -257,39 +236,96 @@ public final class DaylightCycles {
             reflectionAccess = null;
             cachedStaticCycle = null;
             capturedUserState = null;
+            capturedDateFormat = null;
             resetSendGate();
             return false;
         }
     }
 
     /**
-     * Returns the absolute day base used to preserve the current season while changing time of day.
+     * Resolves DaylightChangerStruggle's optional date formatter field.
      *
-     * @return day-aligned absolute tick base for the active client world
+     * @return date formatter field, or null when this DCS version does not expose it
      */
-    private static long baseDay() {
-
-        long currentBase = baseDayTicks;
-
-        if (currentBase != Long.MIN_VALUE)
-            return currentBase;
-
-        if (Client.world() == null)
-            return currentBase;
-
-        long currentTime = Client.world().getOverworldClockTime();
-        currentBase = Math.floorDiv(currentTime, 24000L) * 24000L;
-        baseDayTicks = currentBase;
-        return currentBase;
+    private static Field resolveDateFormatField() {
+        try {
+            return Class.forName(DAYLIGHT_UTILS_CLASS).getField("DATE_FORMAT");
+        } catch (ReflectiveOperationException | LinkageError exception) {
+            log.debug("[ArdaPaths] DaylightChangerStruggle date formatter could not be resolved. Its date readout will use provider years.", exception);
+            return null;
+        }
     }
 
     /**
-     * Clears cached send throttling state after ownership changes or integration failures.
+     * Installs a formatter that prints Arda years in DaylightChangerStruggle's date readout.
+     *
+     * @param access reflective handles for DaylightChangerStruggle
+     */
+    private static void installDateFormatOverride(ReflectionAccess access) {
+        Field dateFormat = access.dateFormat();
+        if (dateFormat == null) {
+            return;
+        }
+
+        try {
+            Object formatter = dateFormat.get(null);
+            if (!(formatter instanceof SimpleDateFormat simpleDateFormat) || formatter instanceof ArdaDateFormat) {
+                return;
+            }
+
+            if (capturedDateFormat == null) {
+                capturedDateFormat = (SimpleDateFormat) simpleDateFormat.clone();
+            }
+
+            dateFormat.set(null, new ArdaDateFormat(simpleDateFormat));
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            capturedDateFormat = null;
+            logDateFormatFailure(exception);
+        }
+    }
+
+    /**
+     * Restores DaylightChangerStruggle's formatter after ArdaPaths releases time control.
+     *
+     * @param access reflective handles for DaylightChangerStruggle
+     */
+    private static void restoreDateFormatOverride(ReflectionAccess access) {
+        Field dateFormat = access.dateFormat();
+        SimpleDateFormat formatter = capturedDateFormat;
+        if (dateFormat == null || formatter == null) {
+            return;
+        }
+
+        try {
+            dateFormat.set(null, formatter);
+            capturedDateFormat = null;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            capturedDateFormat = null;
+            logDateFormatFailure(exception);
+        }
+    }
+
+    /**
+     * Converts authored ticks to a value safe for the daylight-cycle provider.
+     *
+     * @param ticks authored absolute ticks
+     * @return non-negative absolute ticks preserving time of day and moon phase
+     */
+    private static long safeClientTicks(long ticks) {
+        if (ticks >= MIN_SAFE_TICKS) {
+            return ticks;
+        }
+
+        // Negative dayTime has not been verified against DaylightChangerStruggle; shift by whole moon cycles for now.
+        long cycles = Math.floorDiv(MIN_SAFE_TICKS - ticks + MOON_PHASE_TICKS - 1L, MOON_PHASE_TICKS);
+        return ticks + (cycles * MOON_PHASE_TICKS);
+    }
+
+    /**
+     * Clears cached send state after ownership changes or integration failures.
      */
     private static void resetSendGate() {
         lastSentTicks = Long.MIN_VALUE;
-        baseDayTicks = Long.MIN_VALUE;
-        lastAssertNanos = 0L;
     }
 
     /**
@@ -320,8 +356,10 @@ public final class DaylightCycles {
 
     /**
      * Enables client-side time control through DaylightChangerStruggle.
+     *
+     * @param initialArdaTicks ArdaPaths timeline ticks used to seed the provider's fixed-time state
      */
-    public static void enableClientTimeControl() {
+    public static void enableClientTimeControl(long initialArdaTicks) {
         if (!isAvailable() || Client.world() == null) {
             return;
         }
@@ -332,15 +370,13 @@ public final class DaylightCycles {
         }
 
         try {
-            long currentTime = Client.world().getOverworldClockTime();
-            baseDayTicks = Math.floorDiv(currentTime, 24000L) * 24000L;
             Object cycle = getStaticCycle(access);
             if (access.staticTime().isInstance(cycle)) {
-                access.timeSet().setLong(cycle, currentTime);
+                access.timeSet().setLong(cycle, safeClientTicks(DaylightDates.toProviderTicks(initialArdaTicks)));
             }
             access.worldTime().setBoolean(null, false);
+            installDateFormatOverride(access);
             lastSentTicks = Long.MIN_VALUE;
-            lastAssertNanos = 0L;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             logInvocationFailure(exception);
         }
@@ -383,10 +419,12 @@ public final class DaylightCycles {
             }
 
             access.worldTime().setBoolean(null, state.worldTime());
+            restoreDateFormatOverride(access);
             capturedUserState = null;
             resetSendGate();
         } catch (ReflectiveOperationException | RuntimeException exception) {
             capturedUserState = null;
+            restoreDateFormatOverride(access);
             logInvocationFailure(exception);
         }
     }
@@ -406,9 +444,31 @@ public final class DaylightCycles {
 
         try {
             access.worldTime().setBoolean(null, true);
+            restoreDateFormatOverride(access);
             resetSendGate();
         } catch (ReflectiveOperationException | RuntimeException exception) {
+            restoreDateFormatOverride(access);
             logInvocationFailure(exception);
+        }
+    }
+
+    /**
+     * Logs a date-readout override failure without disabling time control.
+     *
+     * @param exception failure raised while replacing DaylightChangerStruggle's formatter
+     */
+    private static void logDateFormatFailure(Exception exception) {
+        if (dateFormatWarningLogged) {
+            return;
+        }
+
+        synchronized (DaylightCycles.class) {
+            if (dateFormatWarningLogged) {
+                return;
+            }
+
+            dateFormatWarningLogged = true;
+            log.warn("[ArdaPaths] DaylightChangerStruggle date formatting could not be overridden. Dynamic time changes will continue, but the DCS readout may show years 0004-0007.", exception);
         }
     }
 
@@ -422,6 +482,7 @@ public final class DaylightCycles {
      * @param isCycleTypeCurrentCycle method that checks whether a cycle key is active
      * @param staticTime              fixed-time cycle class
      * @param timeSet                 field storing the fixed client-visible time
+     * @param dateFormat              optional field storing DaylightChangerStruggle's date formatter
      */
     private record ReflectionAccess(
             Field worldTime,
@@ -430,7 +491,8 @@ public final class DaylightCycles {
             Method getTimeChangerKey,
             Method isCycleTypeCurrentCycle,
             Class<?> staticTime,
-            Field timeSet
+            Field timeSet,
+            Field dateFormat
     ) {
 
     }

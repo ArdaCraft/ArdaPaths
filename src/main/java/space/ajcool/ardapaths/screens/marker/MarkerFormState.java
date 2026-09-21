@@ -2,7 +2,9 @@ package space.ajcool.ardapaths.screens.marker;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.core.BlockPos;
 import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WarpTarget;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -51,17 +53,29 @@ public class MarkerFormState {
     /** Weather ordinal selected for this marker, or unset when the player should keep current weather. */
     private int weather;
 
-    /** Time-of-day ticks selected for this marker, or unset when the player should keep current time. */
-    private int timeOfDay;
+    /** Absolute date-time ticks selected for this marker, or unset when the player should keep current time. */
+    private long timeOfDay;
 
-    /** Distance in blocks selected for transitioning to the marker's time of day. */
-    private int timeTransitionRange;
+    /** Activation mode selected for transitioning to the marker's time of day. */
+    private TimeActivation timeActivation;
 
     /** Target coordinates or warp name triggered when a player reaches this marker. */
     private String autoTeleportTarget;
 
     /** Target coordinates focused by the client while the Focus key is held. */
     private String lookAt;
+
+    /** Dimension identifier for the marker that continues this chapter chain. */
+    private String targetMarkerDimension;
+
+    /** X coordinate of the marker that continues this chapter chain. */
+    private String targetMarkerX;
+
+    /** Y coordinate of the marker that continues this chapter chain. */
+    private String targetMarkerY;
+
+    /** Z coordinate of the marker that continues this chapter chain. */
+    private String targetMarkerZ;
 
     /** Item identifier granted when a player reaches this marker. */
     private String giveItem;
@@ -87,9 +101,13 @@ public class MarkerFormState {
         minOpacity = unpackedMessageData[4];
         weather = data.getWeather();
         timeOfDay = data.getTimeOfDay();
-        timeTransitionRange = data.getTimeTransitionRange();
+        timeActivation = data.getTimeActivation();
         autoTeleportTarget = data.getAutoTeleportTarget();
         lookAt = WarpTarget.formatCoordinates(data.getLookAt());
+        targetMarkerDimension = data.getTargetMarkerDimension();
+        targetMarkerX = data.getTargetMarker() == null ? "" : String.valueOf(data.getTargetMarker().getX());
+        targetMarkerY = data.getTargetMarker() == null ? "" : String.valueOf(data.getTargetMarker().getY());
+        targetMarkerZ = data.getTargetMarker() == null ? "" : String.valueOf(data.getTargetMarker().getZ());
         giveItem = data.getGiveItem();
     }
 
@@ -106,9 +124,16 @@ public class MarkerFormState {
         data.setDisplayAboveBlocks(displayAboveBlocks);
         data.setWeather(weather);
         data.setTimeOfDay(timeOfDay);
-        data.setTimeTransitionRange(timeTransitionRange);
+        data.setTimeActivation(timeActivation);
         data.setAutoTeleportTarget(autoTeleportTarget);
         data.setLookAt(WarpTarget.parseCoordinates(lookAt));
+        if (hasCompleteTargetMarker()) {
+            data.setTargetMarkerDimension(targetMarkerDimension.trim());
+            data.setTargetMarker(new BlockPos(Integer.parseInt(targetMarkerX.trim()), Integer.parseInt(targetMarkerY.trim()), Integer.parseInt(targetMarkerZ.trim())));
+        } else {
+            data.setTargetMarkerDimension("");
+            data.setTargetMarker(null);
+        }
         data.setGiveItem(giveItem);
         data.setPackedMessageData(BitPacker.packFive(charRevealSpeed, fadeDelayOffset, fadeDelayFactor, fadeSpeed, minOpacity));
     }
@@ -132,9 +157,13 @@ public class MarkerFormState {
                 minOpacity,
                 weather,
                 TimeOfDay.snap(timeOfDay),
-                timeTransitionRange,
+                timeActivation,
                 autoTeleportTarget,
                 lookAt,
+                targetMarkerDimension,
+                targetMarkerX,
+                targetMarkerY,
+                targetMarkerZ,
                 giveItem
         );
     }
@@ -158,10 +187,26 @@ public class MarkerFormState {
         copy.minOpacity = minOpacity;
         copy.weather = weather;
         copy.timeOfDay = timeOfDay;
-        copy.timeTransitionRange = timeTransitionRange;
+        copy.timeActivation = timeActivation;
         copy.autoTeleportTarget = autoTeleportTarget;
         copy.lookAt = lookAt;
+        copy.targetMarkerDimension = targetMarkerDimension;
+        copy.targetMarkerX = targetMarkerX;
+        copy.targetMarkerY = targetMarkerY;
+        copy.targetMarkerZ = targetMarkerZ;
         copy.giveItem = giveItem;
         return copy;
+    }
+
+    /**
+     * Checks whether all target-marker fields are populated.
+     *
+     * @return true when the target-marker dimension and coordinates are all present
+     */
+    private boolean hasCompleteTargetMarker() {
+        return targetMarkerDimension != null && !targetMarkerDimension.trim().isEmpty()
+                && targetMarkerX != null && !targetMarkerX.trim().isEmpty()
+                && targetMarkerY != null && !targetMarkerY.trim().isEmpty()
+                && targetMarkerZ != null && !targetMarkerZ.trim().isEmpty();
     }
 }

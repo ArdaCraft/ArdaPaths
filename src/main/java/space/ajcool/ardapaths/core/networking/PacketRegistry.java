@@ -49,9 +49,19 @@ public class PacketRegistry {
     public static final MarkerBulkClearHandler MARKER_BULK_CLEAR = register(new MarkerBulkClearHandler());
 
     /**
+     * Handler for unlinking selected markers from the default chapter.
+     */
+    public static final MarkerUnlinkDefaultHandler MARKER_UNLINK_DEFAULT = register(new MarkerUnlinkDefaultHandler());
+
+    /**
      * Handler for server-resolved chapter marker list requests.
      */
     public static final ChapterPathMarkersHandler CHAPTER_PATH_MARKERS = register(new ChapterPathMarkersHandler());
+
+    /**
+     * Handler for server dimension list requests used by editor suggestion inputs.
+     */
+    public static final DimensionListRequestHandler DIMENSION_LIST = register(new DimensionListRequestHandler());
 
     /**
      * Handler for path marker data resolved server-side for markers that are not loaded on the client.
