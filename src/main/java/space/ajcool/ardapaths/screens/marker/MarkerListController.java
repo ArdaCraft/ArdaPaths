@@ -6,9 +6,12 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
 import space.ajcool.ardapaths.core.data.ChapterMarkersStatus;
+import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
+import space.ajcool.ardapaths.core.data.config.shared.PathData;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.client.ChapterPathMarkersResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPathMarkersPacket;
@@ -19,12 +22,12 @@ import space.ajcool.ardapaths.screens.widgets.MarkerListPanelWidget;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * Controller for the marker editor navigation list and its local/server row state.
  */
 public class MarkerListController {
+
     /** Marker block entity being edited. */
     private final PathMarkerBlockEntity marker;
 
@@ -38,10 +41,13 @@ public class MarkerListController {
     private final BiConsumer<BlockPos, Collection<BlockPos>> openMarker;
 
     /** Callback that teleports the player to a marker. */
-    private final Consumer<BlockPos> teleport;
+    private final BiConsumer<BlockPos, String> teleport;
 
     /** Callback that confirms a bulk clear action. */
     private final BiConsumer<Boolean, Boolean> confirmBulkClear;
+
+    /** Callback that confirms unlinking selected markers from the default chapter. */
+    private final Runnable confirmBulkUnlinkDefault;
 
     /** Callback that opens the time interpolation popup. */
     private final Runnable openInterpolation;
@@ -67,8 +73,11 @@ public class MarkerListController {
     /** Whether the marker navigation column has completed its first build for this screen. */
     private boolean markerListInitialised;
 
-    /** Whether the server reported that the selected chapter has no chapter-start marker. */
-    private boolean missingChapterStart;
+    /** Last status returned by the server marker-list request. */
+    private ChapterMarkersStatus markerStatus = ChapterMarkersStatus.INVALID_DATA;
+
+    /** Whether a server marker-list request is waiting for its response. */
+    private boolean chapterMarkersRequestInFlight;
 
     /** Scroll amount to apply to the next rebuilt marker navigation column. */
     private Double pendingMarkerListScrollAmount;
@@ -85,22 +94,24 @@ public class MarkerListController {
     /**
      * Creates a marker-list controller for one marker editor screen.
      *
-     * @param marker           marker block entity being edited
-     * @param pathId           selected path ID
-     * @param chapterId        selected chapter ID
-     * @param initialSelection initially selected marker rows
-     * @param addWidget        hook used to add widgets to the screen
-     * @param removeWidget     hook used to remove widgets from the screen
-     * @param openMarker       callback that opens a marker for editing
-     * @param teleport         callback that teleports to a marker
-     * @param confirmBulkClear callback that confirms a bulk clear action
+     * @param marker            marker block entity being edited
+     * @param pathId            selected path ID
+     * @param chapterId         selected chapter ID
+     * @param initialSelection  initially selected marker rows
+     * @param addWidget         hook used to add widgets to the screen
+     * @param removeWidget      hook used to remove widgets from the screen
+     * @param openMarker        callback that opens a marker for editing
+     * @param teleport          callback that teleports to a marker
+     * @param confirmBulkClear  callback that confirms a bulk clear action
+     * @param confirmBulkUnlinkDefault callback that confirms a default-chapter unlink action
      * @param openInterpolation callback that opens time interpolation
      */
     public MarkerListController(PathMarkerBlockEntity marker, String pathId, String chapterId, Collection<BlockPos> initialSelection,
                                 WidgetAdder addWidget, WidgetRemover removeWidget,
                                 BiConsumer<BlockPos, Collection<BlockPos>> openMarker,
-                                Consumer<BlockPos> teleport,
+                                BiConsumer<BlockPos, String> teleport,
                                 BiConsumer<Boolean, Boolean> confirmBulkClear,
+                                Runnable confirmBulkUnlinkDefault,
                                 Runnable openInterpolation) {
         this.marker = marker;
         this.pathId = pathId;
@@ -110,6 +121,7 @@ public class MarkerListController {
         this.openMarker = openMarker;
         this.teleport = teleport;
         this.confirmBulkClear = confirmBulkClear;
+        this.confirmBulkUnlinkDefault = confirmBulkUnlinkDefault;
         this.openInterpolation = openInterpolation;
         selectedMarkers = initialSelection == null || initialSelection.isEmpty()
                 ? new ArrayList<>(List.of(marker.getBlockPos().immutable()))
@@ -128,7 +140,7 @@ public class MarkerListController {
         this.chapterId = chapterId;
         serverMarkers = List.of();
         serverListActive = false;
-        missingChapterStart = false;
+        markerStatus = ChapterMarkersStatus.INVALID_DATA;
         markerListInitialised = false;
         pendingMarkerListScrollAmount = null;
     }
@@ -184,27 +196,6 @@ public class MarkerListController {
     }
 
     /**
-     * Rebuilds the marker list from current local or server rows.
-     *
-     * @param scrollToSelected whether to center the edited marker row
-     */
-    public void refresh(boolean scrollToSelected) {
-        if (markerListPanel == null) return;
-
-        List<MarkerListPanelWidget.MarkerRow> rows = serverListActive
-                ? currentServerMarkerRows()
-                : currentLocalMarkerRows();
-        if (missingChapterStart) {
-            rows = new ArrayList<>(rows);
-            rows.add(0, MarkerListPanelWidget.MarkerRow.notice(Component.translatable(
-                    "ardapaths.client.marker.configuration.screens.chapter_markers.missing_chapter_start")));
-        }
-        markerListPanel.setRows(rows, scrollToSelected);
-        trimSelectionToDisplayedMarkers();
-        lastMarkerListSignature = serverListActive ? 0L : currentMarkerListSignature();
-    }
-
-    /**
      * Checks for local marker-list signature changes and refreshes visible rows when needed.
      */
     public void tickSignature() {
@@ -217,18 +208,135 @@ public class MarkerListController {
     }
 
     /**
-     * Closes any open context menu.
+     * Builds the extracted marker-list signature for the current selected chapter.
      *
-     * @return true when a menu was closed
+     * @return current marker-list signature
      */
-    public boolean closeContextMenu() {
-        if (contextMenu != null) {
-            removeWidget.remove(contextMenu);
-            contextMenu = null;
-            return true;
+    private long currentMarkerListSignature() {
+        long filterSignature = markerListPanel == null ? 0L : markerListPanel.filterSignature();
+        return ChapterMarkerChain.signature(marker, pathId, chapterId, filterSignature);
+    }
+
+    /**
+     * Rebuilds the marker list from current local or server rows.
+     *
+     * @param scrollToSelected whether to center the edited marker row
+     */
+    public void refresh(boolean scrollToSelected) {
+        if (markerListPanel == null) return;
+
+        List<MarkerListPanelWidget.MarkerRow> rows = serverListActive
+                ? currentServerMarkerRows()
+                : currentLocalMarkerRows();
+        Optional<MarkerListPanelWidget.MarkerRow> notice = statusNotice();
+        if (notice.isPresent()) {
+            rows = new ArrayList<>(rows);
+            rows.add(0, notice.get());
+        }
+        markerListPanel.setRows(rows, scrollToSelected);
+        trimSelectionToDisplayedMarkers();
+        lastMarkerListSignature = serverListActive ? 0L : currentMarkerListSignature();
+    }
+
+    /**
+     * Builds visible entries from the server-provided chapter marker list.
+     *
+     * @return visible server marker rows
+     */
+    private List<MarkerListPanelWidget.MarkerRow> currentServerMarkerRows() {
+        return serverMarkers.stream()
+                .map(this::serverMarkerRow)
+                .toList();
+    }
+
+    /**
+     * Builds visible entries from currently loaded local markers.
+     *
+     * @return visible local marker rows
+     */
+    private List<MarkerListPanelWidget.MarkerRow> currentLocalMarkerRows() {
+        return ChapterMarkerChain.orderedLocalMarkers(marker, pathId, chapterId).stream()
+                .map(this::localMarkerRow)
+                .toList();
+    }
+
+    /**
+     * Removes selected positions that are no longer visible in the current marker list.
+     */
+    private void trimSelectionToDisplayedMarkers() {
+        Set<BlockPos> visible = new HashSet<>(visibleMarkerPositions());
+        selectedMarkers = new ArrayList<>(selectedMarkers.stream()
+                .filter(visible::contains)
+                .toList());
+    }
+
+    /**
+     * Converts one server marker row into panel row data.
+     *
+     * @param entry server marker row
+     * @return marker row data
+     */
+    private MarkerListPanelWidget.MarkerRow serverMarkerRow(ChapterMarkerEntry entry) {
+        if (entry.chainBreak()) {
+            return entry.dimensionBreak()
+                    ? MarkerListPanelWidget.MarkerRow.dimensionBreak(entry.dimensionId())
+                    : MarkerListPanelWidget.MarkerRow.chainBreak();
         }
 
-        return false;
+        BlockPos pos = BlockPos.of(entry.packedPos());
+        boolean editable = Objects.equals(entry.dimensionId(), currentDimensionId());
+        return new MarkerListPanelWidget.MarkerRow(
+                pos,
+                entry.dimensionId(),
+                entry.timeOfDay(),
+                entry.weather(),
+                entry.proximityMessage(),
+                entry.hasMiscData(),
+                editable && pos.equals(marker.getBlockPos()),
+                editable && selectedMarkers.contains(pos),
+                editable
+        );
+    }
+
+    /**
+     * Converts one local marker into panel row data.
+     *
+     * @param rowMarker marker block entity to represent
+     * @return marker row data
+     */
+    private MarkerListPanelWidget.MarkerRow localMarkerRow(PathMarkerBlockEntity rowMarker) {
+        PathMarkerBlockEntity.ChapterNbtData data = ChapterMarkerChain.selectedChapterData(rowMarker, pathId, chapterId);
+        return new MarkerListPanelWidget.MarkerRow(
+                rowMarker.getBlockPos().immutable(),
+                currentDimensionId(),
+                data.getTimeOfDay(),
+                data.getWeather(),
+                data.getProximityMessage(),
+                data.hasMiscData(),
+                rowMarker.getBlockPos().equals(marker.getBlockPos()),
+                selectedMarkers.contains(rowMarker.getBlockPos()),
+                true
+        );
+    }
+
+    /**
+     * Returns the current client world dimension identifier.
+     *
+     * @return current dimension identifier, or blank when no level is active
+     */
+    @SuppressWarnings("resource")
+    private String currentDimensionId() {
+        var level = Client.mc().level;
+        return level == null ? "" : level.dimension().location().toString();
+    }
+
+    /**
+     * Returns visible marker positions in list order.
+     *
+     * @return ordered visible marker positions
+     */
+    private List<BlockPos> visibleMarkerPositions() {
+        return markerListPanel == null ? List.of() : markerListPanel.getVisiblePositions();
     }
 
     /**
@@ -245,6 +353,21 @@ public class MarkerListController {
                 return true;
             }
             closeContextMenu();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Closes any open context menu.
+     *
+     * @return true when a menu was closed
+     */
+    public boolean closeContextMenu() {
+        if (contextMenu != null) {
+            removeWidget.remove(contextMenu);
+            contextMenu = null;
             return true;
         }
 
@@ -329,12 +452,14 @@ public class MarkerListController {
 
         long packedMarkerPos = marker.getBlockPos().asLong();
         PathMarkerBlockEntity.ChapterNbtData data = marker.getChapterData(pathId, chapterId, false);
-        if (data == null) return;
+        PathMarkerBlockEntity.ChapterNbtData rowData = data != null
+                ? data
+                : PathMarkerBlockEntity.ChapterNbtData.empty(chapterId);
 
         serverMarkers = serverMarkers.stream()
-                .map(entry -> entry.chainBreak() || entry.packedPos() != packedMarkerPos
+                .map(entry -> entry.chainBreak() || entry.packedPos() != packedMarkerPos || !Objects.equals(entry.dimensionId(), currentDimensionId())
                         ? entry
-                        : ChapterMarkerEntry.marker(packedMarkerPos, data))
+                        : ChapterMarkerEntry.marker(packedMarkerPos, currentDimensionId(), rowData))
                 .toList();
     }
 
@@ -343,6 +468,10 @@ public class MarkerListController {
      */
     @SuppressWarnings("resource")
     public void requestChapterMarkers() {
+        if (chapterMarkersRequestInFlight) {
+            return;
+        }
+
         if (pathId == null || chapterId == null || pathId.isEmpty() || chapterId.isEmpty()) {
             useLocalMarkerList();
             return;
@@ -351,6 +480,7 @@ public class MarkerListController {
         Minecraft minecraft = Client.mc();
         String requestedPathId = pathId;
         String requestedChapterId = chapterId;
+        chapterMarkersRequestInFlight = true;
         PacketRegistry.CHAPTER_PATH_MARKERS.send(
                 new ChapterPathMarkersPacket(requestedPathId, requestedChapterId, marker.getBlockPos().asLong()),
                 response -> minecraft.execute(() -> onChapterMarkersResponse(requestedPathId, requestedChapterId, response))
@@ -365,17 +495,19 @@ public class MarkerListController {
      * @param response           server response packet
      */
     private void onChapterMarkersResponse(String requestedPathId, String requestedChapterId, ChapterPathMarkersResponsePacket response) {
+        chapterMarkersRequestInFlight = false;
         if (!Objects.equals(requestedPathId, pathId) || !Objects.equals(requestedChapterId, chapterId)) {
             return;
         }
 
         List<ChapterMarkerEntry> incomingMarkers = List.copyOf(response.markers());
-        boolean incomingServerListActive = response.status() != ChapterMarkersStatus.NO_CHAPTER_START && !incomingMarkers.isEmpty();
-        boolean incomingMissingChapterStart = response.status() == ChapterMarkersStatus.NO_CHAPTER_START;
-        boolean missingChapterStartChanged = incomingMissingChapterStart != missingChapterStart;
+        boolean incomingServerListActive = response.status() != ChapterMarkersStatus.NO_CHAPTER_START
+                && response.status() != ChapterMarkersStatus.UNRESOLVABLE_CHAPTER_START
+                && !incomingMarkers.isEmpty();
+        boolean statusChanged = response.status() != markerStatus;
         boolean alreadyShowingServerRows = markerListInitialised && serverListActive;
-        missingChapterStart = incomingMissingChapterStart;
-        if (incomingMarkers.equals(serverMarkers) && incomingServerListActive == serverListActive && !missingChapterStartChanged) {
+        markerStatus = response.status();
+        if (incomingMarkers.equals(serverMarkers) && incomingServerListActive == serverListActive && !statusChanged) {
             return;
         }
 
@@ -391,92 +523,43 @@ public class MarkerListController {
     private void useLocalMarkerList() {
         serverMarkers = List.of();
         serverListActive = false;
-        missingChapterStart = false;
+        markerStatus = ChapterMarkersStatus.INVALID_DATA;
         if (markerListPanel != null) markerListPanel.setServerListActive(false);
         refresh(true);
     }
 
     /**
-     * Removes selected positions that are no longer visible in the current marker list.
-     */
-    private void trimSelectionToDisplayedMarkers() {
-        Set<BlockPos> visible = new HashSet<>(visibleMarkerPositions());
-        selectedMarkers = new ArrayList<>(selectedMarkers.stream()
-                .filter(visible::contains)
-                .toList());
-    }
-
-    /**
-     * Builds visible entries from currently loaded local markers.
+     * Creates the current server-status notice row, when one should be shown.
      *
-     * @return visible local marker rows
+     * @return notice row data, or empty when no notice is needed
      */
-    private List<MarkerListPanelWidget.MarkerRow> currentLocalMarkerRows() {
-        return ChapterMarkerChain.orderedLocalMarkers(marker, pathId, chapterId).stream()
-                .map(this::localMarkerRow)
-                .toList();
-    }
-
-    /**
-     * Builds visible entries from the server-provided chapter marker list.
-     *
-     * @return visible server marker rows
-     */
-    private List<MarkerListPanelWidget.MarkerRow> currentServerMarkerRows() {
-        return serverMarkers.stream()
-                .map(this::serverMarkerRow)
-                .toList();
-    }
-
-    /**
-     * Converts one local marker into panel row data.
-     *
-     * @param rowMarker marker block entity to represent
-     * @return marker row data
-     */
-    private MarkerListPanelWidget.MarkerRow localMarkerRow(PathMarkerBlockEntity rowMarker) {
-        PathMarkerBlockEntity.ChapterNbtData data = ChapterMarkerChain.selectedChapterData(rowMarker, pathId, chapterId);
-        return new MarkerListPanelWidget.MarkerRow(
-                rowMarker.getBlockPos().immutable(),
-                data.getTimeOfDay(),
-                data.getWeather(),
-                data.getProximityMessage(),
-                data.hasMiscData(),
-                rowMarker.getBlockPos().equals(marker.getBlockPos()),
-                selectedMarkers.contains(rowMarker.getBlockPos())
-        );
-    }
-
-    /**
-     * Converts one server marker row into panel row data.
-     *
-     * @param entry server marker row
-     * @return marker row data
-     */
-    private MarkerListPanelWidget.MarkerRow serverMarkerRow(ChapterMarkerEntry entry) {
-        if (entry.chainBreak()) {
-            return MarkerListPanelWidget.MarkerRow.chainBreak();
+    private Optional<MarkerListPanelWidget.MarkerRow> statusNotice() {
+        if (markerStatus == ChapterMarkersStatus.NO_CHAPTER_START) {
+            return Optional.of(MarkerListPanelWidget.MarkerRow.notice(Component.translatable(
+                    "ardapaths.client.marker.configuration.screens.chapter_markers.missing_chapter_start")));
         }
 
-        BlockPos pos = BlockPos.of(entry.packedPos());
-        return new MarkerListPanelWidget.MarkerRow(
-                pos,
-                entry.timeOfDay(),
-                entry.weather(),
-                entry.proximityMessage(),
-                entry.hasMiscData(),
-                pos.equals(marker.getBlockPos()),
-                selectedMarkers.contains(pos)
-        );
+        if (markerStatus == ChapterMarkersStatus.UNRESOLVABLE_CHAPTER_START) {
+            return Optional.of(MarkerListPanelWidget.MarkerRow.notice(
+                    Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.unresolvable_chapter_start"),
+                    List.of(Component.translatable(
+                            "ardapaths.client.marker.configuration.screens.chapter_markers.unresolvable_chapter_start_tooltip",
+                            chapterWarp()))
+            ));
+        }
+
+        return Optional.empty();
     }
 
     /**
-     * Returns visible marker positions in list order.
+     * Reads the selected chapter's warp from the client mirror for tooltip display.
      *
-     * @return ordered visible marker positions
+     * @return configured warp name, or an empty string
      */
-    private List<BlockPos> visibleMarkerPositions() {
-        return markerListPanel == null ? List.of() : markerListPanel.getVisiblePositions();
+    private String chapterWarp() {
+        PathData path = ArdaPathsClient.CONFIG.getPath(pathId);
+        ChapterData chapter = path == null ? null : path.getChapter(chapterId);
+        return chapter == null ? "" : chapter.getWarp();
     }
 
     /**
@@ -533,6 +616,12 @@ public class MarkerListController {
                         () -> confirmBulkClear.accept(false, true)
                 ),
                 new ContextMenuWidget.Item(
+                        Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.unlink_default"),
+                        Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.unlink_default.tooltip"),
+                        hasSelection,
+                        confirmBulkUnlinkDefault
+                ),
+                new ContextMenuWidget.Item(
                         Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.interpolate_time"),
                         Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.interpolate_time.tooltip"),
                         canInterpolate,
@@ -553,20 +642,11 @@ public class MarkerListController {
     }
 
     /**
-     * Builds the extracted marker-list signature for the current selected chapter.
-     *
-     * @return current marker-list signature
-     */
-    private long currentMarkerListSignature() {
-        long filterSignature = markerListPanel == null ? 0L : markerListPanel.filterSignature();
-        return ChapterMarkerChain.signature(marker, pathId, chapterId, filterSignature);
-    }
-
-    /**
      * Hook for adding a widget to the owning screen.
      */
     @FunctionalInterface
     public interface WidgetAdder {
+
         /**
          * Adds a widget to the owning screen.
          *
@@ -582,6 +662,7 @@ public class MarkerListController {
      */
     @FunctionalInterface
     public interface WidgetRemover {
+
         /**
          * Removes a widget from the owning screen.
          *

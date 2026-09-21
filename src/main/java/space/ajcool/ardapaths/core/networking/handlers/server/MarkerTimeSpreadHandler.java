@@ -13,6 +13,7 @@ import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.backup.BackupJobRunner;
 import space.ajcool.ardapaths.core.backup.MarkerBatching;
 import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.TimeSpreadStatus;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -43,21 +44,6 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * Number of Minecraft daytime ticks represented by one wall-clock hour.
      */
     private static final int TICKS_PER_HOUR = 1000;
-
-    /**
-     * Number of Minecraft daytime ticks in one full day.
-     */
-    private static final int DAY_TICKS = 24_000;
-
-    /**
-     * First valid Minecraft daytime tick.
-     */
-    private static final int MIN_DAYTIME_TICK = 0;
-
-    /**
-     * Last valid Minecraft daytime tick.
-     */
-    private static final int MAX_DAYTIME_TICK = 23_999;
 
     /**
      * Constructs the handler and its request and response channels.
@@ -111,6 +97,16 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     }
 
     /**
+     * Checks whether an absolute tick value can be used as an endpoint time.
+     *
+     * @param time endpoint time from the request
+     * @return true when the time is unset
+     */
+    private boolean isInvalidTime(long time) {
+        return time == TimeOfDay.UNSET;
+    }
+
+    /**
      * Walks, computes, and applies a marker time spread with paced server-thread work.
      *
      * @param player player whose current world contains the marker chain
@@ -143,16 +139,6 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
                 : computeSpread(result.markers(), packet.sourceTime(), packet.targetTime()));
         ApplyResult applyResult = applySpread(gate, resolver, spreadPlan, packet.pathId(), packet.chapterId());
         return new MarkerTimeSpreadResponsePacket(applyResult.status(), applyResult.updatedCount(), null);
-    }
-
-    /**
-     * Checks whether a daytime tick value can be used as an endpoint time.
-     *
-     * @param time endpoint time from the request
-     * @return true when the time is unset or outside the valid day range
-     */
-    private boolean isInvalidTime(int time) {
-        return time < MIN_DAYTIME_TICK || time > MAX_DAYTIME_TICK;
     }
 
     /**
@@ -254,9 +240,9 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      * @param targetTime requested target endpoint time
      * @return computed spread plan
      */
-    private SpreadPlan computeSpread(List<BlockPos> markers, int sourceTime, int targetTime) {
+    private SpreadPlan computeSpread(List<BlockPos> markers, long sourceTime, long targetTime) {
         int gaps = markers.size() - 1;
-        int delta = Math.floorMod(targetTime - sourceTime, DAY_TICKS);
+        long delta = targetTime - sourceTime;
         double[] distances = cumulativeDistances(markers);
         double totalDistance = distances[distances.length - 1];
         boolean stepExceeded = maxTimeStep(delta, distances, totalDistance, gaps) > MAX_HOURS_PER_STEP * TICKS_PER_HOUR;
@@ -264,8 +250,8 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
 
         for (int index = 0; index < markers.size(); index++) {
             double weight = totalDistance <= 0.0D ? index / (double) gaps : distances[index] / totalDistance;
-            int time = TimeOfDay.snap(Math.floorMod(sourceTime + (int) Math.round(delta * weight), DAY_TICKS));
-            updates.add(new MarkerUpdate(markers.get(index), time, TimeOfDay.COMPUTED_TRANSITION_RANGE));
+            long time = TimeOfDay.snap(sourceTime + Math.round(delta * weight));
+            updates.add(new MarkerUpdate(markers.get(index), time, TimeActivation.COMPUTED));
         }
 
         return new SpreadPlan(updates, stepExceeded);
@@ -290,21 +276,22 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
     /**
      * Computes the largest authored time step in the spread plan.
      *
-     * @param delta forward time delta from source to target
-     * @param distances cumulative block distances at each marker index
+     * @param delta         signed time delta from source to target
+     * @param distances     cumulative block distances at each marker index
      * @param totalDistance total chain distance
      * @param gaps number of marker gaps
      * @return largest time increment between consecutive markers
      */
-    private double maxTimeStep(int delta, double[] distances, double totalDistance, int gaps) {
+    private double maxTimeStep(long delta, double[] distances, double totalDistance, int gaps) {
+        long magnitude = Math.abs(delta);
         if (totalDistance <= 0.0D) {
-            return delta / (double) gaps;
+            return magnitude / (double) gaps;
         }
 
         double maxStep = 0.0D;
         for (int index = 1; index < distances.length; index++) {
             double gapDistance = distances[index] - distances[index - 1];
-            maxStep = Math.max(maxStep, delta * gapDistance / totalDistance);
+            maxStep = Math.max(maxStep, magnitude * gapDistance / totalDistance);
         }
 
         return maxStep;
@@ -323,7 +310,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
             updates.add(new MarkerUpdate(
                     marker,
                     TimeOfDay.UNSET,
-                    TimeOfDay.DEFAULT_TRANSITION_RANGE
+                    TimeActivation.MARKER_RANGE
             ));
         }
 
@@ -378,7 +365,7 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
                 continue;
             }
 
-            marker.get().apply(update.timeOfDay(), update.timeTransitionRange(), pathId, chapterId);
+            marker.get().apply(update.timeOfDay(), update.timeActivation(), pathId, chapterId);
             applied++;
         }
 
@@ -439,9 +426,9 @@ public class MarkerTimeSpreadHandler extends RespondablePacketHandler<MarkerTime
      *
      * @param position            marker position to update
      * @param timeOfDay           computed marker time
-     * @param timeTransitionRange computed transition range
+     * @param timeActivation computed time activation mode
      */
-    private record MarkerUpdate(BlockPos position, int timeOfDay, int timeTransitionRange) {
+    private record MarkerUpdate(BlockPos position, long timeOfDay, TimeActivation timeActivation) {
     }
 
     /**

@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import space.ajcool.ardapaths.core.data.TimeSpreadStatus;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerBulkClearResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.MarkerTimeSpreadResponsePacket;
+import space.ajcool.ardapaths.core.networking.packets.client.MarkerUnlinkDefaultResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.client.PathMarkerRemoteDataResponsePacket;
 
 import java.util.Locale;
@@ -46,6 +47,16 @@ public final class MarkerFeedbackText {
      */
     public static Component bulkClearStatusText(MarkerBulkClearResponsePacket response) {
         return Component.translatable(statusKey("bulk_clear", response.status()), response.updatedCount());
+    }
+
+    /**
+     * Converts a default-chapter unlink response into localized feedback text.
+     *
+     * @param response server response packet
+     * @return localized status text
+     */
+    public static Component unlinkDefaultStatusText(MarkerUnlinkDefaultResponsePacket response) {
+        return Component.translatable(statusKey("unlink_default", response.status()), response.updatedCount());
     }
 
     /**

@@ -88,12 +88,14 @@ public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersSta
      */
     private static void writeMarker(FriendlyByteBuf buf, ChapterMarkerEntry marker) {
         buf.writeLong(marker.packedPos());
-        buf.writeInt(marker.timeOfDay());
+        buf.writeUtf(marker.dimensionId());
+        buf.writeLong(marker.timeOfDay());
         buf.writeInt(marker.weather());
         buf.writeUtf(marker.proximityMessage());
         buf.writeBoolean(marker.hasMiscData());
         buf.writeBoolean(marker.chapterStart());
         buf.writeBoolean(marker.chainBreak());
+        buf.writeBoolean(marker.dimensionBreak());
     }
 
     /**
@@ -105,9 +107,11 @@ public record ChapterPathMarkersResponsePacket(UUID requestId, ChapterMarkersSta
     private static ChapterMarkerEntry readMarker(FriendlyByteBuf buf) {
         return new ChapterMarkerEntry(
                 buf.readLong(),
-                buf.readInt(),
+                buf.readUtf(256),
+                buf.readLong(),
                 buf.readInt(),
                 buf.readUtf(ChapterMarkerEntry.MAX_PROXIMITY_MESSAGE_LENGTH),
+                buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean()

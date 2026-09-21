@@ -3,7 +3,9 @@ package space.ajcool.ardapaths.paths.rendering;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
+import space.ajcool.ardapaths.screens.widgets.TextValidationError;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +27,7 @@ class TimeSourceRulesTest {
 
         assertEquals(0.0D, projection.progress());
         assertEquals(25.0D, projection.distanceSquared());
+        assertEquals(-5.0D, projection.overshoot());
     }
 
     /**
@@ -39,6 +42,7 @@ class TimeSourceRulesTest {
 
         assertEquals(0.5D, projection.progress());
         assertEquals(9.0D, projection.distanceSquared());
+        assertEquals(0.0D, projection.overshoot());
     }
 
     /**
@@ -53,6 +57,7 @@ class TimeSourceRulesTest {
 
         assertEquals(1.0D, projection.progress());
         assertEquals(25.0D, projection.distanceSquared());
+        assertEquals(5.0D, projection.overshoot());
     }
 
     /**
@@ -67,38 +72,138 @@ class TimeSourceRulesTest {
 
         assertEquals(0.0D, projection.progress());
         assertEquals(16.0D, projection.distanceSquared());
+        assertEquals(0.0D, projection.overshoot());
     }
 
     /**
-     * Verifies in-progress computed segments are eligible time sources.
+     * Verifies in-progress computed segments are active time sources.
      */
     @Test
-    void computedSegmentEligibleMidSegment() {
-        assertTrue(TimeSourceRules.isComputedSegmentEligible(6000, TimeOfDay.COMPUTED_TRANSITION_RANGE, 0.5D));
+    void computedSegmentActiveMidSegment() {
+        assertTrue(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, 0.0D, 3.0D, 3.0D));
     }
 
     /**
-     * Verifies completed computed segments stop reasserting their endpoint time.
+     * Verifies completed computed segments remain active inside the end marker arrival range.
      */
     @Test
-    void computedSegmentIneligibleAtEnd() {
-        assertFalse(TimeSourceRules.isComputedSegmentEligible(6000, TimeOfDay.COMPUTED_TRANSITION_RANGE, 1.0D));
+    void computedSegmentActiveAtEnd() {
+        assertTrue(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, 0.0D, 3.0D, 3.0D));
     }
 
     /**
-     * Verifies segments without an end-marker time are not eligible time sources.
+     * Verifies computed segments remain active shortly before the start marker.
      */
     @Test
-    void computedSegmentIneligibleWithoutEndTime() {
-        assertFalse(TimeSourceRules.isComputedSegmentEligible(TimeOfDay.UNSET, TimeOfDay.COMPUTED_TRANSITION_RANGE, 0.5D));
+    void computedSegmentActiveBeforeStartArrivalRange() {
+        assertTrue(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, -2.5D, 3.0D, 3.0D));
     }
 
     /**
-     * Verifies numeric transition ranges are handled by radial source selection instead.
+     * Verifies computed segments stop before the start marker arrival range.
      */
     @Test
-    void computedSegmentIneligibleForNumericTransitionRange() {
-        assertFalse(TimeSourceRules.isComputedSegmentEligible(6000, 12, 0.5D));
+    void computedSegmentInactiveBeforeStartArrivalRange() {
+        assertFalse(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, -3.5D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies computed segments remain active shortly past the end marker.
+     */
+    @Test
+    void computedSegmentActivePastEndArrivalRange() {
+        assertTrue(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, 2.5D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies computed segments stop past the end marker arrival range.
+     */
+    @Test
+    void computedSegmentInactivePastEndArrivalRange() {
+        assertFalse(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.COMPUTED, 3.5D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies segments without a start-marker time are not active time sources.
+     */
+    @Test
+    void computedSegmentInactiveWithoutStartTime() {
+        assertFalse(TimeSourceRules.isComputedSegmentActive(TimeOfDay.UNSET, 6000, TimeActivation.COMPUTED, 0.0D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies segments without an end-marker time are not active time sources.
+     */
+    @Test
+    void computedSegmentInactiveWithoutEndTime() {
+        assertFalse(TimeSourceRules.isComputedSegmentActive(3000, TimeOfDay.UNSET, TimeActivation.COMPUTED, 0.0D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies marker-range activation is handled by radial source selection instead.
+     */
+    @Test
+    void computedSegmentInactiveForMarkerRangeActivation() {
+        assertFalse(TimeSourceRules.isComputedSegmentActive(3000, 6000, TimeActivation.MARKER_RANGE, 0.0D, 3.0D, 3.0D));
+    }
+
+    /**
+     * Verifies equal trail distances are treated as nearest.
+     */
+    @Test
+    void nearestTrailElementAcceptsEqualDistance() {
+        assertTrue(TimeSourceRules.isNearestTrailElement(4.0D, 4.0D));
+    }
+
+    /**
+     * Verifies a farther segment cannot act as the current trail element.
+     */
+    @Test
+    void nearestTrailElementRejectsFartherDistance() {
+        assertFalse(TimeSourceRules.isNearestTrailElement(4.1D, 4.0D));
+    }
+
+    /**
+     * Verifies nearest trail selection allows minor floating-point drift.
+     */
+    @Test
+    void nearestTrailElementAllowsEpsilon() {
+        assertTrue(TimeSourceRules.isNearestTrailElement(4.0000005D, 4.0D));
+    }
+
+    /**
+     * Verifies activation ranges are floored for time arrivals.
+     */
+    @Test
+    void arrivalRangeHasMinimumBand() {
+        assertEquals(3.0D, TimeSourceRules.arrivalRange(0));
+        assertEquals(8.0D, TimeSourceRules.arrivalRange(8));
+    }
+
+    /**
+     * Verifies segment interpolation can span multiple authored days.
+     *
+     * @throws TextValidationError when the fixture date is malformed
+     */
+    @Test
+    void segmentTimeCrossesMultiDaySpan() throws TextValidationError {
+        long start = TimeOfDay.parse("19/12/1989 06:00");
+        long end = TimeOfDay.parse("25/12/1989 12:00");
+
+        assertEquals(TimeOfDay.parse("22/12/1989 09:00"), TimeSourceRules.segmentTime(start, end, 0.5D));
+    }
+
+    /**
+     * Verifies segment interpolation can move backwards on the authored timeline.
+     *
+     * @throws TextValidationError when the fixture date is malformed
+     */
+    @Test
+    void segmentTimeSupportsBackwardsSpan() throws TextValidationError {
+        long start = TimeOfDay.parse("25/12/1989 12:00");
+        long end = TimeOfDay.parse("19/12/1989 06:00");
+
+        assertEquals(TimeOfDay.parse("22/12/1989 09:00"), TimeSourceRules.segmentTime(start, end, 0.5D));
     }
 
     /**

@@ -11,6 +11,7 @@ import space.ajcool.ardapaths.core.backup.dto.MarkerIndexDto;
 import space.ajcool.ardapaths.core.backup.dto.PathChapterDto;
 import space.ajcool.ardapaths.core.backup.dto.PathFileDto;
 import space.ajcool.ardapaths.core.backup.dto.PathNodeDto;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
 import space.ajcool.ardapaths.core.data.WarpTarget;
 import space.ajcool.ardapaths.mc.NbtEncodeable;
@@ -61,6 +62,12 @@ public class MarkerRestorer {
                 .thenComparingInt(marker -> BlockPos.of(marker.packedPos()).getY()));
 
         return plannedMarkers;
+    }
+
+    /**
+     * Creates a restorer for the current backup schema.
+     */
+    public MarkerRestorer() {
     }
 
     /**
@@ -166,14 +173,30 @@ public class MarkerRestorer {
         NbtEncodeable.putBooleanIfTrue(chapterNbt, "display_chapter_title_on_trail", node.titleOnTrail());
         NbtEncodeable.putBooleanIfFalse(chapterNbt, "display_above_blocks", node.displayAboveBlocks());
         NbtEncodeable.putIntIfNonDefault(chapterNbt, "weather", node.weather() == null ? PathMarkerBlockEntity.ChapterNbtData.UNSET : node.weather(), PathMarkerBlockEntity.ChapterNbtData.UNSET);
-        NbtEncodeable.putIntIfNonDefault(chapterNbt, "time_of_day", node.timeOfDay() == null ? PathMarkerBlockEntity.ChapterNbtData.UNSET : node.timeOfDay(), PathMarkerBlockEntity.ChapterNbtData.UNSET);
-        NbtEncodeable.putIntIfNonDefault(chapterNbt, "time_transition_range", node.timeTransitionRange() == null ? TimeOfDay.DEFAULT_TRANSITION_RANGE : node.timeTransitionRange(), TimeOfDay.DEFAULT_TRANSITION_RANGE);
+        NbtEncodeable.putLongIfNonDefault(chapterNbt, "time_of_day", restoredTimeOfDay(node.timeOfDay()), TimeOfDay.UNSET);
+        TimeActivation timeActivation = node.timeTransitionRange() == null ? TimeActivation.MARKER_RANGE : TimeActivation.fromNbtValue(node.timeTransitionRange());
+        NbtEncodeable.putIntIfNonDefault(chapterNbt, "time_transition_range", timeActivation.toNbtValue(), TimeActivation.MARKER_RANGE.toNbtValue());
         NbtEncodeable.putStringIfNotEmpty(chapterNbt, "auto_teleport_target", node.autoTeleportTarget() == null ? "" : node.autoTeleportTarget());
         NbtEncodeable.putBlockPosIfPresent(chapterNbt, "look_at", WarpTarget.parseCoordinates(node.lookAt()));
+        NbtEncodeable.putStringIfNotEmpty(chapterNbt, "target_marker_dimension", node.targetMarkerDimension() == null ? "" : node.targetMarkerDimension());
+        NbtEncodeable.putBlockPosIfPresent(chapterNbt, "target_marker", WarpTarget.parseCoordinates(node.targetMarker()));
         NbtEncodeable.putStringIfNotEmpty(chapterNbt, "give_item", node.giveItem() == null ? "" : node.giveItem());
         NbtEncodeable.putLongIfNonDefault(chapterNbt, "packed_message_data", node.anim().packed(), PathMarkerBlockEntity.ChapterNbtData.DEFAULT_PACKED_MESSAGE_DATA);
 
         return chapterNbt;
+    }
+
+    /**
+     * Converts an exported time value into current absolute tick storage.
+     *
+     * @param timeOfDay exported time value, or null when absent
+     * @return absolute ticks, or {@link TimeOfDay#UNSET}
+     */
+    private long restoredTimeOfDay(Long timeOfDay) {
+        if (timeOfDay == null) {
+            return TimeOfDay.UNSET;
+        }
+        return timeOfDay;
     }
 
     /**

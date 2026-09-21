@@ -120,12 +120,12 @@ public final class MarkerTestSupport {
                 {
                   "paths": [
                     {"id":"frodo","name":"Frodo","chapters":{
-                      "shire":{"id":"shire","name":"The Shire","date":"0","index":0},
-                      "moria":{"id":"moria","name":"Moria","date":"1","index":1}
+                      "shire":{"id":"shire","name":"The Shire","index":0},
+                      "moria":{"id":"moria","name":"Moria","index":1}
                     }},
                     {"id":"aragorn","name":"Aragorn","chapters":{
-                      "rohan":{"id":"rohan","name":"Rohan","date":"2","index":0},
-                      "gondor":{"id":"gondor","name":"Gondor","date":"3","index":1}
+                      "rohan":{"id":"rohan","name":"Rohan","index":0},
+                      "gondor":{"id":"gondor","name":"Gondor","index":1}
                     }}
                   ]
                 }

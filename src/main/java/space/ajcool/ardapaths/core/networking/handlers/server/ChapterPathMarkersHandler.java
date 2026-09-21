@@ -3,9 +3,10 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.ChunkPos;
@@ -18,9 +19,12 @@ import space.ajcool.ardapaths.core.consumers.networking.RespondablePacketHandler
 import space.ajcool.ardapaths.core.data.ChapterMarkerEntry;
 import space.ajcool.ardapaths.core.data.ChapterMarkersStatus;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
-import space.ajcool.ardapaths.core.integration.Warps;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
+import space.ajcool.ardapaths.core.markers.ChapterStartLocator;
+import space.ajcool.ardapaths.core.markers.ChapterStartLocator.AnchorResult;
 import space.ajcool.ardapaths.core.markers.MarkerResolver;
 import space.ajcool.ardapaths.core.markers.MarkerResolver.ResolvedMarker;
+import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.core.networking.packets.client.ChapterPathMarkersResponsePacket;
 import space.ajcool.ardapaths.core.networking.packets.server.ChapterPathMarkersPacket;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
@@ -35,16 +39,16 @@ import java.util.concurrent.CompletableFuture;
 public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterPathMarkersPacket, ChapterPathMarkersResponsePacket> {
 
     /** Maximum number of chapter links followed by one list request. */
-    private static final int MAX_HOPS = 500;
-
-    /** Search radius around a configured chapter-start anchor. */
-    private static final int START_SEARCH_RADIUS = 12;
+    private static final int MAX_HOPS = 1000;
 
     /** Search radius around a dangling chain end when looking for a detached continuation. */
     private static final int CHAIN_PROBE_RADIUS = 24;
 
     /** Maximum number of detached segments appended to one chapter chain. */
     private static final int MAX_EXTRA_SEGMENTS = 16;
+
+    /** Maximum number of cross-dimension marker links followed by one list request. */
+    private static final int MAX_DIMENSION_JUMPS = 8;
 
     /**
      * Constructs the handler and its request and response channels.
@@ -64,6 +68,7 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @return future marker list response
      */
     @Override
+    @SuppressWarnings("resource")
     public CompletableFuture<ChapterPathMarkersResponsePacket> handleAsync(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPathMarkersPacket packet, PacketSender sender) {
         if (!PermissionHelper.hasEditPermission(player)) {
             log.warn("Rejected unauthorized packet on {} from {}", getChannelId(), player.getStringUUID());
@@ -75,42 +80,9 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             return CompletableFuture.completedFuture(response(ChapterMarkersStatus.INVALID_DATA, List.of()));
         }
 
-        return resolveAnchor(server, player, packet)
-                .thenCompose(anchor -> searchOnWorker(server, packet, anchor));
-    }
-
-    /**
-     * Resolves the configured chapter-start anchor using warp first, then coordinates.
-     *
-     * @param server server that owns the destination world
-     * @param player player whose world provides coordinate fallback context
-     * @param packet marker-list request
-     * @return future optional anchor
-     */
-    @SuppressWarnings("resource")
-    private CompletableFuture<Optional<Anchor>> resolveAnchor(MinecraftServer server, ServerPlayer player, ChapterPathMarkersPacket packet) {
-        Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(packet.pathId(), packet.chapterId());
-        ResourceKey<Level> fallbackWorldKey = player.serverLevel().dimension();
-        if (startWarp.isPresent() && Warps.isAvailable()) {
-            return Warps.resolveWarp(server, startWarp.get()).thenApply(warp -> warp
-                    .map(location -> new Anchor(location.worldKey(), location.position()))
-                    .or(() -> coordinateAnchor(fallbackWorldKey, packet)));
-        }
-
-        return CompletableFuture.completedFuture(coordinateAnchor(fallbackWorldKey, packet));
-    }
-
-    /**
-     * Resolves the coordinate fallback anchor in the player's current world.
-     *
-     * @param worldKey world that owns coordinate chapter starts
-     * @param packet marker-list request
-     * @return optional coordinate anchor
-     */
-    private Optional<Anchor> coordinateAnchor(ResourceKey<Level> worldKey, ChapterPathMarkersPacket packet) {
-        BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(packet.pathId(), packet.chapterId());
-        if (start == null) return Optional.empty();
-        return Optional.of(new Anchor(worldKey, start));
+        String playerDimensionId = player.serverLevel().dimension().location().toString();
+        return ChapterStartLocator.resolveAnchor(server, packet.pathId(), packet.chapterId())
+                .thenCompose(anchor -> searchOnWorker(server, packet, anchor, playerDimensionId));
     }
 
     /**
@@ -118,135 +90,128 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      *
      * @param server server that owns the world state
      * @param packet marker-list request
-     * @param anchor optional configured chapter-start anchor
+     * @param anchorResult      resolved anchor state
+     * @param playerDimensionId dimension containing the marker currently edited by the player
      * @return future marker list response
      */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private CompletableFuture<ChapterPathMarkersResponsePacket> searchOnWorker(MinecraftServer server, ChapterPathMarkersPacket packet, Optional<Anchor> anchor) {
-        return BackupJobRunner.submitMarkerWork(server, gate -> search(packet, anchor, server, gate));
+    private CompletableFuture<ChapterPathMarkersResponsePacket> searchOnWorker(MinecraftServer server, ChapterPathMarkersPacket packet, AnchorResult anchorResult, String playerDimensionId) {
+        return BackupJobRunner.submitMarkerWork(server, gate -> search(packet, anchorResult, server, playerDimensionId, gate));
     }
 
     /**
      * Searches for the nearest chapter-start marker and builds the ordered response rows.
      *
      * @param packet marker-list request
-     * @param anchor optional configured chapter-start anchor
-     * @param server server that owns the world state
-     * @param gate   gate for server-thread-only work
+     * @param anchorResult resolved anchor state
+     * @param server            server that owns the world state
+     * @param playerDimensionId dimension containing the marker currently edited by the player
+     * @param gate              gate for server-thread-only work
      * @return marker list response
      */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private ChapterPathMarkersResponsePacket search(ChapterPathMarkersPacket packet, Optional<Anchor> anchor, MinecraftServer server, BackupJobRunner.ServerGate gate) {
-        if (anchor.isEmpty()) {
+    private ChapterPathMarkersResponsePacket search(ChapterPathMarkersPacket packet, AnchorResult anchorResult, MinecraftServer server, String playerDimensionId, BackupJobRunner.ServerGate gate) {
+        if (anchorResult.warpUnresolvable()) {
+            log.warn("Chapter start warp is unresolvable for {}:{}", packet.pathId(), packet.chapterId());
+            return response(ChapterMarkersStatus.UNRESOLVABLE_CHAPTER_START, List.of());
+        }
+
+        if (anchorResult.anchor().isEmpty()) {
             log.warn("No chapter start anchor configured for {}:{}", packet.pathId(), packet.chapterId());
             return response(ChapterMarkersStatus.NO_CHAPTER_START, List.of());
         }
 
-        ServerLevel world = gate.call(() -> server.getLevel(anchor.get().worldKey()));
-        if (world == null) {
+        ChapterStartLocator.Anchor anchor = anchorResult.anchor().get();
+        MarkerResolver resolver = ChapterStartLocator.resolverFor(server, anchor, gate);
+        if (resolver == null) {
             return response(ChapterMarkersStatus.INVALID_DATA, List.of());
         }
 
-        String dimensionId = world.dimension().location().toString();
-        MarkerResolver resolver = new MarkerResolver(world, dimensionId);
-        Optional<ResolvedMarker> start = findNearestChapterStart(resolver, anchor.get().position(), packet.pathId(), packet.chapterId(), gate);
+        Optional<ResolvedMarker> start = ChapterStartLocator.findNearestChapterStart(resolver, anchor.position(), packet.pathId(), packet.chapterId(), gate);
         if (start.isEmpty()) {
-            log.warn("No chapter start marker found near {} for {}:{}", anchor.get().position(), packet.pathId(), packet.chapterId());
+            log.warn("No chapter start marker found near {} for {}:{}", anchor.position(), packet.pathId(), packet.chapterId());
             return response(ChapterMarkersStatus.NO_CHAPTER_START, List.of());
         }
+        selfHealWarpResolvedStart(server, packet, anchorResult, start.get(), gate);
 
-        Set<Long> visited = new HashSet<>();
-        ChainSegment segment = walkChain(gate, resolver, start.get(), packet.pathId(), packet.chapterId(), false, visited);
-        List<ChapterMarkerEntry> chapterChain = new ArrayList<>(segment.rows());
-        log.debug("Chapter {}:{} segment ended at {} with {} rows", packet.pathId(), packet.chapterId(), segment.danglingEnd(), segment.rows().size());
+        Set<VisitKey> visited = new HashSet<>();
+        ChainSegment segment;
+        List<ChapterMarkerEntry> chapterChain = new ArrayList<>();
+        ResolvedMarker head = start.get();
+        boolean includeSource = false;
+        int dimensionJumps = 0;
 
-        for (int extra = 0; extra < MAX_EXTRA_SEGMENTS && segment.danglingEnd() != null; extra++) {
-            Optional<ResolvedMarker> head = findDetachedChainHead(resolver, segment.danglingEnd(), packet.pathId(), packet.chapterId(), visited, gate);
-            if (head.isEmpty()) {
-                break;
-            }
-
-            segment = walkChain(gate, resolver, head.get(), packet.pathId(), packet.chapterId(), false, visited);
-            if (segment.rows().isEmpty()) {
-                break;
-            }
+        while (true) {
+            segment = walkChain(gate, resolver, head, packet.pathId(), packet.chapterId(), includeSource, visited);
+            chapterChain.addAll(segment.rows());
             log.debug("Chapter {}:{} segment ended at {} with {} rows", packet.pathId(), packet.chapterId(), segment.danglingEnd(), segment.rows().size());
 
-            chapterChain.add(ChapterMarkerEntry.breakEntry());
-            chapterChain.addAll(segment.rows());
+            for (int extra = 0; extra < MAX_EXTRA_SEGMENTS && segment.danglingEnd() != null && segment.dimensionJump() == null; extra++) {
+                Optional<ResolvedMarker> detachedHead = findDetachedChainHead(resolver, segment.danglingEnd(), packet.pathId(), packet.chapterId(), visited, gate);
+                if (detachedHead.isEmpty()) {
+                    break;
+                }
+
+                segment = walkChain(gate, resolver, detachedHead.get(), packet.pathId(), packet.chapterId(), false, visited);
+                if (segment.rows().isEmpty()) {
+                    break;
+                }
+                log.debug("Chapter {}:{} segment ended at {} with {} rows", packet.pathId(), packet.chapterId(), segment.danglingEnd(), segment.rows().size());
+
+                chapterChain.add(ChapterMarkerEntry.breakEntry());
+                chapterChain.addAll(segment.rows());
+            }
+
+            if (segment.dimensionJump() == null) {
+                break;
+            }
+
+            DimensionJump jump = segment.dimensionJump();
+            chapterChain.add(ChapterMarkerEntry.dimensionBreakEntry(jump.dimensionId()));
+            if (dimensionJumps++ >= MAX_DIMENSION_JUMPS) {
+                log.warn("Chapter {}:{} stopped after too many dimension jumps at {} {}", packet.pathId(), packet.chapterId(), jump.dimensionId(), jump.pos());
+                break;
+            }
+
+            MarkerResolver jumpResolver = resolverForDimension(server, jump.dimensionId(), jump.pos(), gate);
+            if (jumpResolver == null) {
+                log.warn("Chapter {}:{} target marker dimension {} is unavailable", packet.pathId(), packet.chapterId(), jump.dimensionId());
+                break;
+            }
+
+            Optional<ResolvedMarker> exactTarget = gate.call(() -> jumpResolver.resolve(jump.pos()));
+            Optional<ResolvedMarker> target = exactTarget.isPresent()
+                    ? exactTarget
+                    : ChapterStartLocator.findNearestChapterMarker(jumpResolver, jump.pos(), packet.pathId(), packet.chapterId(), gate);
+            if (target.isEmpty()) {
+                log.warn("Chapter {}:{} target marker {} not found in {}", packet.pathId(), packet.chapterId(), jump.pos(), jump.dimensionId());
+                break;
+            }
+
+            resolver = jumpResolver;
+            head = target.get();
+            includeSource = true;
         }
 
         boolean currentInChapterChain = chapterChain.stream()
                 .filter(entry -> !entry.chainBreak())
-                .anyMatch(entry -> entry.packedPos() == packet.currentPackedPos());
+                .anyMatch(entry -> entry.packedPos() == packet.currentPackedPos() && Objects.equals(entry.dimensionId(), playerDimensionId));
         if (currentInChapterChain) {
             return response(ChapterMarkersStatus.OK, chapterChain);
         }
 
-        Optional<ResolvedMarker> current = gate.call(() -> resolver.resolve(BlockPos.of(packet.currentPackedPos())));
+        MarkerResolver playerResolver = resolverForDimension(server, playerDimensionId, BlockPos.of(packet.currentPackedPos()), gate);
+        if (playerResolver == null) {
+            return response(ChapterMarkersStatus.INVALID_DATA, List.of());
+        }
+
+        Optional<ResolvedMarker> current = gate.call(() -> playerResolver.resolve(BlockPos.of(packet.currentPackedPos())));
         if (current.isEmpty()) {
             return response(ChapterMarkersStatus.INVALID_DATA, List.of());
         }
 
         List<ChapterMarkerEntry> rows = new ArrayList<>(chapterChain);
         rows.add(ChapterMarkerEntry.breakEntry());
-        rows.addAll(walkChain(gate, resolver, current.get(), packet.pathId(), packet.chapterId(), true, new HashSet<>()).rows());
+        rows.addAll(walkChain(gate, playerResolver, current.get(), packet.pathId(), packet.chapterId(), true, new HashSet<>()).rows());
         return response(ChapterMarkersStatus.OK_WITH_BREAK, rows);
-    }
-
-    /**
-     * Finds the nearest marker flagged as a chapter start within the configured radius.
-     *
-     * @param resolver marker resolver with per-request cache
-     * @param anchor   configured chapter-start anchor
-     * @param pathId   path identifier
-     * @param chapterId chapter identifier
-     * @param gate     gate for server-thread-only work
-     * @return nearest chapter-start marker, or empty when absent
-     */
-    private Optional<ResolvedMarker> findNearestChapterStart(MarkerResolver resolver, BlockPos anchor, String pathId, String chapterId, BackupJobRunner.ServerGate gate) {
-        return collectMarkersInCube(resolver, anchor, START_SEARCH_RADIUS, gate).stream()
-                .filter(marker -> {
-                    PathMarkerBlockEntity.ChapterNbtData data = gate.call(() -> marker.chapterData(pathId, chapterId));
-                    return data != null && data.isChapterStart();
-                })
-                .min(Comparator
-                        .comparingDouble((ResolvedMarker marker) -> marker.position().distSqr(anchor))
-                        .thenComparingLong(marker -> marker.position().asLong()));
-    }
-
-    /**
-     * Collects all marker candidates inside a cube while scanning the intersecting chunks.
-     *
-     * @param resolver marker resolver with per-request cache
-     * @param centre   centre of the search cube
-     * @param radius   inclusive block radius on each axis
-     * @param gate     gate for server-thread-only work
-     * @return resolved markers inside the search cube
-     */
-    private List<ResolvedMarker> collectMarkersInCube(MarkerResolver resolver, BlockPos centre, int radius, BackupJobRunner.ServerGate gate) {
-        ChunkPos minChunk = new ChunkPos(centre.offset(-radius, 0, -radius));
-        ChunkPos maxChunk = new ChunkPos(centre.offset(radius, 0, radius));
-        List<ResolvedMarker> markers = new ArrayList<>();
-        int inspectedChunks = 0;
-
-        for (int chunkX = minChunk.x; chunkX <= maxChunk.x; chunkX++) {
-            for (int chunkZ = minChunk.z; chunkZ <= maxChunk.z; chunkZ++) {
-                ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
-                for (ResolvedMarker marker : readChunkCandidates(resolver, chunkPos, gate)) {
-                    if (withinCube(centre, marker.position(), radius)) {
-                        markers.add(marker);
-                    }
-                }
-
-                inspectedChunks++;
-                if (inspectedChunks % MarkerBatching.CHUNKS_PER_BATCH == 0) {
-                    MarkerBatching.paceBetweenBatches(inspectedChunks, Integer.MAX_VALUE);
-                }
-            }
-        }
-
-        return markers;
     }
 
     /**
@@ -256,34 +221,34 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param end       dangling end of the previously walked chain segment
      * @param pathId    path identifier
      * @param chapterId chapter identifier
-     * @param visited   packed marker positions already listed in this request
+     * @param visited   marker positions already listed in this request, keyed by dimension
      * @param gate      gate for server-thread-only work
      * @return nearest detached chain head, or empty when no candidate is found
      */
-    private Optional<ResolvedMarker> findDetachedChainHead(MarkerResolver resolver, BlockPos end, String pathId, String chapterId, Set<Long> visited, BackupJobRunner.ServerGate gate) {
-        List<ChapterMarkerCandidate> chapterMarkers = collectMarkersInCube(resolver, end, CHAIN_PROBE_RADIUS, gate).stream()
+    private Optional<ResolvedMarker> findDetachedChainHead(MarkerResolver resolver, BlockPos end, String pathId, String chapterId, Set<VisitKey> visited, BackupJobRunner.ServerGate gate) {
+        List<ChapterMarkerCandidate> chapterMarkers = ChapterStartLocator.collectMarkersInCube(resolver, end, CHAIN_PROBE_RADIUS, gate).stream()
                 .map(marker -> new ChapterMarkerCandidate(marker, gate.call(() -> marker.chapterData(pathId, chapterId))))
                 .filter(candidate -> candidate.data() != null)
                 .toList();
-        Set<Long> targeted = new HashSet<>();
+        Set<VisitKey> targeted = new HashSet<>();
 
         for (ChapterMarkerCandidate candidate : chapterMarkers) {
             if (candidate.data().getTarget() != null) {
-                targeted.add(candidate.marker().position().offset(candidate.data().getTarget()).asLong());
+                targeted.add(VisitKey.from(candidate.marker().dimensionId(), candidate.marker().position().offset(candidate.data().getTarget())));
             }
         }
 
         long visitedCount = chapterMarkers.stream()
-                .filter(candidate -> visited.contains(candidate.marker().position().asLong()))
+                .filter(candidate -> visited.contains(VisitKey.from(candidate.marker())))
                 .count();
         long targetedCount = chapterMarkers.stream()
-                .filter(candidate -> !visited.contains(candidate.marker().position().asLong()))
-                .filter(candidate -> targeted.contains(candidate.marker().position().asLong()))
+                .filter(candidate -> !visited.contains(VisitKey.from(candidate.marker())))
+                .filter(candidate -> targeted.contains(VisitKey.from(candidate.marker())))
                 .count();
         Optional<ResolvedMarker> head = chapterMarkers.stream()
                 .map(ChapterMarkerCandidate::marker)
-                .filter(marker -> !visited.contains(marker.position().asLong()))
-                .filter(marker -> !targeted.contains(marker.position().asLong()))
+                .filter(marker -> !visited.contains(VisitKey.from(marker)))
+                .filter(marker -> !targeted.contains(VisitKey.from(marker)))
                 .min(Comparator
                         .comparingDouble((ResolvedMarker marker) -> marker.position().distSqr(end))
                         .thenComparingLong(marker -> marker.position().asLong()));
@@ -301,32 +266,6 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
     }
 
     /**
-     * Reads marker candidates from a loaded or existing persisted chunk.
-     *
-     * @param resolver marker resolver with per-request cache
-     * @param chunkPos chunk position to inspect
-     * @param gate     gate for server-thread-only work
-     * @return resolved markers present in the chunk
-     */
-    private List<ResolvedMarker> readChunkCandidates(MarkerResolver resolver, ChunkPos chunkPos, BackupJobRunner.ServerGate gate) {
-        return gate.call(() -> resolver.resolveChunkMarkers(chunkPos));
-    }
-
-    /**
-     * Checks whether a marker is inside an inclusive cubic search radius.
-     *
-     * @param centre centre of the search cube
-     * @param marker marker position to test
-     * @param radius inclusive block radius on each axis
-     * @return true when the marker is inside the search cube
-     */
-    private boolean withinCube(BlockPos centre, BlockPos marker, int radius) {
-        return Math.abs(centre.getX() - marker.getX()) <= radius
-                && Math.abs(centre.getY() - marker.getY()) <= radius
-                && Math.abs(centre.getZ() - marker.getZ()) <= radius;
-    }
-
-    /**
      * Walks a marker chain segment forward and converts each new marker to a response row.
      * A marker reached through an explicit link is treated as a terminal chapter row even
      * when its empty chapter data was not persisted.
@@ -337,40 +276,44 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param pathId        path identifier
      * @param chapterId     chapter identifier
      * @param includeSource whether to include the source even when it lacks chapter data
-     * @param visited       packed marker positions already listed by this request
+     * @param visited       marker positions already listed by this request, keyed by dimension
      * @return ordered marker rows and a recoverable dangling end, when present
      */
-    private ChainSegment walkChain(BackupJobRunner.ServerGate gate, MarkerResolver resolver, ResolvedMarker source, String pathId, String chapterId, boolean includeSource, Set<Long> visited) {
+    private ChainSegment walkChain(BackupJobRunner.ServerGate gate, MarkerResolver resolver, ResolvedMarker source, String pathId, String chapterId, boolean includeSource, Set<VisitKey> visited) {
         List<ChapterMarkerEntry> markers = new ArrayList<>();
         Set<Long> batchChunks = new HashSet<>();
         ResolvedMarker current = source;
 
         for (int hop = 0; hop <= MAX_HOPS; hop++) {
             long packed = current.position().asLong();
-            if (!visited.add(packed)) {
-                return new ChainSegment(markers, null);
+            if (!visited.add(VisitKey.from(current))) {
+                return new ChainSegment(markers, null, null);
             }
 
             ResolvedMarker currentMarker = current;
             PathMarkerBlockEntity.ChapterNbtData data = gate.call(() -> currentMarker.chapterData(pathId, chapterId));
             if (data == null) {
                 if (hop == 0 && !includeSource) {
-                    return new ChainSegment(markers, null);
+                    return new ChainSegment(markers, null, null);
                 }
 
-                markers.add(ChapterMarkerEntry.marker(packed, PathMarkerBlockEntity.ChapterNbtData.empty(chapterId)));
-                return new ChainSegment(markers, current.position());
+                markers.add(ChapterMarkerEntry.marker(packed, current.dimensionId(), PathMarkerBlockEntity.ChapterNbtData.empty(chapterId)));
+                return new ChainSegment(markers, current.position(), null);
             }
 
-            markers.add(ChapterMarkerEntry.marker(packed, data));
+            markers.add(ChapterMarkerEntry.marker(packed, current.dimensionId(), data));
+            if (data.hasTargetMarker()) {
+                return new ChainSegment(markers, null, new DimensionJump(data.getTargetMarkerDimension(), data.getTargetMarker()));
+            }
+
             if (data.getTarget() == null) {
-                return new ChainSegment(markers, current.position());
+                return new ChainSegment(markers, current.position(), null);
             }
 
             BlockPos nextPos = current.position().offset(data.getTarget());
             Optional<ResolvedMarker> next = gate.call(() -> resolver.resolve(nextPos));
             if (next.isEmpty()) {
-                return new ChainSegment(markers, current.position());
+                return new ChainSegment(markers, current.position(), null);
             }
 
             current = next.get();
@@ -381,7 +324,21 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
             }
         }
 
-        return new ChainSegment(markers, null);
+        return new ChainSegment(markers, null, null);
+    }
+
+    /**
+     * Creates a marker resolver for a dimension identifier.
+     *
+     * @param server      server that owns the world state
+     * @param dimensionId dimension identifier to resolve
+     * @param anchor      position used only to build the resolver anchor
+     * @param gate        gate for server-thread-only work
+     * @return marker resolver, or null when the dimension is unavailable
+     */
+    private MarkerResolver resolverForDimension(MinecraftServer server, String dimensionId, BlockPos anchor, BackupJobRunner.ServerGate gate) {
+        ResourceKey<Level> worldKey = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(dimensionId));
+        return ChapterStartLocator.resolverFor(server, new ChapterStartLocator.Anchor(worldKey, anchor), gate);
     }
 
     /**
@@ -396,12 +353,22 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
     }
 
     /**
-     * Search anchor resolved from server chapter configuration.
+     * Persists a warp-resolved chapter start so future requests use coordinates first.
      *
-     * @param worldKey world containing the search anchor
-     * @param position configured anchor position
+     * @param server       server whose clients should receive config sync
+     * @param packet       marker-list request
+     * @param anchorResult resolved anchor state
+     * @param start        nearest chapter start marker
+     * @param gate         gate for server-thread-only config writes
      */
-    private record Anchor(ResourceKey<Level> worldKey, BlockPos position) {
+    private void selfHealWarpResolvedStart(MinecraftServer server, ChapterPathMarkersPacket packet, AnchorResult anchorResult, ResolvedMarker start, BackupJobRunner.ServerGate gate) {
+        if (anchorResult.fromCoordinates()) return;
+
+        gate.run(() -> {
+            ArdaPaths.CONFIG.setChapterStart(packet.pathId(), packet.chapterId(), PositionData.fromBlockPos(start.position()), start.dimensionId());
+            ArdaPaths.CONFIG_MANAGER.save();
+            PacketRegistry.syncPathDataToClients(server);
+        });
     }
 
     /**
@@ -411,6 +378,46 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * @param data   chapter data for the requested path and chapter
      */
     private record ChapterMarkerCandidate(ResolvedMarker marker, PathMarkerBlockEntity.ChapterNbtData data) {
+
+    }
+
+    /**
+     * Marker visit identity scoped to a dimension.
+     *
+     * @param dimensionId dimension identifier containing the marker
+     * @param packedPos   packed marker block position
+     */
+    private record VisitKey(String dimensionId, long packedPos) {
+        /**
+         * Creates a visit key from a resolved marker.
+         *
+         * @param marker resolved marker to key
+         * @return marker visit key
+         */
+        private static VisitKey from(ResolvedMarker marker) {
+            return from(marker.dimensionId(), marker.position());
+        }
+
+        /**
+         * Creates a visit key from a dimension and position.
+         *
+         * @param dimensionId dimension identifier
+         * @param pos         marker block position
+         * @return marker visit key
+         */
+        private static VisitKey from(String dimensionId, BlockPos pos) {
+            return new VisitKey(dimensionId, pos.asLong());
+        }
+    }
+
+    /**
+     * Cross-dimension continuation target discovered while walking a marker chain.
+     *
+     * @param dimensionId destination dimension identifier
+     * @param pos         absolute destination marker position
+     */
+    private record DimensionJump(String dimensionId, BlockPos pos) {
+
     }
 
     /**
@@ -418,9 +425,11 @@ public class ChapterPathMarkersHandler extends RespondablePacketHandler<ChapterP
      * Dangling ends are set for missing targets, unconfigured link-reached ends,
      * and dead target links, but not for cycles or maximum-hop truncation.
      *
-     * @param rows        ordered marker rows produced by the walk
-     * @param danglingEnd last marker of the walk when probing may continue, or null otherwise
+     * @param rows          ordered marker rows produced by the walk
+     * @param danglingEnd   last marker of the walk when probing may continue, or null otherwise
+     * @param dimensionJump cross-dimension continuation target, or null when the walk stayed local
      */
-    private record ChainSegment(List<ChapterMarkerEntry> rows, BlockPos danglingEnd) {
+    private record ChainSegment(List<ChapterMarkerEntry> rows, BlockPos danglingEnd, DimensionJump dimensionJump) {
+
     }
 }

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,8 @@ class BackupDtoGsonShapeTest {
                 "frodo",
                 "Frodo's Path",
                 new PathColorDto(new int[]{255, 215, 0}, new int[]{230, 194, 0}, new int[]{255, 227, 77}),
-                List.of(new PathChapterDto("shire", "The Shire", "12 Forelithe", 1, "bag-end", 42L, List.of())),
+                true,
+                List.of(new PathChapterDto("shire", "The Shire", 1, "bag-end", new PositionData(1, 2, 3), "minecraft:overworld", List.of())),
                 new PathDiagnosticsDto(List.of(1L), List.of(2L), List.of(List.of(3L, 4L)), Map.of("shire", List.of(5L)))
         );
 
@@ -57,10 +59,35 @@ class BackupDtoGsonShapeTest {
 
         assertEquals("frodo", json.get("id").getAsString());
         assertTrue(json.has("colors"));
-        assertEquals(42L, json.getAsJsonArray("chapters").get(0).getAsJsonObject().get("start_pos").getAsLong());
+        assertTrue(json.get("hideDefault").getAsBoolean());
+        JsonObject chapter = json.getAsJsonArray("chapters").get(0).getAsJsonObject();
+        assertEquals(1, chapter.getAsJsonObject("coordinates").get("x").getAsInt());
+        assertEquals("minecraft:overworld", chapter.get("dimension").getAsString());
+        assertFalse(chapter.has("start_pos"));
         assertTrue(json.getAsJsonObject("diagnostics").has("dangling_next"));
         assertTrue(json.getAsJsonObject("diagnostics").has("multi_root"));
         assertFalse(json.getAsJsonObject("diagnostics").has("danglingNext"));
+    }
+
+    /**
+     * Verifies legacy backup chapter start positions can still be read for restore.
+     */
+    @Test
+    void pathChapterReadsLegacyStartPos() {
+        PathChapterDto chapter = GSON.fromJson("""
+                {
+                  "id": "shire",
+                  "name": "The Shire",
+                  "index": 1,
+                  "warp": "bag-end",
+                  "start_pos": 274877919234,
+                  "nodes": []
+                }
+                """, PathChapterDto.class);
+
+        assertNull(chapter.coordinates());
+        assertNull(chapter.dimension());
+        assertEquals(274877919234L, chapter.startPos());
     }
 
     /**
@@ -76,10 +103,12 @@ class BackupDtoGsonShapeTest {
                 true,
                 false,
                 1,
-                6000,
-                12,
+                5_910_000L,
+                0,
                 "bag-end",
                 "1 2 3",
+                "multiworld:moria_big",
+                "4 5 6",
                 "minecraft:bread",
                 "Hello",
                 8,
@@ -92,12 +121,15 @@ class BackupDtoGsonShapeTest {
         assertTrue(json.get("chapter_start").getAsBoolean());
         assertTrue(json.get("title_on_trail").getAsBoolean());
         assertFalse(json.get("display_above_blocks").getAsBoolean());
-        assertEquals(12, json.get("time_transition_range").getAsInt());
+        assertEquals(0, json.get("time_transition_range").getAsInt());
         assertEquals("bag-end", json.get("auto_teleport_target").getAsString());
+        assertEquals("multiworld:moria_big", json.get("target_marker_dimension").getAsString());
+        assertEquals("4 5 6", json.get("target_marker").getAsString());
         assertEquals("minecraft:bread", json.get("give_item").getAsString());
         assertEquals(123L, json.getAsJsonObject("anim").get("packed").getAsLong());
         assertFalse(json.has("chapterStart"));
         assertFalse(json.has("autoTeleportTarget"));
+        assertFalse(json.has("targetMarkerDimension"));
     }
 
     /**

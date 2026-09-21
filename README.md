@@ -35,10 +35,10 @@ The configuration screen allows editing of the marker properties. By default the
 - `Proximity messaage` the message displayed to players when they are within range of the marker
 - `Activation range` the range (in blocks) at which the proximity message is displayed. Weather also uses this range, with a 3-block minimum so markers without proximity messages can still trigger weather.
 - `Weather` the weather to apply when the marker is followed, or undefined to leave the current weather unchanged
-- `Time of day` the time to apply when the marker is followed, or blank to leave the current time unchanged. This can be authored whether or not the client-side DaylightChangerStruggle mod is installed.
-- `Target Marker Time of Day` and `Target Marker ID` let the server spread time-of-day values from the current marker to another marker in the current editor path and chapter. Copy a marker ID with the marker ID button at the top of the editor; IDs use `<packed block position>`. The editor's selected path and chapter are used when saving.
-- `Clear range` clears the time of day and transition range on every marker from the current marker to the target marker, and removes the target marker settings from the current marker.
-- `Transition range` the distance over which marker time transitions are applied. When a target marker is set, ranges are computed by the server from marker spacing and the dropdown no longer controls the value. A marker's time stays in force after the marker is passed, until another time marker or computed segment takes over, the trail is left, the Pathfinder is sheathed, or dynamic environment is switched off.
+- `Date and Time` the date and time to apply when the marker is followed, in `DD/MM/YYYY HH:MM` format, or blank/null to leave the current time unchanged. This can be authored whether or not the client-side DaylightChangerStruggle mod is installed.
+- `Target Marker Date and Time` and `Target Marker ID` let the server spread date-time values from the current marker to another marker in the current editor path and chapter. Copy a marker ID with the marker ID button at the top of the editor; IDs use `<packed block position>`. The editor's selected path and chapter are used when saving. Spreads can cover multiple in-fiction days, and if the target date-time is earlier than the source, intermediate markers move backwards through time.
+- `Clear range` clears the date-time and activation mode on every marker from the current marker to the target marker, and removes the target marker settings from the current marker.
+- `Activation` chooses how marker time is applied: `Computed` interpolates from the previous timed marker along the trail, including across multiple dates, while `Marker Range` eases inside this marker's activation range. A marker's time stays in force after the marker is passed, until another time marker or computed segment takes over, the trail is left, the Pathfinder is sheathed, or dynamic environment is switched off.
 - `Auto-Teleport Target` coordinates or a HuskHomes warp name triggered when a player reaches the marker.
 - `Give Item` an item identifier granted when a player reaches the marker, or `clear` to store the held item back in the inventory.
 - `Look At` coordinates (`x y z`) for a point of interest the player can focus on while holding the Pathfinder within 10 blocks of the marker.
@@ -62,7 +62,9 @@ Accessed through the marker configuration screen by clicking the `Edit Chapters`
 - `name` the name of the chapter. Will be displayed on chapter changed on a trail when using the Pathfinder if the user enabled the chapter titles display
 - `date` the date associated with this message / event (display purposes only)
 - `index` the index of the chapter : this will determine its position in the chapter selection dropdowns and is used in dertermining which chapter to switch to when changing chapters.
-- `warp` the warp location for this chapter (this fuctionnality uses HuskHomes warp command). This is the teleport location when the user clicks `Return to Chapter Start` on his pathfinder. Acceptable values for this field are either a warp location or a set of coordinates (x y z) such as `-56 16 12`
+- `warp` the optional HuskHomes warp name for this chapter. Warp names stay separate from coordinates.
+- `Coordinates` the optional `x`, `y`, and `z` chapter-start position. Coordinates are preferred over warp resolution when returning to a chapter start.
+- `Dimension` the dimension identifier for the coordinates, such as `minecraft:overworld`. It is required when coordinates are set and is saved together with them.
 
 <br/><br/><br/>
 
@@ -72,6 +74,7 @@ Accessed through the marker configuration screen by clicking the `Edit Chapters`
 - The current chapter can be deleted by clicking the `-` next to the chapter selection dropdown (note, the default chapter for a given path _cannot be deleted_)
 - The current **Path colors** can be adjusted, all colors are expected to be hex color values (ie: #eab113). The path colors define the trail, the chapters dropdown and the title colors.
 - The **Path colors** can be changed without editing a chapter (click the `apply` button to save the changes). Color changes are also saved when editing a chapter and clicking the `save` button.
+- `Hide Default chapter` hides the path's `default` chapter from the Pathfinder chapter dropdown while keeping it editable in the chapter editor.
 
 ### Pathfinder
 
@@ -82,7 +85,7 @@ The pathfinder is an item that allows players to select and follow paths. When u
 - `Select a Path to Follow` dropdown allows selecting a character's path to follow
 - `Select a Chapter` dropdown allows selecting a chapter from the book within the selected path
 - `Return to Path` teleports the player to the last visited path marker for the selected chapter
-- `Return to Chapter Start` teleports the player to the warp location defined for the selected chapter
+- `Return to Chapter Start` teleports the player to the chapter's configured coordinates, or to its warp if no coordinates are set and a warp resolver is available.
 - `Proximity text` toggle the display of proximity messages when approaching markers
 - `Text speed multiplier` - Default **100% of set value** adjusts the speed at which proximity messages are displayed (lower is faster)
 - `Chapter titles` - Default **Off** - toggle the display of chapter titles when reaching a new chapter marker
@@ -90,6 +93,7 @@ The pathfinder is an item that allows players to select and follow paths. When u
 - `Auto walk speed` - Default **100% of walking speed** - adjusts the speed used by auto-walk movement
 - `Show trail waypoints` - Default **Off** - toggles waypoint markers for the next trail node
 - `Dynamic environmental effects` - Default **Off** - allows trail markers to change the time of day and the weather as you follow a path. Requires the client-side [DaylightChangerStruggle](https://github.com/JuggleStruggle/DaylightChangerStruggle) mod for time changes and the client-side [Weather Changer](https://github.com/Lucaslah/WeatherChanger) mod for weather changes - this option is hidden from the Pathfinder screen when neither is installed, and each effect is skipped when its mod is missing. Leaving the trail, disconnecting, changing dimensions, or turning this option off restores server-controlled weather.
+- `baseline_date` - Default `04/09/3006 12:00` - the date used when the world's current time of day is shown before any marker sets a time. The value uses `DD/MM/YYYY HH:MM`; only the date part is used. Changing it does not move markers that already have a date.
 
 While holding the Pathfinder near a marker with `Look At` coordinates, an eye prompt appears above the hotbar. Hold the Focus key, `Left Alt` by default, to ease the camera onto the authored point and keep it there; release the key to ease back to the view you had when you pressed it. When auto-walk is active and no nearby look-at target is available, pressing Focus immediately recentres the camera onto the trail instead of waiting for the normal idle delay.
 
@@ -97,7 +101,7 @@ While holding the Pathfinder near a marker with `Look At` coordinates, an eye pr
 
 By default, ArdaPaths is configured for use on the ArdaCraft server with four built-in paths of characters from the LOTR series.
 
-New paths can be added to the `arda-paths/server.json` file with the following format:
+New paths can be added to the `arda-paths/server.json` file with the following format. Set `hideDefault` to `true` on a path when its `default` chapter should stay editable but not appear in the Pathfinder chapter dropdown:
 
 ```json
 {
@@ -120,19 +124,27 @@ New paths can be added to the `arda-paths/server.json` file with the following f
                 "green": 227,
                 "blue": 77
             },
+            "hideDefault": false,
             "chapters": {
                 "default": {
                     "id": "default",
                     "name": "Default",
-                    "date": "0",
                     "index": 0,
-                    "warp": "warpLocation"
+                    "warp": "warpLocation",
+                    "coordinates": {
+                        "x": -56,
+                        "y": 16,
+                        "z": 12
+                    },
+                    "dimension": "minecraft:overworld"
                 }
             }
         }
     ]
 }
 ```
+
+Chapter starts resolve in this order: configured `coordinates` with `dimension`, then a resolvable `warp`, then missing. If a warp exists but the optional warp integration is unavailable or cannot resolve it, editor marker lists report an unresolvable chapter start instead of treating the chapter as unconfigured. When a warp-resolved start marker is found, or a backup finds a flagged chapter-start marker for a warp-backed chapter with no coordinates, ArdaPaths writes the coordinates back to `server.json` and syncs clients so later operations no longer depend on the warp.
 
 ## Credits
 

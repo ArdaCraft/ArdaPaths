@@ -9,16 +9,30 @@ import space.ajcool.ardapaths.core.consumers.networking.IPacket;
 
 /**
  * Packet sent from client to server to update a chapter's start position.
- * @param pathId the ID of the path containing the chapter
- * @param chapterId the ID of the chapter to update
- * @param position the new block position for the chapter start
+ *
+ * @param pathId      the ID of the path containing the chapter
+ * @param chapterId   the ID of the chapter to update
+ * @param position    the new block position for the chapter start
+ * @param onlyIfUnset whether the server should skip the update when coordinates already exist
  */
-public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos position) implements IPacket
+public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos position, boolean onlyIfUnset) implements IPacket
 {
     /**
      * Network channel used for chapter-start position updates.
      */
     public static final ResourceLocation CHANNEL = ModConstants.modId("path_chapter_start_update");
+
+    /**
+     * Creates an unconditional chapter-start update.
+     *
+     * @param pathId    path identifier
+     * @param chapterId chapter identifier
+     * @param position  new chapter-start position
+     */
+    public ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos position)
+    {
+        this(pathId, chapterId, position, false);
+    }
 
     @Override
     public FriendlyByteBuf build()
@@ -27,14 +41,22 @@ public record ChapterStartUpdatePacket(String pathId, String chapterId, BlockPos
         buf.writeUtf(pathId);
         buf.writeUtf(chapterId);
         buf.writeBlockPos(position);
+        buf.writeBoolean(onlyIfUnset);
         return buf;
     }
 
+    /**
+     * Reads a chapter-start update packet from a byte buffer.
+     *
+     * @param buf buffer containing encoded packet fields
+     * @return decoded packet
+     */
     public static ChapterStartUpdatePacket read(FriendlyByteBuf buf)
     {
         final String pathId = buf.readUtf();
         final String chapterId = buf.readUtf();
         final BlockPos position = buf.readBlockPos();
-        return new ChapterStartUpdatePacket(pathId, chapterId, position);
+        final boolean onlyIfUnset = buf.readBoolean();
+        return new ChapterStartUpdatePacket(pathId, chapterId, position, onlyIfUnset);
     }
 }

@@ -20,6 +20,7 @@ import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.PermissionHelper;
 import space.ajcool.ardapaths.core.api.ArdaPathsApiImpl;
 import space.ajcool.ardapaths.core.data.config.ServerConfigManager;
+import space.ajcool.ardapaths.core.data.config.ServerConfigMigrator;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.networking.PacketRegistry;
 import space.ajcool.ardapaths.mc.blocks.ModBlocks;
@@ -74,6 +75,7 @@ public class ArdaPaths implements ModInitializer {
      */
     @Override
     public void onInitialize() {
+        ServerConfigMigrator.migrate("./config/arda-paths/server.json");
         CONFIG_MANAGER = new ServerConfigManager("./config/arda-paths/server.json");
         CONFIG = CONFIG_MANAGER.getConfig();
 

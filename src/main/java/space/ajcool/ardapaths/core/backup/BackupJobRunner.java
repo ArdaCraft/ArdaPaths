@@ -39,10 +39,11 @@ public class BackupJobRunner {
     /**
      * Starts a backup when no other backup job is active.
      *
-     * @param source command source that requested the backup
+     * @param source    command source that requested the backup
+     * @param forceFull whether the marker scan cache should be ignored
      * @return launch result with current progress when rejected
      */
-    public JobStartResult tryStartBackup(CommandSourceStack source) {
+    public JobStartResult tryStartBackup(CommandSourceStack source, boolean forceFull) {
         OperationProgress progress = new OperationProgress(OperationKind.BACKUP);
         ActiveJob job = new ActiveJob(OperationKind.BACKUP, progress);
 
@@ -51,7 +52,7 @@ public class BackupJobRunner {
         }
 
         MinecraftServer server = source.getServer();
-        WORKER.submit(() -> runBackupJob(server, source, job));
+        WORKER.submit(() -> runBackupJob(server, source, job, forceFull));
         return JobStartResult.started(progress.snapshot());
     }
 
@@ -116,16 +117,17 @@ public class BackupJobRunner {
     /**
      * Runs one backup job and reports completion.
      *
-     * @param server target server
-     * @param source originating command source
-     * @param job active job state
+     * @param server    target server
+     * @param source    originating command source
+     * @param job       active job state
+     * @param forceFull whether the marker scan cache should be ignored
      */
-    private void runBackupJob(MinecraftServer server, CommandSourceStack source, ActiveJob job) {
+    private void runBackupJob(MinecraftServer server, CommandSourceStack source, ActiveJob job, boolean forceFull) {
         long start = System.currentTimeMillis();
-        log.info("ArdaPaths backup started");
+        log.info("ArdaPaths backup started{}", forceFull ? " with full scan" : "");
 
         try {
-            BackupResult result = backupManager.runBackup(server, new LoggingReporter(job.progress()), new SubmitServerGate(server));
+            BackupResult result = backupManager.runBackup(server, new LoggingReporter(job.progress()), new SubmitServerGate(server), forceFull);
             long duration = System.currentTimeMillis() - start;
             log.info("ArdaPaths backup completed in {} ms: {}", duration, describeBackup(result));
             sendFeedback(server, source, describeBackup(result));

@@ -53,6 +53,12 @@ public class DropdownWidget<T> extends AbstractWidget {
     private Function<T, Component> optionDisplay;
 
     /**
+     * Text displayed when the nullable option is selected.
+     */
+    @Setter
+    private Component nullDisplay;
+
+    /**
      * The currently selected option, or null if none selected.
      */
     @Getter
@@ -99,6 +105,7 @@ public class DropdownWidget<T> extends AbstractWidget {
      * @param title             the label text
      * @param options           the list of available options
      * @param optionDisplay     function to display options as text
+     * @param nullDisplay       text to display for the nullable option
      * @param selected          the initially selected option
      * @param onSelect          callback when an option is selected
      * @param allowNull         whether null is a valid selection
@@ -114,6 +121,7 @@ public class DropdownWidget<T> extends AbstractWidget {
             Component title,
             List<T> options,
             Function<T, Component> optionDisplay,
+            Component nullDisplay,
             @Nullable T selected,
             Consumer<T> onSelect,
             boolean allowNull,
@@ -125,6 +133,7 @@ public class DropdownWidget<T> extends AbstractWidget {
         this.originalHeight = height;
         this.options = options;
         this.optionDisplay = optionDisplay;
+        this.nullDisplay = nullDisplay == null ? Component.literal("None") : nullDisplay;
         this.selected = selected;
         this.onSelect = onSelect;
         this.allowNull = allowNull;
@@ -219,7 +228,7 @@ public class DropdownWidget<T> extends AbstractWidget {
     private void renderBox(GuiGraphics context, int x, int y, T item, Font textRenderer,
                            int width, int height, PanelState state, SliceCap cap) {
         GuiTextures.drawPanelSegment(context, x, y, width, height, state, cap);
-        Component display = (item == null) ? Component.literal("None") : optionDisplay.apply(item);
+        Component display = (item == null) ? nullDisplay : optionDisplay.apply(item);
         int textX = x + 4;
         int textY = y + (height - textRenderer.lineHeight) / 2;
         context.drawString(textRenderer, display, textX, textY, 0xFFFFFF);

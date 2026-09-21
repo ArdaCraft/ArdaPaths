@@ -40,6 +40,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
         final int primaryColor = packet.primaryColor();
         final int secondaryColor = packet.secondaryColor();
         final int tertiaryColor = packet.tertiaryColor();
+        final boolean hideDefault = packet.hideDefault();
 
         PathData pathData = ArdaPaths.CONFIG.getPath(pathId);
 
@@ -50,6 +51,7 @@ public class PathDataUpdateRequestHandler extends ServerPacketHandler<PathDataUp
             pathData.setPrimaryColor(Color.fromHex(primaryColor));
             pathData.setSecondaryColor(Color.fromHex(secondaryColor));
             pathData.setTertiaryColor(Color.fromHex(tertiaryColor));
+            pathData.setHideDefault(hideDefault);
 
             ArdaPaths.CONFIG_MANAGER.save();
         } else {

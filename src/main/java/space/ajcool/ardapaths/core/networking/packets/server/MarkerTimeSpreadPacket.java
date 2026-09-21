@@ -14,13 +14,13 @@ import java.util.UUID;
  * @param requestId       request correlation id
  * @param sourcePackedPos packed absolute source marker position
  * @param targetPackedPos packed absolute target marker position
- * @param sourceTime      expected source marker time in daytime ticks
- * @param targetTime      expected target marker time in daytime ticks
+ * @param sourceTime      expected source marker absolute time ticks
+ * @param targetTime      expected target marker absolute time ticks
  * @param pathId          path identifier for the marker chapter chain
  * @param chapterId       chapter identifier for the marker chapter chain
  * @param clear           whether the request should clear existing time data instead of spreading it
  */
-public record MarkerTimeSpreadPacket(UUID requestId, long sourcePackedPos, long targetPackedPos, int sourceTime, int targetTime, String pathId, String chapterId, boolean clear) implements IRespondablePacket<MarkerTimeSpreadPacket> {
+public record MarkerTimeSpreadPacket(UUID requestId, long sourcePackedPos, long targetPackedPos, long sourceTime, long targetTime, String pathId, String chapterId, boolean clear) implements IRespondablePacket<MarkerTimeSpreadPacket> {
     /**
      * Network channel used for marker time-spread requests.
      */
@@ -31,13 +31,13 @@ public record MarkerTimeSpreadPacket(UUID requestId, long sourcePackedPos, long 
      *
      * @param sourcePackedPos packed absolute source marker position
      * @param targetPackedPos packed absolute target marker position
-     * @param sourceTime      expected source marker time in daytime ticks
-     * @param targetTime      expected target marker time in daytime ticks
+     * @param sourceTime      expected source marker absolute time ticks
+     * @param targetTime      expected target marker absolute time ticks
      * @param pathId          path identifier for the marker chapter chain
      * @param chapterId       chapter identifier for the marker chapter chain
      * @param clear           whether the request should clear existing time data instead of spreading it
      */
-    public MarkerTimeSpreadPacket(long sourcePackedPos, long targetPackedPos, int sourceTime, int targetTime, String pathId, String chapterId, boolean clear) {
+    public MarkerTimeSpreadPacket(long sourcePackedPos, long targetPackedPos, long sourceTime, long targetTime, String pathId, String chapterId, boolean clear) {
         this(IRespondablePacket.UNASSIGNED_REQUEST_ID, sourcePackedPos, targetPackedPos, sourceTime, targetTime, pathId, chapterId, clear);
     }
 
@@ -63,8 +63,8 @@ public record MarkerTimeSpreadPacket(UUID requestId, long sourcePackedPos, long 
         buf.writeUUID(requestId);
         buf.writeLong(sourcePackedPos);
         buf.writeLong(targetPackedPos);
-        buf.writeInt(sourceTime);
-        buf.writeInt(targetTime);
+        buf.writeLong(sourceTime);
+        buf.writeLong(targetTime);
         buf.writeUtf(pathId);
         buf.writeUtf(chapterId);
         buf.writeBoolean(clear);
@@ -78,6 +78,6 @@ public record MarkerTimeSpreadPacket(UUID requestId, long sourcePackedPos, long 
      * @return decoded packet
      */
     public static MarkerTimeSpreadPacket read(FriendlyByteBuf buf) {
-        return new MarkerTimeSpreadPacket(buf.readUUID(), buf.readLong(), buf.readLong(), buf.readInt(), buf.readInt(), buf.readUtf(), buf.readUtf(), buf.readBoolean());
+        return new MarkerTimeSpreadPacket(buf.readUUID(), buf.readLong(), buf.readLong(), buf.readLong(), buf.readLong(), buf.readUtf(), buf.readUtf(), buf.readBoolean());
     }
 }

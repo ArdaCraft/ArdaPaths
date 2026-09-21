@@ -51,34 +51,17 @@ public final class MarkerFields {
     }
 
     /**
-     * Parses a time-of-day input, falling back to the last known valid value if the field is malformed.
+     * Parses a date-time input, falling back to the last known valid value if the field is malformed.
      *
      * @param input         the input widget to parse
      * @param fallbackValue the value to use when parsing fails
-     * @return the parsed time-of-day ticks or the fallback value
+     * @return the parsed absolute date-time ticks or the fallback value
      */
-    public static int parseTimeOfDayOrFallback(InputBoxWidget input, int fallbackValue) {
+    public static long parseTimeOfDayOrFallback(InputBoxWidget input, long fallbackValue) {
         if (input == null) return fallbackValue;
 
         try {
             return TimeOfDay.parse(input.getValue());
-        } catch (TextValidationError e) {
-            return fallbackValue;
-        }
-    }
-
-    /**
-     * Parses a transition range input, falling back to the last known valid value if the field is malformed.
-     *
-     * @param input         the input widget to parse
-     * @param fallbackValue the value to use when parsing fails
-     * @return parsed transition range or the fallback value
-     */
-    public static int parseTransitionRangeOrFallback(InputBoxWidget input, int fallbackValue) {
-        if (input == null) return fallbackValue;
-
-        try {
-            return TimeOfDay.parseTransitionRange(input.getValue());
         } catch (TextValidationError e) {
             return fallbackValue;
         }
@@ -115,16 +98,6 @@ public final class MarkerFields {
     }
 
     /**
-     * Validates the marker time transition mode or fixed transition range.
-     *
-     * @param text input text to validate
-     * @throws TextValidationError when the range text is malformed
-     */
-    public static void validateTimeTransitionRange(String text) throws TextValidationError {
-        TimeOfDay.parseTransitionRange(text);
-    }
-
-    /**
      * Validates the optional auto-teleport target shape.
      *
      * @param text input text to validate
@@ -147,6 +120,45 @@ public final class MarkerFields {
         String value = text.trim();
         if (value.isEmpty() || WarpTarget.isCoordinates(value)) return;
         throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.look_at.invalid").getString());
+    }
+
+    /**
+     * Validates the all-or-nothing target marker continuation fields.
+     *
+     * @param dimension target marker dimension text
+     * @param x         target marker X coordinate text
+     * @param y         target marker Y coordinate text
+     * @param z         target marker Z coordinate text
+     * @throws TextValidationError when only part of the group is filled or coordinates are malformed
+     */
+    public static void validateTargetMarker(String dimension, String x, String y, String z) throws TextValidationError {
+        boolean hasDimension = dimension != null && !dimension.trim().isEmpty();
+        boolean hasX = x != null && !x.trim().isEmpty();
+        boolean hasY = y != null && !y.trim().isEmpty();
+        boolean hasZ = z != null && !z.trim().isEmpty();
+
+        if (!hasDimension && !hasX && !hasY && !hasZ) return;
+        if (!hasDimension || !hasX || !hasY || !hasZ || ResourceLocation.tryParse(dimension.trim()) == null) {
+            throw new TextValidationError(Component.translatable("ardapaths.client.marker.configuration.screens.target_marker.invalid").getString());
+        }
+
+        validateInteger(x);
+        validateInteger(y);
+        validateInteger(z);
+    }
+
+    /**
+     * Validates one integer text field.
+     *
+     * @param text input text to validate
+     * @throws TextValidationError when the input is not an integer
+     */
+    public static void validateInteger(String text) throws TextValidationError {
+        try {
+            Integer.parseInt(text.trim());
+        } catch (NumberFormatException e) {
+            throw new TextValidationError(Component.translatable("ardapaths.generic.validation.error.integer").getString());
+        }
     }
 
     /**

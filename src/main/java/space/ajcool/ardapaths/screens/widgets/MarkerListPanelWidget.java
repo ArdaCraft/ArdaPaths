@@ -170,7 +170,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
     /**
      * Callback used when the player requests teleport to a marker.
      */
-    private final Consumer<BlockPos> onTeleport;
+    private final BiConsumer<BlockPos, String> onTeleport;
 
     /**
      * Callback used when the player selects a marker range.
@@ -244,7 +244,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     @Builder(builderClassName = "MarkerListPanelBuilder", builderMethodName = "create", setterPrefix = "set")
     public MarkerListPanelWidget(int x, int y, int screenHeight, int listBottom, int dividerX, int dividerHeight,
-                                 Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
+                                 Consumer<BlockPos> onSelect, BiConsumer<BlockPos, String> onTeleport,
                                  Consumer<BlockPos> onRangeSelect,
                                  BiConsumer<BlockPos, MarkerListEntry.ContextMenuAnchor> onContextMenu,
                                  Runnable onFiltersChanged) {
@@ -308,7 +308,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     public List<BlockPos> getVisiblePositions() {
         return visibleRows.stream()
-                .filter(row -> !row.isNotice())
+                .filter(row -> !row.isNotice() && row.editable())
                 .map(MarkerRow::pos)
                 .toList();
     }
@@ -672,17 +672,19 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      */
     private MarkerListEntry toEntry(MarkerRow row) {
         if (row.isNotice()) {
-            return MarkerListEntry.notice(row.noticeText());
+            return MarkerListEntry.notice(row.noticeText(), row.noticeTooltipLines(), row.noticeColor());
         }
 
         return new MarkerListEntry(
                 row.pos(),
+                row.dimensionId(),
                 row.timeOfDay(),
                 hasWeatherData(row),
                 hasProximityMessage(row),
                 row.hasMiscData(),
                 row.focused(),
                 row.selected(),
+                row.editable(),
                 markerTooltipLines(row),
                 onSelect,
                 onTeleport,
@@ -698,7 +700,7 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * @return true when the row has configured time data
      */
     private boolean hasTimeData(MarkerRow row) {
-        return row.timeOfDay() != ChapterNbtData.UNSET;
+        return row.timeOfDay() != TimeOfDay.UNSET;
     }
 
     /**
@@ -758,6 +760,12 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
                     .withStyle(ChatFormatting.GRAY));
         }
 
+        if (!row.editable()) {
+            lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.foreign_dimension_hint", row.dimensionId())
+                    .withStyle(ChatFormatting.GOLD, ChatFormatting.ITALIC));
+            return lines;
+        }
+
         lines.add(Component.translatable("ardapaths.client.marker.configuration.screens.marker_list.teleport_hint")
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
         return lines;
@@ -783,29 +791,36 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
      * Data the screen supplies for one marker-list row.
      *
      * @param pos              marker position represented by the row
+     * @param dimensionId      dimension identifier containing the marker
      * @param timeOfDay        configured marker time, or unset
      * @param weather          configured marker weather, or unset
      * @param proximityMessage configured marker proximity message
      * @param hasMiscData      whether marker action data is configured
      * @param focused          whether this marker is currently being edited
      * @param selected         whether this marker is in the current multi-selection
+     * @param editable         whether this marker can be edited from the current world
      * @param noticeText       inert notice label, or null for marker rows
+     * @param noticeTooltipLines inert notice tooltip lines
+     * @param noticeColor      color used for notice text
      */
-    public record MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused,
-                            boolean selected, Component noticeText) {
+    public record MarkerRow(BlockPos pos, String dimensionId, long timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused,
+                            boolean selected, boolean editable, Component noticeText, List<Component> noticeTooltipLines, int noticeColor) {
+
         /**
          * Creates a marker row with no notice label.
          *
          * @param pos              marker position represented by the row
+         * @param dimensionId      dimension identifier containing the marker
          * @param timeOfDay        configured marker time, or unset
          * @param weather          configured marker weather, or unset
          * @param proximityMessage configured marker proximity message
          * @param hasMiscData      whether marker action data is configured
          * @param focused          whether this marker is currently being edited
          * @param selected         whether this marker is in the current multi-selection
+         * @param editable         whether this marker can be edited from the current world
          */
-        public MarkerRow(BlockPos pos, int timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused, boolean selected) {
-            this(pos, timeOfDay, weather, proximityMessage, hasMiscData, focused, selected, null);
+        public MarkerRow(BlockPos pos, String dimensionId, long timeOfDay, int weather, String proximityMessage, boolean hasMiscData, boolean focused, boolean selected, boolean editable) {
+            this(pos, dimensionId, timeOfDay, weather, proximityMessage, hasMiscData, focused, selected, editable, null, List.of(), 0xFFFF5555);
         }
 
         /**
@@ -824,7 +839,30 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
          * @return notice row data
          */
         public static MarkerRow notice(Component text) {
-            return new MarkerRow(BlockPos.ZERO, ChapterNbtData.UNSET, ChapterNbtData.UNSET, "", false, false, false, text);
+            return notice(text, List.of());
+        }
+
+        /**
+         * Creates an inert notice row with a tooltip.
+         *
+         * @param text         notice label to render
+         * @param tooltipLines notice tooltip lines
+         * @return notice row data
+         */
+        public static MarkerRow notice(Component text, List<Component> tooltipLines) {
+            return notice(text, tooltipLines, 0xFFFF5555);
+        }
+
+        /**
+         * Creates an inert notice row with a tooltip and custom color.
+         *
+         * @param text         notice label to render
+         * @param tooltipLines notice tooltip lines
+         * @param color        notice text color
+         * @return notice row data
+         */
+        public static MarkerRow notice(Component text, List<Component> tooltipLines, int color) {
+            return new MarkerRow(BlockPos.ZERO, "", TimeOfDay.UNSET, ChapterNbtData.UNSET, "", false, false, false, false, text, List.copyOf(tooltipLines), color);
         }
 
         /**
@@ -834,6 +872,20 @@ public class MarkerListPanelWidget implements Renderable, GuiEventListener, Narr
          */
         public static MarkerRow chainBreak() {
             return notice(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.break"));
+        }
+
+        /**
+         * Creates a cross-dimension separator row.
+         *
+         * @param dimensionId destination dimension identifier
+         * @return dimension-break row data
+         */
+        public static MarkerRow dimensionBreak(String dimensionId) {
+            return notice(
+                    Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.dimension_break", dimensionId),
+                    List.of(Component.translatable("ardapaths.client.marker.configuration.screens.chapter_markers.dimension_break.tooltip", dimensionId)),
+                    0xFFFFAA00
+            );
         }
     }
 }

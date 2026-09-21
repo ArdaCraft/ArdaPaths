@@ -12,7 +12,6 @@ import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.core.Client;
 import space.ajcool.ardapaths.core.ModConstants;
 import space.ajcool.ardapaths.core.data.TimeOfDay;
-import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity.ChapterNbtData;
 import space.ajcool.ardapaths.screens.GuiTextures;
 
 import java.util.List;
@@ -61,9 +60,14 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     private final BlockPos pos;
 
     /**
+     * Dimension identifier containing this marker, or blank for the current client dimension.
+     */
+    private final String dimensionId;
+
+    /**
      * Configured marker time for the selected path, or unset when no time is configured.
      */
-    private final int timeOfDay;
+    private final long timeOfDay;
 
     /**
      * Whether the marker has weather data for the selected path.
@@ -92,6 +96,11 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     private final boolean selected;
 
     /**
+     * Whether this row can be opened for editing from the player's current dimension.
+     */
+    private final boolean editable;
+
+    /**
      * Callback used when the player selects the marker for editing.
      */
     private final Consumer<BlockPos> onSelect;
@@ -99,7 +108,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     /**
      * Callback used when the player requests teleport to the marker.
      */
-    private final Consumer<BlockPos> onTeleport;
+    private final BiConsumer<BlockPos, String> onTeleport;
 
     /**
      * Callback used when the player selects a range ending at this marker.
@@ -128,31 +137,40 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
     private final boolean notice;
 
     /**
+     * Text color used when this row is a notice.
+     */
+    private final int noticeColor;
+
+    /**
      * Creates a row for a loaded local marker.
      *
      * @param pos                 the marker position
+     * @param dimensionId         dimension identifier containing the marker
      * @param timeOfDay           configured marker time, or unset
      * @param hasWeatherData      whether the marker has weather data
      * @param hasProximityMessage whether the marker has proximity text
      * @param hasMiscData         whether the marker has action data
      * @param focused             whether this marker is currently being edited
      * @param selected            whether this marker belongs to the current multi-selection
+     * @param editable            whether this marker can be opened from the current world
      * @param tooltipLines        formatted tooltip lines for configured marker data
      * @param onSelect            callback for normal clicks
      * @param onTeleport          callback for Ctrl-clicks
      * @param onRangeSelect       callback for Shift-clicks
      * @param onContextMenu       callback for right-clicks
      */
-    public MarkerListEntry(BlockPos pos, int timeOfDay, boolean hasWeatherData, boolean hasProximityMessage, boolean hasMiscData, boolean focused, boolean selected,
-                           List<Component> tooltipLines, Consumer<BlockPos> onSelect, Consumer<BlockPos> onTeleport,
+    public MarkerListEntry(BlockPos pos, String dimensionId, long timeOfDay, boolean hasWeatherData, boolean hasProximityMessage, boolean hasMiscData, boolean focused, boolean selected, boolean editable,
+                           List<Component> tooltipLines, Consumer<BlockPos> onSelect, BiConsumer<BlockPos, String> onTeleport,
                            Consumer<BlockPos> onRangeSelect, BiConsumer<BlockPos, ContextMenuAnchor> onContextMenu) {
         this.pos = pos;
+        this.dimensionId = dimensionId == null ? "" : dimensionId;
         this.timeOfDay = timeOfDay;
         this.hasWeatherData = hasWeatherData;
         this.hasProximityMessage = hasProximityMessage;
         this.hasMiscData = hasMiscData;
         this.focused = focused;
         this.selected = selected;
+        this.editable = editable;
         this.tooltipLines = List.copyOf(tooltipLines);
         this.onSelect = onSelect;
         this.onTeleport = onTeleport;
@@ -160,38 +178,46 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         this.onContextMenu = onContextMenu;
         this.coordinateText = Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
         this.notice = false;
+        this.noticeColor = 0xFFFF5555;
     }
 
     /**
-     * Creates a row for an inert notice label.
+     * Creates a row for an inert notice label with a tooltip and custom color.
      *
-     * @param text notice text to render
+     * @param text         notice text to render
+     * @param tooltipLines lines shown while hovering the notice
+     * @param color        notice text color
      * @return notice marker list row
      */
-    public static MarkerListEntry notice(Component text) {
-        return new MarkerListEntry(text);
+    public static MarkerListEntry notice(Component text, List<Component> tooltipLines, int color) {
+        return new MarkerListEntry(text, tooltipLines, color);
     }
 
     /**
      * Creates an inert notice row.
      *
-     * @param text notice text to render
+     * @param text         notice text to render
+     * @param tooltipLines notice tooltip lines
+     * @param color        notice text color
      */
-    private MarkerListEntry(Component text) {
+    private MarkerListEntry(Component text, List<Component> tooltipLines, int color) {
         this.pos = BlockPos.ZERO;
-        this.timeOfDay = ChapterNbtData.UNSET;
+        this.dimensionId = "";
+        this.timeOfDay = TimeOfDay.UNSET;
         this.hasWeatherData = false;
         this.hasProximityMessage = false;
         this.hasMiscData = false;
         this.focused = false;
         this.selected = false;
-        this.tooltipLines = List.of();
+        this.editable = false;
+        this.tooltipLines = List.copyOf(tooltipLines);
         this.onSelect = null;
         this.onTeleport = null;
         this.onRangeSelect = null;
         this.onContextMenu = null;
         this.coordinateText = text;
         this.notice = true;
+        this.noticeColor = color;
     }
 
     /**
@@ -216,7 +242,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         if (notice) {
             int textWidth = textRenderer.width(coordinateText);
             int textY = y + (entryHeight - textRenderer.lineHeight) / 2;
-            context.drawString(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, 0xFFFF5555);
+            context.drawString(textRenderer, coordinateText, x + (entryWidth - textWidth) / 2, textY, noticeColor);
             return;
         }
 
@@ -283,7 +309,7 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
      * @return true when a marker time should be indicated
      */
     private boolean hasTimeData() {
-        return timeOfDay != ChapterNbtData.UNSET;
+        return timeOfDay != TimeOfDay.UNSET;
     }
 
     /**
@@ -308,10 +334,11 @@ public class MarkerListEntry extends ObjectSelectionList.Entry<MarkerListEntry> 
         if (button != 0) return false;
 
         if (Client.isCtrlDown()) {
-            if (onTeleport != null) onTeleport.accept(pos);
+            if (onTeleport != null) onTeleport.accept(pos, dimensionId);
         } else if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) {
-            if (onRangeSelect != null) onRangeSelect.accept(pos);
+            if (editable && onRangeSelect != null) onRangeSelect.accept(pos);
         } else {
+            if (!editable) return false;
             if (onSelect == null) return false;
             onSelect.accept(pos);
         }

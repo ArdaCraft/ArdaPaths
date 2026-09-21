@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.backup.dto.PathNodeDto;
 import space.ajcool.ardapaths.core.data.BitPacker;
+import space.ajcool.ardapaths.core.data.TimeActivation;
 import space.ajcool.ardapaths.mc.blocks.entities.PathMarkerBlockEntity;
 
 import java.util.Map;
@@ -25,14 +26,16 @@ class MarkerNbtRoundTripTest {
         PathMarkerBlockEntity.ChapterNbtData original = PathMarkerBlockEntity.ChapterNbtData.empty("shire");
         original.setTarget(new BlockPos(80, -4, -96));
         original.setLookAt(new BlockPos(-1000, 65, 2048));
+        original.setTargetMarkerDimension("multiworld:moria_big");
+        original.setTargetMarker(new BlockPos(120, 45, -321));
         original.setProximityMessage("Mind the road");
         original.setActivationRange(14);
         original.setChapterStart(true);
         original.setDisplayChapterTitleOnTrail(true);
         original.setDisplayAboveBlocks(false);
         original.setWeather(2);
-        original.setTimeOfDay(6000);
-        original.setTimeTransitionRange(24);
+        original.setTimeOfDay(5_910_000L);
+        original.setTimeActivation(TimeActivation.COMPUTED);
         original.setAutoTeleportTarget("bag-end");
         original.setGiveItem("minecraft:bread");
         original.setPackedMessageData(BitPacker.packFive(7, 120, 9, 3, 11));
@@ -48,6 +51,8 @@ class MarkerNbtRoundTripTest {
         assertEquals(original.toNbt(new CompoundTag()), restored);
         assertEquals(markerPosition.offset(original.getTarget()).asLong(), node.orElseThrow().next());
         assertEquals("-1000 65 2048", node.orElseThrow().lookAt());
+        assertEquals("multiworld:moria_big", node.orElseThrow().targetMarkerDimension());
+        assertEquals("120 45 -321", node.orElseThrow().targetMarker());
     }
 
     /**
@@ -68,6 +73,8 @@ class MarkerNbtRoundTripTest {
 
         assertEquals(original.toNbt(new CompoundTag()), restored);
         assertFalse(restored.contains("target"));
+        assertFalse(restored.contains("target_marker_dimension"));
+        assertFalse(restored.contains("target_marker"));
         assertFalse(restored.contains("packed_message_data"));
     }
 }

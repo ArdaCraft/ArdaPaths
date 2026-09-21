@@ -3,9 +3,14 @@ package space.ajcool.ardapaths.core.networking.handlers.server;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.Level;
 import space.ajcool.ardapaths.ArdaPaths;
 import space.ajcool.ardapaths.core.consumers.networking.ServerPacketHandler;
 import space.ajcool.ardapaths.core.integration.Warps;
@@ -19,27 +24,26 @@ import java.util.Optional;
  * Processes incoming {@link ChapterPlayerTeleportPacket} from clients.
  */
 @Slf4j(topic = "ardapaths")
-public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPlayerTeleportPacket>
-{
-    public ChapterPlayerTeleportHandler()
-    {
+public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPlayerTeleportPacket> {
+
+    public ChapterPlayerTeleportHandler() {
         super(ChapterPlayerTeleportPacket.CHANNEL, ChapterPlayerTeleportPacket::read);
     }
 
     @Override
-    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPlayerTeleportPacket packet, PacketSender sender)
-    {
+    public void handle(MinecraftServer server, ServerPlayer player, ServerGamePacketListenerImpl handler, ChapterPlayerTeleportPacket packet, PacketSender sender) {
         final String pathId = packet.pathId();
         final String chapterId = packet.chapterId();
+        final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
+        final String dimensionId = ArdaPaths.CONFIG.getChapterStartDimension(pathId, chapterId);
+
+        if (start != null) {
+            teleportToCoordinates(server, player, start, dimensionId);
+            return;
+        }
 
         final Optional<String> startWarp = ArdaPaths.CONFIG.getChapterStartWarp(pathId, chapterId);
         final Runnable fallback = () -> {
-            final BlockPos start = ArdaPaths.CONFIG.getChapterStartCoordinates(pathId, chapterId);
-
-            if (start != null)
-            {
-                player.teleportTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5);
-            }
         };
 
         if (startWarp.isPresent() && Warps.isAvailable()) {
@@ -48,5 +52,34 @@ public class ChapterPlayerTeleportHandler extends ServerPacketHandler<ChapterPla
         } else {
             fallback.run();
         }
+    }
+
+    /**
+     * Teleports a player to configured chapter-start coordinates.
+     *
+     * @param server      active server
+     * @param player      player to teleport
+     * @param start       target block position
+     * @param dimensionId target dimension identifier
+     */
+    private void teleportToCoordinates(MinecraftServer server, ServerPlayer player, BlockPos start, String dimensionId) {
+        ServerLevel destinationLevel = resolveDestinationLevel(server, dimensionId);
+        if (destinationLevel == null) {
+            log.warn("Cannot teleport player {} to chapter start in unloaded dimension {}", player.getStringUUID(), dimensionId);
+            return;
+        }
+        player.teleportTo(destinationLevel, start.getX() + 0.5, start.getY(), start.getZ() + 0.5, player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Resolves the destination dimension for a coordinate chapter-start fallback.
+     *
+     * @param server      active Minecraft server
+     * @param dimensionId configured dimension identifier
+     * @return destination level, or null when no matching level is loaded
+     */
+    private ServerLevel resolveDestinationLevel(MinecraftServer server, String dimensionId) {
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(dimensionId));
+        return server.getLevel(key);
     }
 }

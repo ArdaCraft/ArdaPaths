@@ -6,11 +6,11 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.client.SelectedPathData;
-import space.ajcool.ardapaths.core.data.config.server.PositionData;
 import space.ajcool.ardapaths.core.data.config.server.ServerConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
+import space.ajcool.ardapaths.core.data.config.shared.PositionData;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,8 +38,7 @@ class ConfigGsonShapeTest {
                   "hide_interface": true,
                   "proximity_text_speed_multiplier": 1.5,
                   "auto_walk_speed_factor": 0.75,
-                  "chapter_title_display_speed": 2500.0,
-                  "paths": []
+                  "chapter_title_display_speed": 2500.0
                 }
                 """, ClientConfig.class);
 
@@ -53,11 +52,11 @@ class ConfigGsonShapeTest {
         assertEquals(1.5D, config.getProximityTextSpeedMultiplier());
         assertEquals(0.75D, config.getAutoWalkSpeedFactor());
         assertEquals(2500.0F, config.getChapterTitleDisplaySpeed());
-        assertTrue(config.getClientPaths().isEmpty());
 
         JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
         assertTrue(json.has("hide_interface"));
         assertFalse(json.has("hideInterface"));
+        assertFalse(json.has("paths"));
     }
 
     /**
@@ -78,7 +77,7 @@ class ConfigGsonShapeTest {
     }
 
     /**
-     * Verifies server config preserves path and chapter-start field names.
+     * Verifies server config preserves path and embedded chapter-start field names.
      */
     @Test
     void serverConfigUsesPersistedFieldNames() {
@@ -91,12 +90,20 @@ class ConfigGsonShapeTest {
                       "primaryColor": {"red": 255, "green": 215, "blue": 0},
                       "secondaryColor": {"red": 230, "green": 194, "blue": 0},
                       "tertiaryColor": {"red": 255, "green": 227, "blue": 77},
+                      "hideDefault": true,
                       "chapters": {
-                        "shire": {"id": "shire", "name": "The Shire", "date": "12 Forelithe", "index": 1, "warp": "bag-end"}
+                        "shire": {
+                          "id": "shire",
+                          "name": "The Shire",
+                          "date": "12 Forelithe",
+                          "index": 1,
+                          "warp": "bag-end",
+                          "coordinates": {"x": 1, "y": 2, "z": 3},
+                          "dimension": "minecraft:the_nether"
+                        }
                       }
                     }
-                  ],
-                  "chapter_starts": {"frodo:shire": {"x": 1, "y": 2, "z": 3}}
+                  ]
                 }
                 """, ServerConfig.class);
 
@@ -104,13 +111,33 @@ class ConfigGsonShapeTest {
         assertNotNull(path);
         assertEquals("Frodo's Path", path.getName());
         assertEquals(0xFFD700, path.getPrimaryColor().asHex());
+        assertTrue(path.isHideDefault());
         ChapterData chapter = path.getChapter("shire");
         assertNotNull(chapter);
         assertEquals("The Shire", chapter.getName());
-        assertEquals("12 Forelithe", chapter.getDate());
         assertEquals(1, chapter.getIndex());
         assertEquals("bag-end", chapter.getWarp());
-        assertEquals(new PositionData(1, 2, 3), config.getChapterStarts().get("frodo:shire"));
+        assertEquals(new PositionData(1, 2, 3), chapter.getCoordinates());
+        assertEquals("minecraft:the_nether", chapter.getDimension());
+        JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
+        assertFalse(json.has("chapter_starts"));
+        JsonObject chapterJson = json.getAsJsonArray("paths").get(0).getAsJsonObject()
+                .getAsJsonObject("chapters")
+                .getAsJsonObject("shire");
+        assertFalse(chapterJson.has("date"));
+    }
+
+    /**
+     * Verifies setting a chapter for a new identifier keeps the seeded default path.
+     */
+    @Test
+    void settingChapterForNewIdentifierKeepsDefaultPath() {
+        ClientConfig config = new ClientConfig();
+
+        config.setCurrentChapter("server.example", "shire");
+
+        assertEquals("frodo", config.getSelectedPathId("server.example"));
+        assertEquals("shire", config.getCurrentChapterId("server.example"));
     }
 
     /**

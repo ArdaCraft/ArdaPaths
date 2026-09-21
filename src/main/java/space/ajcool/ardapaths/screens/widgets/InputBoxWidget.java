@@ -159,7 +159,12 @@ public class InputBoxWidget extends MultiLineEditBox {
             return;
         }
 
-        if (backgroundColor != Integer.MIN_VALUE) {
+        if (backgroundColor != Integer.MIN_VALUE && !this.isFocused()) {
+            // Cover the base text (and its shadow) so only the unshadowed coloured text shows.
+            context.pose().pushPose();
+            context.pose().translate(0, 0, 4);
+            context.fill(this.getX() + 1, this.getY() + 1, this.getX() + this.width - 1, this.getY() + this.height - 1, 0xFF000000);
+            context.pose().popPose();
 
             // Convert raw text → coloured styled text (you define this)
             Component colored = Component.literal(this.getValue()).withStyle(Style.EMPTY.withColor(backgroundColor));

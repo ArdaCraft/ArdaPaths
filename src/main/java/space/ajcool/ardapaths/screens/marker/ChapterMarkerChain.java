@@ -86,7 +86,7 @@ public final class ChapterMarkerChain {
             signature = signature * 31 + pos.asLong();
             signature = signature * 31 + packedTargetSignature(data.getTarget());
             signature = signature * 31 + (data.isChapterStart() ? 1 : 0);
-            signature = signature * 31 + data.getTimeOfDay();
+            signature = signature * 31 + Long.hashCode(data.getTimeOfDay());
             signature = signature * 31 + data.getWeather();
             signature = signature * 31 + data.getProximityMessage().hashCode();
             signature = signature * 31 + (data.hasMiscData() ? 1 : 0);

@@ -1,9 +1,11 @@
 package space.ajcool.ardapaths.core.data.config.shared;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,14 @@ public class PathData {
     @Setter
     @SerializedName("tertiaryColor")
     private Color tertiaryColor;
+
+    /**
+     * Whether the default chapter should be hidden from player-facing chapter lists.
+     */
+    @Getter
+    @Setter
+    @SerializedName("hideDefault")
+    private boolean hideDefault;
 
     /**
      * Map of chapter IDs to chapter data objects, representing all chapters in this path.
@@ -108,6 +118,24 @@ public class PathData {
      */
     public List<ChapterData> getChapters() {
         return chapters.values().stream().toList();
+    }
+
+    /**
+     * @return chapters sorted by index, excluding the default chapter when this path hides it from players
+     */
+    public List<ChapterData> getVisibleChapters() {
+        return chapters.values().stream()
+                .filter(chapter -> !hideDefault || !chapter.getId().equalsIgnoreCase("default"))
+                .sorted(Comparator.comparingInt(ChapterData::getIndex).thenComparing(ChapterData::getId))
+                .toList();
+    }
+
+    /**
+     * @return the first player-visible chapter, or null when every chapter is hidden or unavailable
+     */
+    public @Nullable ChapterData getFirstVisibleChapter() {
+        List<ChapterData> visibleChapters = getVisibleChapters();
+        return visibleChapters.isEmpty() ? null : visibleChapters.get(0);
     }
 
     /**

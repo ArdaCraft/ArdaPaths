@@ -1,7 +1,9 @@
 package space.ajcool.ardapaths.mc;
 
 import org.jetbrains.annotations.Nullable;
+
 import java.util.Optional;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
