@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.controls.KeyBindsScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.Mth;
@@ -43,7 +44,7 @@ public class PathSelectionScreen extends ArdaPathsScreen
     private static final int COLUMNS_SPACING = 10;
 
     /** Vertical spacing between consecutive UI elements. */
-    private static final int UI_ELEMENT_SPACING = 10;
+    private static final int UI_ELEMENT_SPACING = 5;
 
     /** Standard width for most UI elements. */
     private static final int UI_ELEMENT_WIDTH = 155;
@@ -151,6 +152,8 @@ public class PathSelectionScreen extends ArdaPathsScreen
         this.addRenderableWidget(initializeChapterTitleDisplayToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y += uiElementVerticalGap));
         titleDisplaySpeedSlider = this.addRenderableWidget(initializeTitleDisplaySpeedSlider(center + horizontalHalfCenterGap, y));
 
+        this.addRenderableWidget(initializeAutoWalkKeybindLabel(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
+        this.addRenderableWidget(initializeAutoWalkKeybindButton(center + horizontalHalfCenterGap, y));
         this.addRenderableWidget(initializeAutoWalkSpeedSlider(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         this.addRenderableWidget(initializeShowTrailWaypointsToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap,y += uiElementVerticalGap));
 
@@ -270,6 +273,51 @@ public class PathSelectionScreen extends ArdaPathsScreen
         returnToPathButton.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.return_path_tooltip")));
 
         return  returnToPathButton;
+    }
+
+    /**
+     * Creates the label identifying the auto-walk key binding control.
+     *
+     * @param x the x coordinate of the label
+     * @param y the y coordinate of the label
+     * @return the configured auto-walk key binding label
+     */
+    private @NotNull TextWidget initializeAutoWalkKeybindLabel(int x, int y) {
+        TextWidget autoWalkKeybindLabel = TextWidget.create()
+                .setX(x)
+                .setY(y)
+                .setWidth(UI_ELEMENT_WIDTH)
+                .setHeight(UI_ELEMENT_HEIGHT)
+                .setMessage(Component.translatable("ardapaths.client.configuration.screens.auto_walk_keybind"))
+                .build();
+        autoWalkKeybindLabel.alignLeft();
+        return autoWalkKeybindLabel;
+    }
+
+    /**
+     * Creates the button that opens the key binding screen for changing the auto-walk key.
+     *
+     * @param x the x coordinate of the button
+     * @param y the y coordinate of the button
+     * @return the configured auto-walk key binding button
+     */
+    private @NotNull Button initializeAutoWalkKeybindButton(int x, int y) {
+        Button autoWalkKeybindButton = new Button(
+                x, y,
+                UI_ELEMENT_WIDTH,
+                UI_ELEMENT_HEIGHT,
+                ArdaPathsClient.AUTO_WALK_KEY.getTranslatedKeyMessage(),
+                button -> {
+                    if (this.minecraft != null) {
+                        this.minecraft.setScreen(new KeyBindsScreen(this, this.minecraft.options));
+                    }
+                },
+                Supplier::get
+        );
+        autoWalkKeybindButton.setTooltip(Tooltip.create(Component.translatable(
+                "ardapaths.client.configuration.screens.auto_walk_keybind_tooltip")));
+
+        return autoWalkKeybindButton;
     }
 
     /**
