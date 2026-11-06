@@ -28,6 +28,12 @@ import java.util.Map;
 @Slf4j(topic = "ardapaths")
 public class ClientConfig {
 
+    /** Default shader-provided light radius for a held Pathfinder, matching a torch. */
+    public static final int DEFAULT_PATHFINDER_LIGHT_RADIUS = 14;
+
+    /** Maximum shader-provided light radius configurable for a held Pathfinder. */
+    public static final int MAX_PATHFINDER_LIGHT_RADIUS = 30;
+
     /**
      * Map of server addresses to their selected path/chapter data.
      */
@@ -88,6 +94,15 @@ public class ClientConfig {
     @SuppressWarnings("unused")
     @SerializedName("hide_interface")
     private boolean hideInterface;
+
+    /**
+     * Light radius supplied to compatible shaders while the Pathfinder is held.
+     */
+    @Setter
+    // Populated by Gson reflective deserialization; IntelliJ cannot trace the field access.
+    @SuppressWarnings("unused")
+    @SerializedName("pathfinder_light_radius")
+    private int pathfinderLightRadius = DEFAULT_PATHFINDER_LIGHT_RADIUS;
 
     /**
      * Speed multiplier for proximity message animation speed (0.0-1.0+).
@@ -167,6 +182,13 @@ public class ClientConfig {
      */
     public boolean hideInterface() {
         return hideInterface;
+    }
+
+    /**
+     * @return the shader-provided Pathfinder light radius, clamped to the supported range
+     */
+    public int getPathfinderLightRadius() {
+        return Math.max(0, Math.min(MAX_PATHFINDER_LIGHT_RADIUS, pathfinderLightRadius));
     }
 
     /**

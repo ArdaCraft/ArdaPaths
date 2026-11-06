@@ -98,9 +98,11 @@ The pathfinder is an item that allows players to select and follow paths. When u
 - `Chapter titles` - Default **Off** - toggle the display of chapter titles when reaching a new chapter marker
 - `Chapter title fade delay` - Default **2 seconds** - the speed at which chapter titles fade out (lower is faster)
 - `Auto walk speed` - Default **100% of walking speed** - adjusts the speed used by auto-walk movement
+- `Light radius` - Default **14** - adjusts the held Pathfinder's shader-provided light radius from `0` (off) to `30`. Requires Iris and a shader pack that supports held-item lighting.
 - `Show trail waypoints` - Default **Off** - toggles waypoint markers for the next trail node
 - `Dynamic environmental effects` - Default **Off** - allows trail markers to change the time of day and the weather as you follow a path. Requires the client-side [DaylightChangerStruggle](https://github.com/JuggleStruggle/DaylightChangerStruggle) mod for time changes and the client-side [Weather Changer](https://github.com/Lucaslah/WeatherChanger) mod for weather changes - this option is hidden from the Pathfinder screen when neither is installed, and each effect is skipped when its mod is missing. Leaving the trail, disconnecting, changing dimensions, or turning this option off restores server-controlled weather.
 - `baseline_date` (config file only) - Default **04/09/3006 12:00** - anchors the current world time to an Arda date before the first timed marker takes over, so dynamic environmental effects begin from the expected date frame.
+- `pathfinder_light_radius` (config file only) - Default **14** - sets the light radius supplied to shaders while the Pathfinder is held. Use `0` to disable it or a value up to `30`; out-of-range values are clamped. Requires Iris and a shader pack that supports held-item lighting.
 
 While holding the Pathfinder near a marker with `Look At` coordinates, an eye prompt appears above the hotbar. Hold the Focus key, `Left Alt` by default, to ease the camera onto the authored point and keep it there; release the key to ease back to the view you had when you pressed it. When auto-walk is active and no nearby look-at target is available, pressing Focus immediately recentres the camera onto the trail instead of waiting for the normal idle delay.
 

@@ -12,6 +12,7 @@ import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 import space.ajcool.ardapaths.ArdaPathsClient;
 import space.ajcool.ardapaths.core.data.Journal;
+import space.ajcool.ardapaths.core.data.config.client.ClientConfig;
 import space.ajcool.ardapaths.core.data.config.shared.ChapterData;
 import space.ajcool.ardapaths.core.data.config.shared.Color;
 import space.ajcool.ardapaths.core.data.config.shared.PathData;
@@ -63,6 +64,9 @@ public class PathSelectionScreen extends ArdaPathsScreen {
     /** Client preference controlling auto-walk speed relative to vanilla walking. */
     private final double autoWalkSpeedFactor;
 
+    /** Shader-provided light radius used while the Pathfinder is held. */
+    private final int pathfinderLightRadius;
+
     /** Duration in milliseconds that chapter titles remain visible on screen. */
     private final float titleDisplaySpeed;
 
@@ -107,6 +111,7 @@ public class PathSelectionScreen extends ArdaPathsScreen {
         this.hideInterface = ArdaPathsClient.CONFIG.hideInterface();
         this.proximityTextSpeedMultiplier = ArdaPathsClient.CONFIG.getProximityTextSpeedMultiplier();
         this.autoWalkSpeedFactor = ArdaPathsClient.CONFIG.getAutoWalkSpeedFactor();
+        this.pathfinderLightRadius = ArdaPathsClient.CONFIG.getPathfinderLightRadius();
         this.titleDisplaySpeed = ArdaPathsClient.CONFIG.getChapterTitleDisplaySpeed();
     }
 
@@ -153,6 +158,7 @@ public class PathSelectionScreen extends ArdaPathsScreen {
         this.addRenderableWidget(initializeAutoWalkKeybindLabel(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         this.addRenderableWidget(initializeAutoWalkKeybindButton(center + horizontalHalfCenterGap, y));
         this.addRenderableWidget(initializeAutoWalkSpeedSlider(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
+        this.addRenderableWidget(initializeLightRadiusSlider(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
         this.addCheckboxRow(initializeShowTrailWaypointsToggle(center - UI_ELEMENT_WIDTH - horizontalHalfCenterGap, y += uiElementVerticalGap));
 
         if (Weathers.isAvailable() || DaylightCycles.isAvailable()) {
@@ -519,6 +525,42 @@ public class PathSelectionScreen extends ArdaPathsScreen {
         };
 
         sliderWidget.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.auto_walk_speed_tooltip")));
+        return sliderWidget;
+    }
+
+    /**
+     * Creates the slider used to adjust the held Pathfinder light radius.
+     *
+     * @param center the slider x coordinate
+     * @param y      the slider y coordinate
+     * @return the configured Pathfinder light radius slider
+     */
+    private @NotNull AbstractSliderButton initializeLightRadiusSlider(int center, int y) {
+        double initialValue = (double) pathfinderLightRadius / ClientConfig.MAX_PATHFINDER_LIGHT_RADIUS;
+
+        AbstractSliderButton sliderWidget = new AbstractSliderButton(
+                center, y,
+                UI_ELEMENT_WIDTH * 2 + COLUMNS_SPACING,
+                UI_ELEMENT_HEIGHT,
+                Component.literal(Component.translatable("ardapaths.client.configuration.screens.light_radius").getString()),
+                initialValue
+        ) {
+            @Override
+            protected void updateMessage() {
+                int radius = (int) Math.round(this.value * ClientConfig.MAX_PATHFINDER_LIGHT_RADIUS);
+                this.setMessage(radius == 0
+                        ? Component.translatable("ardapaths.client.configuration.screens.light_radius_off")
+                        : Component.literal(Integer.toString(radius)));
+            }
+
+            @Override
+            protected void applyValue() {
+                int radius = (int) Math.round(this.value * ClientConfig.MAX_PATHFINDER_LIGHT_RADIUS);
+                Paths.setPathfinderLightRadius(radius);
+            }
+        };
+
+        sliderWidget.setTooltip(Tooltip.create(Component.translatable("ardapaths.client.configuration.screens.light_radius_tooltip")));
         return sliderWidget;
     }
 
