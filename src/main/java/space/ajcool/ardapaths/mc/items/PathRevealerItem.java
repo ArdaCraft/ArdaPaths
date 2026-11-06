@@ -53,6 +53,21 @@ public class PathRevealerItem extends Item {
     }
 
     /**
+     * Supplies the held-item light radius through Iris's {@code IrisItemLightProvider} hook.
+     * There is intentionally no {@code @Override} annotation or Iris type reference so the
+     * item remains compatible with clients and dedicated servers that do not install Iris.
+     *
+     * @param player the local player holding the item
+     * @param stack  the held Pathfinder stack
+     * @return the configured light radius supplied to the active shader pack
+     */
+    @SuppressWarnings("unused")
+    @Environment(EnvType.CLIENT)
+    public int getLightEmission(Player player, ItemStack stack) {
+        return ArdaPathsClient.CONFIG.getPathfinderLightRadius();
+    }
+
+    /**
      * Appends tooltip information showing the current path and usage instructions.
      *
      * @param itemStack   the item stack

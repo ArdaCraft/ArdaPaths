@@ -144,6 +144,16 @@ public class Paths {
         configManager.save();
     }
 
+    /**
+     * Sets the held Pathfinder light radius and persists it to the client config.
+     *
+     * @param radius the shader-provided light radius to apply
+     */
+    public static void setPathfinderLightRadius(final int radius) {
+        config.setPathfinderLightRadius(radius);
+        configManager.save();
+    }
+
     public static void updateChapter(String pathId, ChapterData chapter) {
         PathData path = config.getPath(pathId);
         if (path != null) {

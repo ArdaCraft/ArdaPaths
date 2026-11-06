@@ -36,6 +36,7 @@ class ConfigGsonShapeTest {
                   "trail_waypoints": true,
                   "dynamic_environment": true,
                   "hide_interface": true,
+                  "pathfinder_light_radius": 20,
                   "proximity_text_speed_multiplier": 1.5,
                   "auto_walk_speed_factor": 0.75,
                   "chapter_title_display_speed": 2500.0
@@ -49,14 +50,34 @@ class ConfigGsonShapeTest {
         assertTrue(config.showTrailWaypoints());
         assertTrue(config.useDynamicEnvironment());
         assertTrue(config.hideInterface());
+        assertEquals(20, config.getPathfinderLightRadius());
         assertEquals(1.5D, config.getProximityTextSpeedMultiplier());
         assertEquals(0.75D, config.getAutoWalkSpeedFactor());
         assertEquals(2500.0F, config.getChapterTitleDisplaySpeed());
 
         JsonObject json = JsonParser.parseString(GSON.toJson(config)).getAsJsonObject();
         assertTrue(json.has("hide_interface"));
+        assertEquals(20, json.get("pathfinder_light_radius").getAsInt());
         assertFalse(json.has("hideInterface"));
         assertFalse(json.has("paths"));
+    }
+
+    /**
+     * Verifies the Pathfinder light radius has a safe default and clamps persisted values.
+     */
+    @Test
+    void pathfinderLightRadiusDefaultsAndClamps() {
+        ClientConfig missing = GSON.fromJson("{}", ClientConfig.class);
+        ClientConfig negative = GSON.fromJson("{\"pathfinder_light_radius\":-3}", ClientConfig.class);
+        ClientConfig excessive = GSON.fromJson("{\"pathfinder_light_radius\":250}", ClientConfig.class);
+
+        assertEquals(ClientConfig.DEFAULT_PATHFINDER_LIGHT_RADIUS, missing.getPathfinderLightRadius());
+        assertEquals(0, negative.getPathfinderLightRadius());
+        assertEquals(ClientConfig.MAX_PATHFINDER_LIGHT_RADIUS, excessive.getPathfinderLightRadius());
+
+        JsonObject json = JsonParser.parseString(GSON.toJson(missing)).getAsJsonObject();
+        assertEquals(ClientConfig.DEFAULT_PATHFINDER_LIGHT_RADIUS,
+                json.get("pathfinder_light_radius").getAsInt());
     }
 
     /**
